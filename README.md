@@ -12,7 +12,8 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 3. **Catálogo técnico:** 3 peças reais. As fotos originais estão embutidas no componente e aparecem inteiras, com `object-contain`, sem cortes nem alteração de cor:
    - EF 661 (Enfeites, peça única);
    - EF 1170 (Enfeites, bipartida: aro + cabochão);
-   - FV 24K (Fivelas).
+   - FV 24K (Fivelas);
+   - 1591 (Saltos, Sola 1902). A foto ainda não foi recebida: o app mostra "Foto da peça pendente" até ela ser adicionada em `FOTOS.s1591`.
 
    Tem filtros por categoria e por material-base, e busca por código ou nome.
 4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça bipartida (`bipartida: true`) tem dois seletores independentes, "Cor da Parte de Cima" e "Cor da Parte de Baixo". Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
@@ -30,6 +31,20 @@ Todas as peças são ABS, um material fixo por referência. A foto é sempre a o
 
 Na EF 1170, aro e centro (cabochão) têm seletores independentes. Exemplo: `Aro: Ônix (ABS) | Centro: Efeito Aura (Aura)`.
 
+## Regras técnicas do modal
+
+- **Código da cor:**
+  - Códigos: 6 Ouro Light (padrão), 1 Ouro 24k, 2 Níquel, 3 Ônix, 4 Marrom, 8 Efeito Aura e 9 Policarbonato.
+  - Cada botão mostra o código ao lado da cor.
+  - O campo "Código da cor" seleciona a cor ao digitar o número e avisa quando o código não existe.
+  - Na peça bipartida, cada parte tem o seu campo.
+- **Tamanho:** botões 1, 2, 3 e 4 (padrão 1). Aparecem apenas para a categoria Saltos.
+- **Afra:**
+  - Opções "Sem Afra" (padrão) ou "Com Afra".
+  - "Com Afra" abre os códigos da Linha 800 (800–807) e da Linha 900 (901–907).
+  - O item só entra no pedido depois que um código é escolhido.
+  - Não aparece para Passador e Ponteiras.
+
 ## Identificação técnica
 
 As peças não têm nome fantasia: o identificador é a referência, sempre em caixa alta com o prefixo `Ref.`.
@@ -41,10 +56,10 @@ As peças não têm nome fantasia: o identificador é a referência, sempre em c
 Linhas do carrinho, do e-mail e do WhatsApp:
 
 ```
-Ref. EF 661 - Enfeite (ABS) | Acabamento: Ouro Light | Qtd: 10 un
-Ref. EF 661 - Enfeite (Aura) | Acabamento: Efeito Aura | Qtd: 10 un
-Ref. EF 1170 - Enfeite (ABS) | Aro: Ouro Light / Centro: Ônix | Qtd: 10 un
-Ref. EF 1170 - Enfeite (ABS) | Aro: Ouro Light / Centro: Cristal/Poli (Policarbonato) | Qtd: 100 un
+Ref. 1591 - Salto (ABS) | Tam: 2 | Acabamento: Ouro Light | Afra: 802 | Qtd: 10 un
+Ref. EF 661 - Enfeite (ABS) | Acabamento: Ouro Light | Sem Afra | Qtd: 10 un
+Ref. FV 24K - Fivela (Aura) | Acabamento: Efeito Aura | Sem Afra | Qtd: 10 un
+Ref. EF 1170 - Enfeite (ABS) | Aro: Ouro Light / Centro: Ônix | Afra: 905 | Qtd: 10 un
 ```
 
 Não existe nenhum campo livre de observação, nota ou instrução. A solicitação é 100% técnica: referência, material, partes, cores, tipo e quantidade.

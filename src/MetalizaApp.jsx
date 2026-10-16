@@ -79,28 +79,49 @@ const PRODUTOS = [
     bipartida: false,
     foto: "fv24k",
   },
+  {
+    ref: "1591",
+    categoria: "Saltos",
+    material: "ABS",
+    sola: "1902",
+    bipartida: false,
+    foto: "s1591", // foto real ainda não recebida: o app mostra um aviso de foto pendente
+  },
 ];
 
 const ACABAMENTOS = [
   // Banhos tradicionais: mantêm o material-base da peça. Escolha só técnica: a foto não muda.
-  { id: "ouro-light", nome: "Ouro Light", grupo: "banho", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"] },
-  { id: "ouro-24k", nome: "Ouro 24k", grupo: "banho", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"] },
-  { id: "niquel", nome: "Níquel", grupo: "banho", cores: ["#FAFBFC", "#D2D7DC", "#929AA1", "#5A6066"] },
-  { id: "onix", nome: "Ônix", grupo: "banho", cores: ["#7D8187", "#45484D", "#222428", "#0D0E10"] },
-  { id: "marrom", nome: "Marrom", grupo: "banho", cores: ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"] },
+  { id: "ouro-light", codigo: "6", nome: "Ouro Light", grupo: "banho", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"] },
+  { id: "ouro-24k", codigo: "1", nome: "Ouro 24k", grupo: "banho", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"] },
+  { id: "niquel", codigo: "2", nome: "Níquel", grupo: "banho", cores: ["#FAFBFC", "#D2D7DC", "#929AA1", "#5A6066"] },
+  { id: "onix", codigo: "3", nome: "Ônix", grupo: "banho", cores: ["#7D8187", "#45484D", "#222428", "#0D0E10"] },
+  { id: "marrom", codigo: "4", nome: "Marrom", grupo: "banho", cores: ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"] },
   // Efeitos especiais: reclassificam o material da peça (ou da parte) no pedido
   {
-    id: "aura", nome: "Efeito Aura", rotulo: "Efeito Aura", grupo: "efeito", material: "Aura", detalhe: "Furta-cor iridescente",
+    id: "aura", codigo: "8", nome: "Efeito Aura", rotulo: "Efeito Aura", grupo: "efeito", material: "Aura", detalhe: "Furta-cor iridescente",
    
     cores: ["#FBE3F3", "#B5D8F6", "#E5C3F0", "#9AE3CF"],
   },
-  { id: "policarbonato", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", material: "Policarbonato", detalhe: "Translúcido/Cristal", cores: ["#FFFFFF", "#E3EEF5", "#BFD3E0", "#90A9BA"] },
+  { id: "policarbonato", codigo: "9", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", material: "Policarbonato", detalhe: "Translúcido/Cristal", cores: ["#FFFFFF", "#E3EEF5", "#BFD3E0", "#90A9BA"] },
 ];
 const GRUPOS_ACABAMENTO = [
   { id: "banho", titulo: "Banhos tradicionais" },
   { id: "efeito", titulo: "Efeitos especiais" },
 ];
 const ACABAMENTO_PADRAO = ACABAMENTOS[0];
+const acabamentoPorCodigo = (cod) => ACABAMENTOS.find((a) => a.codigo === String(cod).trim());
+
+// Tamanhos: só para Saltos
+const TAMANHOS_SALTO = ["1", "2", "3", "4"];
+const temTamanho = (produto) => produto.categoria === "Saltos";
+
+// Afra: não existe para Passador e Ponteiras
+const CATEGORIAS_COM_AFRA = ["Enfeites", "Fivelas", "Saltos", "Detalhe de salto"];
+const temAfra = (produto) => CATEGORIAS_COM_AFRA.includes(produto.categoria);
+const LINHAS_AFRA = [
+  { titulo: "Linha 800", codigos: ["800", "801", "802", "803", "804", "805", "806", "807"] },
+  { titulo: "Linha 900", codigos: ["901", "902", "903", "904", "905", "906", "907"] },
+];
 const acabamentoPorId = (id) => ACABAMENTOS.find((a) => a.id === id) || ACABAMENTO_PADRAO;
 
 const TIPO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção" };
@@ -143,9 +164,26 @@ function textoPeca(produto, acabamento) {
   return `${rotuloRef(produto)} - ${categoriaPeca(produto)} (${mat})`;
 }
 
-// Linha completa do item: "Ref. EF 661 - Enfeite (ABS) | Acabamento: Ouro Light | Qtd: 10 un"
+// Detalhes técnicos opcionais do item, na ordem do pedido
+function textoTamanho(produto, item) {
+  return temTamanho(produto) ? `Tam: ${item.tamanho}` : null;
+}
+function textoAfra(produto, item) {
+  if (!temAfra(produto)) return null;
+  return item.afra ? `Afra: ${item.afra}` : "Sem Afra";
+}
+
+// Linha completa do item, ex.: "Ref. 1591 - Salto (ABS) | Tam: 2 | Acabamento: Ouro Light | Afra: 802 | Qtd: 10 un"
 function linhaPedido(produto, item) {
-  return `${textoPeca(produto, item.acabamento)} | ${textoAcabamento(produto, item.acabamento, item.acabamentoBaixo)} | Qtd: ${formatarNumero(item.qtd)} un`;
+  return [
+    textoPeca(produto, item.acabamento),
+    textoTamanho(produto, item),
+    textoAcabamento(produto, item.acabamento, item.acabamentoBaixo),
+    textoAfra(produto, item),
+    `Qtd: ${formatarNumero(item.qtd)} un`,
+  ]
+    .filter(Boolean)
+    .join(" | ");
 }
 
 // Resumo curto do material no pedido (para chips da interface)
@@ -316,6 +354,21 @@ const FUNDO_FOTO = "#DFDFDF";
 function ImagemPeca({ produto, alturaMax = 260, miniatura = false, className = "" }) {
   const foto = FOTOS[produto.foto];
   const alt = `Foto da peça ${rotuloRef(produto)}`;
+  if (!foto) {
+    return miniatura ? (
+      <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-md text-center text-[9px] font-semibold leading-tight text-[#6B6F75] ${className}`} style={{ background: FUNDO_FOTO }}>
+        Foto pendente
+      </div>
+    ) : (
+      <div className={`flex w-full flex-col items-center justify-center gap-1 py-10 text-center text-[#5F646A] ${className}`} style={{ background: FUNDO_FOTO, minHeight: Math.min(alturaMax, 200) }} role="img" aria-label={`Foto da ${rotuloRef(produto)} pendente`}>
+        <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="m4 17 5-4 4 3 3-2 4 3" />
+        </svg>
+        <span className="mz-mono text-sm font-bold">{rotuloRef(produto)}</span>
+        <span className="text-xs">Foto da peça pendente</span>
+      </div>
+    );
+  }
   if (miniatura) {
     return (
       <div className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md p-0.5 ${className}`} style={{ background: FUNDO_FOTO }}>
@@ -788,6 +841,7 @@ function CardProduto({ produto: p, noPedido, onAbrir }) {
           <p className="mz-mono text-lg font-bold leading-tight tracking-tight">{rotuloRef(p)}</p>
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="rounded bg-[color:var(--mz-sunken)] px-1.5 py-0.5 text-[11px] font-semibold">{categoriaPeca(p)}</span>
+            {p.sola && <span className="mz-mono rounded border border-[color:var(--mz-line)] px-1.5 py-0.5 text-[11px] font-semibold">Sola {p.sola}</span>}
             <span className="rounded border border-[color:var(--mz-line)] px-1.5 py-0.5 text-[11px] font-semibold" title="Material-base de injeção">{p.material}</span>
             {p.bipartida && <TagBipartida />}
           </div>
@@ -799,13 +853,43 @@ function CardProduto({ produto: p, noPedido, onAbrir }) {
 
 /* ----------------------------- tela 4: modal da peça ----------------------------- */
 
-function SeletorAcabamento({ titulo, valor, onChange, produto }) {
+function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
   const atual = acabamentoPorId(valor);
+  const [codigo, setCodigo] = useState(atual.codigo);
+  const [erroCodigo, setErroCodigo] = useState(false);
+  useEffect(() => { setCodigo(atual.codigo); setErroCodigo(false); }, [atual.codigo]);
+
+  const digitarCodigo = (v) => {
+    const d = somenteDigitos(v).slice(-1);
+    setCodigo(d);
+    if (!d) { setErroCodigo(false); return; }
+    const achado = acabamentoPorCodigo(d);
+    setErroCodigo(!achado);
+    if (achado) onChange(achado.id);
+  };
+
   return (
     <fieldset className="flex flex-col gap-3">
       <legend className="mz-eyebrow mb-3">
-        {titulo} · <span className="text-[color:var(--mz-ink)]">{atual.nome}</span>
+        {titulo} · <span className="text-[color:var(--mz-ink)]">[{atual.codigo}] {atual.nome}</span>
       </legend>
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor={`${idBase}-codigo`} className="text-xs font-semibold">Código da cor</label>
+        <input
+          id={`${idBase}-codigo`}
+          inputMode="numeric"
+          maxLength={2}
+          className={`${C.input} mz-mono !w-16 !py-1.5 text-center text-base font-bold ${erroCodigo ? "border-[color:var(--mz-warn)]" : ""}`}
+          placeholder="6"
+          aria-describedby={`${idBase}-codigo-ajuda`}
+          value={codigo}
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => digitarCodigo(e.target.value)}
+        />
+        <span id={`${idBase}-codigo-ajuda`} className={`text-xs ${erroCodigo ? "font-semibold text-[color:var(--mz-warn)]" : C.muted}`}>
+          {erroCodigo ? `Código ${codigo} não existe. Use 1, 2, 3, 4, 6, 8 ou 9.` : "Ex.: 6 = Ouro Light"}
+        </span>
+      </div>
       {GRUPOS_ACABAMENTO.map((g) => (
         <div key={g.id}>
           <p className={`mb-1.5 text-[11px] font-semibold ${C.muted}`}>
@@ -822,7 +906,7 @@ function SeletorAcabamento({ titulo, valor, onChange, produto }) {
                   type="button"
                   onClick={() => onChange(a.id)}
                   aria-pressed={ativo}
-                  aria-label={`${titulo}: ${a.nome}`}
+                  aria-label={`${titulo}: [${a.codigo}] ${a.nome}`}
                   className={`mz-focus flex min-w-0 items-center gap-2 rounded-lg border p-2 transition ${efeito ? "text-left" : "flex-col text-center"} ${
                     ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] hover:border-[color:var(--mz-ink)]"
                   }`}
@@ -836,7 +920,9 @@ function SeletorAcabamento({ titulo, valor, onChange, produto }) {
                     )}
                   </span>
                   <span className="min-w-0 leading-tight">
-                    <span className={`block font-semibold ${efeito ? "text-xs" : "text-[11px]"}`}>{a.nome}</span>
+                    <span className={`block font-semibold ${efeito ? "text-xs" : "text-[11px]"}`}>
+                      <span className="mz-mono mr-0.5 rounded bg-[color:var(--mz-ink)] px-1 text-[10px] font-bold text-[color:var(--mz-bg)]">{a.codigo}</span> {a.nome}
+                    </span>
                     {efeito && <span className={`block text-[11px] ${C.muted}`}>{a.detalhe}</span>}
                   </span>
                 </button>
@@ -852,6 +938,9 @@ function SeletorAcabamento({ titulo, valor, onChange, produto }) {
 function ModalPeca({ produto, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
   const [baixoId, setBaixoId] = useState(ACABAMENTO_PADRAO.id);
+  const [tamanho, setTamanho] = useState(TAMANHOS_SALTO[0]);
+  const [comAfra, setComAfra] = useState(false);
+  const [afra, setAfra] = useState(null);
   const [tipo, setTipo] = useState("amostra");
   const [qtd, setQtd] = useState(REGRAS.amostra.min);
   const [texto, setTexto] = useState(String(REGRAS.amostra.min));
@@ -913,7 +1002,10 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
     }
   };
 
-  const valido = Number(texto || 0) >= regra.min;
+  const afraPendente = temAfra(produto) && comAfra && !afra;
+  const valido = Number(texto || 0) >= regra.min && !afraPendente;
+  const rascunho = { tamanho, afra: comAfra ? afra : null };
+  const detalhes = [textoTamanho(produto, rascunho), descricaoAcabamento, textoAfra(produto, rascunho)].filter(Boolean).join(" · ");
   const noMinimo = qtd <= regra.min;
 
   return (
@@ -928,7 +1020,8 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
           <div className="min-w-0">
             <h2 id="mz-modal-titulo" className="mz-mono text-2xl font-bold tracking-tight">{rotuloRef(produto)}</h2>
             <p className={`mt-0.5 text-sm ${C.muted}`}>
-              Categoria: <b className="text-[color:var(--mz-ink)]">{categoriaPeca(produto)}</b> | Material: <b className="text-[color:var(--mz-ink)]">{produto.material}</b>
+              Categoria: <b className="text-[color:var(--mz-ink)]">{categoriaPeca(produto)}</b>
+              {produto.sola && <> | Sola: <b className="mz-mono text-[color:var(--mz-ink)]">{produto.sola}</b></>} | Material: <b className="text-[color:var(--mz-ink)]">{produto.material}</b>
             </p>
           </div>
           <button type="button" onClick={onFechar} className={`mz-focus rounded p-1 ${C.muted} hover:text-[color:var(--mz-ink)]`} aria-label="Fechar">
@@ -948,7 +1041,7 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
               </span>
             </p>
             <dl className="grid grid-cols-2 gap-2 text-xs">
-              {[["Categoria", categoriaPeca(produto)], ["Material-base (fixo)", produto.material], ["Construção", produto.bipartida ? `Bipartida: ${produto.partes[0].nome} + ${produto.partes[1].nome}` : "Peça única"]].map(([k, v]) => (
+              {[["Categoria", categoriaPeca(produto)], ["Material-base (fixo)", produto.material], ...(produto.sola ? [["Sola", produto.sola]] : []), ["Construção", produto.bipartida ? `Bipartida: ${produto.partes[0].nome} + ${produto.partes[1].nome}` : "Peça única"]].map(([k, v]) => (
                 <div key={k} className={`rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2 ${k === "Construção" ? "col-span-2" : ""}`}>
                   <dt className={C.muted}>{k}</dt>
                   <dd className="font-bold">{v}</dd>
@@ -962,11 +1055,11 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
             {produto.bipartida ? (
               <div className="flex flex-col gap-5">
                 <TagBipartida className="self-start" />
-                <SeletorAcabamento titulo={`Cor do ${produto.partes[0].curto}`} produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
-                <SeletorAcabamento titulo={`Cor do ${produto.partes[1].curto}`} produto={produto} valor={baixoId} onChange={setBaixoId} />
+                <SeletorAcabamento titulo={`Cor do ${produto.partes[0].curto}`} idBase="mz-cor-1" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
+                <SeletorAcabamento titulo={`Cor do ${produto.partes[1].curto}`} idBase="mz-cor-2" produto={produto} valor={baixoId} onChange={setBaixoId} />
               </div>
             ) : (
-              <SeletorAcabamento titulo="Cor do Acabamento" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
+              <SeletorAcabamento titulo="Cor do Acabamento" idBase="mz-cor" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
             )}
             <div className="-mt-2 flex flex-wrap items-center gap-2 rounded-md bg-[color:var(--mz-sunken)] px-3 py-2 text-xs">
               <span className={C.muted}>Material no pedido:</span>
@@ -977,6 +1070,84 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
                 </span>
               )}
             </div>
+
+            {temTamanho(produto) && (
+              <fieldset>
+                <legend className="mz-eyebrow mb-3">Tamanho do salto</legend>
+                <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Tamanho do salto">
+                  {TAMANHOS_SALTO.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      role="radio"
+                      aria-checked={tamanho === t}
+                      aria-label={`Tamanho ${t}`}
+                      onClick={() => setTamanho(t)}
+                      className={`mz-focus mz-mono rounded-lg border py-2.5 text-lg font-bold transition ${
+                        tamanho === t
+                          ? "border-[color:var(--mz-ink)] bg-[color:var(--mz-ink)] text-[color:var(--mz-bg)]"
+                          : "border-[color:var(--mz-line)] hover:border-[color:var(--mz-ink)]"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+
+            {temAfra(produto) && (
+              <fieldset>
+                <legend className="mz-eyebrow mb-3">Afra</legend>
+                <div className="grid grid-cols-2 gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1" role="radiogroup" aria-label="Afra">
+                  {[[false, "Sem Afra"], [true, "Com Afra"]].map(([v, rotulo]) => (
+                    <button
+                      key={rotulo}
+                      type="button"
+                      role="radio"
+                      aria-checked={comAfra === v}
+                      onClick={() => { setComAfra(v); if (!v) setAfra(null); }}
+                      className={`mz-focus rounded-md px-3 py-2 text-sm font-bold transition ${
+                        comAfra === v ? "bg-[color:var(--mz-surface)] text-[color:var(--mz-ink)] shadow-[var(--mz-shadow)]" : C.muted
+                      }`}
+                    >
+                      {rotulo}
+                    </button>
+                  ))}
+                </div>
+                {comAfra && (
+                  <div className="mz-in mt-3 flex flex-col gap-3">
+                    {LINHAS_AFRA.map((linha) => (
+                      <div key={linha.titulo}>
+                        <p className={`mb-1.5 text-[11px] font-semibold ${C.muted}`}>{linha.titulo}</p>
+                        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8" role="radiogroup" aria-label={linha.titulo}>
+                          {linha.codigos.map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              role="radio"
+                              aria-checked={afra === c}
+                              aria-label={`Afra ${c}`}
+                              onClick={() => setAfra(c)}
+                              className={`mz-focus mz-mono rounded-md border py-1.5 text-sm font-bold transition ${
+                                afra === c
+                                  ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)] text-[color:var(--mz-ink)]"
+                                  : "border-[color:var(--mz-line)] hover:border-[color:var(--mz-ink)]"
+                              }`}
+                            >
+                              {c}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    <p className={`text-xs ${afraPendente ? "font-semibold text-[color:var(--mz-warn)]" : C.muted}`}>
+                      {afraPendente ? "Escolha o código da Afra para adicionar ao pedido." : `Afra selecionada: ${afra}`}
+                    </p>
+                  </div>
+                )}
+              </fieldset>
+            )}
 
             <fieldset>
               <legend className="mz-eyebrow mb-3">Tipo de solicitação</legend>
@@ -1047,13 +1218,21 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
           <div className="flex min-w-0 items-center gap-2 text-sm">
             <SwatchesItem produto={produto} acabamento={acabamentoId} acabamentoBaixo={baixoId} size="h-6 w-6" />
             <span className="min-w-0 truncate">
-              <b className="mz-mono">{valido ? formatarNumero(Number(texto)) : "—"}</b> un · {descricaoAcabamento} · {TIPO_LABEL[tipo]}
+              <b className="mz-mono">{valido ? formatarNumero(Number(texto)) : "—"}</b> un · {detalhes} · {TIPO_LABEL[tipo]}
             </span>
           </div>
           <button
             type="button"
             disabled={!valido}
-            onClick={() => onAdicionar({ ref: produto.ref, acabamento: acabamentoId, acabamentoBaixo: produto.bipartida ? baixoId : null, tipo, qtd: Number(texto) })}
+            onClick={() => onAdicionar({
+              ref: produto.ref,
+              acabamento: acabamentoId,
+              acabamentoBaixo: produto.bipartida ? baixoId : null,
+              tamanho: temTamanho(produto) ? tamanho : null,
+              afra: temAfra(produto) && comAfra ? afra : null,
+              tipo,
+              qtd: Number(texto),
+            })}
             className={`${C.btnAccent} w-full sm:w-auto`}
           >
             <Icone.sacola className="h-4 w-4" /> Adicionar ao pedido
@@ -1088,6 +1267,13 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
               <SwatchesItem produto={p} acabamento={item.acabamento} acabamentoBaixo={item.acabamentoBaixo} size="h-3 w-3" />
               <span className="font-semibold text-[color:var(--mz-ink)]">{textoAcabamento(p, item.acabamento, item.acabamentoBaixo)}</span>
             </p>
+            {(temTamanho(p) || temAfra(p)) && (
+              <p className="mt-0.5 flex flex-wrap gap-1">
+                {[textoTamanho(p, item), textoAfra(p, item)].filter(Boolean).map((t) => (
+                  <span key={t} className="mz-mono rounded bg-[color:var(--mz-sunken)] px-1.5 py-0.5 text-[11px] font-semibold">{t}</span>
+                ))}
+              </p>
+            )}
             {p.bipartida && <TagBipartida className="mt-1" />}
           </div>
           {onRemover && (
@@ -1381,7 +1567,7 @@ export default function MetalizaApp() {
   const trocarCliente = () => { setPedidoAberto(false); setPeca(null); setTela("clientes"); };
 
   const adicionar = (novo) => {
-    const chave = `${novo.ref}|${novo.acabamento}|${novo.acabamentoBaixo || "-"}|${novo.tipo}`;
+    const chave = [novo.ref, novo.acabamento, novo.acabamentoBaixo || "-", novo.tamanho || "-", novo.afra || "sem-afra", novo.tipo].join("|");
     setItens((lista) => {
       const existente = lista.find((i) => i.chave === chave);
       if (existente) {
