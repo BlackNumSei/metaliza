@@ -56,7 +56,6 @@ const MATERIAIS = ["Todos", "ABS", "TPU", "PVC"];
 const PRODUTOS = [
   {
     ref: "EF 661",
-    nome: "Enfeite Liso Orgânico",
     categoria: "Enfeites",
     material: "ABS",
     bipartida: false,
@@ -64,7 +63,6 @@ const PRODUTOS = [
   },
   {
     ref: "EF 1170",
-    nome: "Enfeite Martelado com Cabochão",
     categoria: "Enfeites",
     material: "ABS",
     bipartida: true,
@@ -76,7 +74,6 @@ const PRODUTOS = [
   },
   {
     ref: "FV 24K",
-    nome: "Fivela Orgânica Ondulada",
     categoria: "Fivelas",
     material: "ABS",
     bipartida: false,
@@ -109,18 +106,46 @@ const acabamentoPorId = (id) => ACABAMENTOS.find((a) => a.id === id) || ACABAMEN
 const TIPO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção" };
 
 // Material que vai para o pedido: efeito especial reclassifica; banho mantém o material-base
+// Categoria no singular para a identificação da peça (filtros usam o plural)
+const CATEGORIA_SINGULAR = {
+  Enfeites: "Enfeite",
+  Fivelas: "Fivela",
+  Ponteiras: "Ponteira",
+  Passador: "Passador",
+  Saltos: "Salto",
+  "Detalhe de salto": "Detalhe de salto",
+};
+const categoriaPeca = (produto) => CATEGORIA_SINGULAR[produto.categoria] || produto.categoria;
+const rotuloRef = (produto) => `Ref. ${produto.ref.toUpperCase()}`;
+const normalizarRef = (t) => t.toUpperCase().replace(/^REF\.?\s*/, "").replace(/\s+/g, "");
+
 const materialEfetivo = (produto, acabamentoId) => acabamentoPorId(acabamentoId).material || produto.material;
 const rotuloAcabamento = (acabamentoId) => {
   const a = acabamentoPorId(acabamentoId);
   return a.rotulo || a.nome;
 };
 
-// Texto padronizado de material + acabamento de um item (peça única ou bipartida)
+// Acabamento no padrão do pedido. Peça única: "Acabamento: Ouro Light".
+// Bipartida: "Aro: Ouro Light / Centro: Ônix". Efeito especial indica o material reclassificado entre parênteses.
 function textoAcabamento(produto, acabamento, acabamentoParte2) {
-  if (!produto.bipartida) return `Material: ${materialEfetivo(produto, acabamento)} | Acabamento: ${rotuloAcabamento(acabamento)}`;
-  const parte = (id) => `${rotuloAcabamento(id)} (${materialEfetivo(produto, id)})`;
+  if (!produto.bipartida) return `Acabamento: ${rotuloAcabamento(acabamento)}`;
+  const parte = (id) => {
+    const mat = materialEfetivo(produto, id);
+    return mat === produto.material ? rotuloAcabamento(id) : `${rotuloAcabamento(id)} (${mat})`;
+  };
   const [p1, p2] = produto.partes;
-  return `${p1.curto}: ${parte(acabamento)} | ${p2.curto}: ${parte(acabamentoParte2)}`;
+  return `${p1.curto}: ${parte(acabamento)} / ${p2.curto}: ${parte(acabamentoParte2)}`;
+}
+
+// Identificação da peça: "Ref. EF 661 - Enfeite (ABS)". Em peça única, o material já sai reclassificado pelo efeito.
+function textoPeca(produto, acabamento) {
+  const mat = produto.bipartida ? produto.material : materialEfetivo(produto, acabamento);
+  return `${rotuloRef(produto)} - ${categoriaPeca(produto)} (${mat})`;
+}
+
+// Linha completa do item: "Ref. EF 661 - Enfeite (ABS) | Acabamento: Ouro Light | Qtd: 10 un"
+function linhaPedido(produto, item) {
+  return `${textoPeca(produto, item.acabamento)} | ${textoAcabamento(produto, item.acabamento, item.acabamentoBaixo)} | Qtd: ${formatarNumero(item.qtd)} un`;
 }
 
 // Resumo curto do material no pedido (para chips da interface)
@@ -165,12 +190,12 @@ function linhasItens(itens, negrito) {
     linhas.push(`${b(tipo === "amostra" ? "AMOSTRAS" : "PRODUÇÃO")} (prazo estimado ${PRAZO[tipo]})`);
     grupo.forEach((i) => {
       const p = PRODUTOS.find((x) => x.ref === i.ref);
-      linhas.push(`• Ref. ${i.ref} ${p.nome} | ${p.bipartida ? "Bipartida | " : ""}${textoAcabamento(p, i.acabamento, i.acabamentoBaixo)} | ${formatarNumero(i.qtd)} pçs`);
+      linhas.push(`• ${linhaPedido(p, i)}`);
     });
   });
   const total = itens.reduce((s, i) => s + i.qtd, 0);
   linhas.push("");
-  linhas.push(`Total: ${formatarNumero(total)} peças em ${itens.length} ${itens.length === 1 ? "item" : "itens"}`);
+  linhas.push(`Total: ${formatarNumero(total)} un em ${itens.length} ${itens.length === 1 ? "item" : "itens"}`);
   return linhas;
 }
 
@@ -190,7 +215,7 @@ function montarEmail({ numero, rep, cliente, itens }) {
   return {
     para: EMAIL_PEDIDOS,
     cc: rep.email,
-    assunto: `[${numero}] ${cliente.nome} · ${itens.length} ${itens.length === 1 ? "item" : "itens"} · ${formatarNumero(total)} pçs`,
+    assunto: `[${numero}] ${cliente.nome} · ${itens.length} ${itens.length === 1 ? "item" : "itens"} · ${formatarNumero(total)} un`,
     corpo: [
       `Solicitação ${numero} registrada em ${hojeFormatado()}.`,
       "",
@@ -290,7 +315,7 @@ const FUNDO_FOTO = "#DFDFDF";
 
 function ImagemPeca({ produto, alturaMax = 260, miniatura = false, className = "" }) {
   const foto = FOTOS[produto.foto];
-  const alt = `Foto da peça ${produto.ref} (${produto.nome})`;
+  const alt = `Foto da peça ${rotuloRef(produto)}`;
   if (miniatura) {
     return (
       <div className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md p-0.5 ${className}`} style={{ background: FUNDO_FOTO }}>
@@ -329,7 +354,7 @@ function TagBipartida({ className = "" }) {
         <rect x="1.5" y="1.5" width="9" height="4" rx="1" fill="currentColor" />
         <rect x="1.5" y="6.5" width="9" height="4" rx="1" fill="none" stroke="currentColor" strokeWidth="1.2" />
       </svg>
-      Peça Bipartida
+      Bipartida
     </span>
   );
 }
@@ -693,7 +718,7 @@ function TelaCatalogo({ cliente, itensPedido, onAbrirPeca }) {
       (p) =>
         (categoria === "Todos" || p.categoria === categoria) &&
         (material === "Todos" || p.material === material) &&
-        (!termo || p.ref.toLowerCase().includes(termo) || p.nome.toLowerCase().includes(termo))
+        (!termo || normalizarRef(p.ref).includes(normalizarRef(termo)))
     );
   }, [categoria, material, busca]);
 
@@ -710,9 +735,9 @@ function TelaCatalogo({ cliente, itensPedido, onAbrirPeca }) {
           <p className={`mt-1 text-sm ${C.muted}`}>Fotos originais das peças em Ouro Light. Banho ou efeito é escolhido ao abrir a peça.</p>
         </div>
         <label htmlFor="mz-busca" className="relative w-full sm:w-80">
-          <span className="sr-only">Buscar por referência ou nome</span>
+          <span className="sr-only">Buscar por referência</span>
           <Icone.busca className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}`} />
-          <input id="mz-busca" type="search" className={`${C.input} pl-9`} placeholder="Buscar ref. (EF 1170) ou nome" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <input id="mz-busca" type="search" className={`${C.input} pl-9`} placeholder="Buscar referência (EF 1170)" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </label>
       </div>
 
@@ -760,11 +785,10 @@ function CardProduto({ produto: p, noPedido, onAbrir }) {
           )}
         </div>
         <div className="flex flex-1 flex-col gap-2 p-3">
-          <p className={`mz-mono text-sm font-semibold ${C.accentText}`}>Ref. {p.ref}</p>
-          <p className="text-sm font-bold leading-snug">{p.nome}</p>
-          <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
-            <span className="rounded border border-[color:var(--mz-ink)] px-1.5 py-0.5 text-[11px] font-bold" title="Material-base de injeção">{p.material}</span>
-            <span className="rounded bg-[color:var(--mz-sunken)] px-1.5 py-0.5 text-[11px] font-semibold">{p.categoria}</span>
+          <p className="mz-mono text-lg font-bold leading-tight tracking-tight">{rotuloRef(p)}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded bg-[color:var(--mz-sunken)] px-1.5 py-0.5 text-[11px] font-semibold">{categoriaPeca(p)}</span>
+            <span className="rounded border border-[color:var(--mz-line)] px-1.5 py-0.5 text-[11px] font-semibold" title="Material-base de injeção">{p.material}</span>
             {p.bipartida && <TagBipartida />}
           </div>
         </div>
@@ -902,8 +926,10 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
       >
         <div className="flex items-start justify-between gap-3 border-b border-[color:var(--mz-line)] px-5 py-4">
           <div className="min-w-0">
-            <p className={`mz-mono text-xs font-semibold ${C.accentText}`}>{produto.ref}</p>
-            <h2 id="mz-modal-titulo" className="mz-display text-xl font-bold">{produto.nome}</h2>
+            <h2 id="mz-modal-titulo" className="mz-mono text-2xl font-bold tracking-tight">{rotuloRef(produto)}</h2>
+            <p className={`mt-0.5 text-sm ${C.muted}`}>
+              Categoria: <b className="text-[color:var(--mz-ink)]">{categoriaPeca(produto)}</b> | Material: <b className="text-[color:var(--mz-ink)]">{produto.material}</b>
+            </p>
           </div>
           <button type="button" onClick={onFechar} className={`mz-focus rounded p-1 ${C.muted} hover:text-[color:var(--mz-ink)]`} aria-label="Fechar">
             <Icone.fechar className="h-6 w-6" />
@@ -922,7 +948,7 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
               </span>
             </p>
             <dl className="grid grid-cols-2 gap-2 text-xs">
-              {[["Categoria", produto.categoria], ["Material-base (fixo)", produto.material], ["Construção", produto.bipartida ? `Bipartida: ${produto.partes[0].nome} + ${produto.partes[1].nome}` : "Peça única"]].map(([k, v]) => (
+              {[["Categoria", categoriaPeca(produto)], ["Material-base (fixo)", produto.material], ["Construção", produto.bipartida ? `Bipartida: ${produto.partes[0].nome} + ${produto.partes[1].nome}` : "Peça única"]].map(([k, v]) => (
                 <div key={k} className={`rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2 ${k === "Construção" ? "col-span-2" : ""}`}>
                   <dt className={C.muted}>{k}</dt>
                   <dd className="font-bold">{v}</dd>
@@ -1021,7 +1047,7 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
           <div className="flex min-w-0 items-center gap-2 text-sm">
             <SwatchesItem produto={produto} acabamento={acabamentoId} acabamentoBaixo={baixoId} size="h-6 w-6" />
             <span className="min-w-0 truncate">
-              <b className="mz-mono">{valido ? formatarNumero(Number(texto)) : "—"}</b> pçs · {descricaoAcabamento} · {TIPO_LABEL[tipo]}
+              <b className="mz-mono">{valido ? formatarNumero(Number(texto)) : "—"}</b> un · {descricaoAcabamento} · {TIPO_LABEL[tipo]}
             </span>
           </div>
           <button
@@ -1056,8 +1082,8 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className={`mz-mono text-[11px] font-semibold ${C.accentText}`}>{p.ref}</p>
-            <p className="truncate text-sm font-bold">{p.nome}</p>
+            <p className="mz-mono text-sm font-bold">{rotuloRef(p)}</p>
+            <p className={`text-xs ${C.muted}`}>{textoPeca(p, item.acabamento).replace(`${rotuloRef(p)} - `, "")}</p>
             <p className={`flex flex-wrap items-center gap-x-1.5 text-xs ${C.muted}`}>
               <SwatchesItem produto={p} acabamento={item.acabamento} acabamentoBaixo={item.acabamentoBaixo} size="h-3 w-3" />
               <span className="font-semibold text-[color:var(--mz-ink)]">{textoAcabamento(p, item.acabamento, item.acabamentoBaixo)}</span>
@@ -1065,13 +1091,13 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
             {p.bipartida && <TagBipartida className="mt-1" />}
           </div>
           {onRemover && (
-            <button type="button" onClick={onRemover} className={`mz-focus shrink-0 rounded p-1 ${C.muted} hover:text-[color:var(--mz-warn)]`} aria-label={`Remover ${p.ref}`}>
+            <button type="button" onClick={onRemover} className={`mz-focus shrink-0 rounded p-1 ${C.muted} hover:text-[color:var(--mz-warn)]`} aria-label={`Remover ${rotuloRef(p)}`}>
               <Icone.lixeira className="h-4 w-4" />
             </button>
           )}
         </div>
         {compacto ? (
-          <p className="mz-mono mt-1 text-sm font-semibold">{formatarNumero(item.qtd)} pçs</p>
+          <p className="mz-mono mt-1 text-sm font-semibold">{formatarNumero(item.qtd)} un</p>
         ) : (
           <div className="mt-2 flex items-center gap-2">
             <button type="button" onClick={menos} aria-label="Diminuir" className={`mz-focus flex h-7 w-7 items-center justify-center rounded border border-[color:var(--mz-line)] ${item.qtd <= regra.min ? "opacity-40" : ""}`}>
@@ -1081,7 +1107,7 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
             <button type="button" onClick={mais} aria-label="Aumentar" className="mz-focus flex h-7 w-7 items-center justify-center rounded border border-[color:var(--mz-line)]">
               <Icone.mais className="h-3.5 w-3.5" />
             </button>
-            <span className={`text-xs ${C.muted}`}>pçs</span>
+            <span className={`text-xs ${C.muted}`}>un</span>
           </div>
         )}
         {aviso && <p className="mt-1 text-xs font-semibold text-[color:var(--mz-warn)]">{aviso}</p>}
@@ -1100,7 +1126,7 @@ function GrupoItens({ tipo, itens, children }) {
           <span className={`h-2 w-2 rounded-full ${tipo === "amostra" ? "bg-[color:var(--mz-accent)]" : "bg-[color:var(--mz-ink)]"}`} />
           {tipo === "amostra" ? "Amostras" : "Produção"}
         </h3>
-        <span className={`mz-mono text-xs ${C.muted}`}>{formatarNumero(total)} pçs · {PRAZO[tipo]}</span>
+        <span className={`mz-mono text-xs ${C.muted}`}>{formatarNumero(total)} un · {PRAZO[tipo]}</span>
       </div>
       <ul className="divide-y divide-[color:var(--mz-line)]">{children}</ul>
     </section>
@@ -1149,7 +1175,7 @@ function PainelPedido({ cliente, itens, onFechar, onQtd, onRemover, onRevisar })
         <div className="border-t border-[color:var(--mz-line)] px-5 py-4">
           <div className="mb-3 flex items-baseline justify-between text-sm">
             <span className={C.muted}>{itens.length} {itens.length === 1 ? "item" : "itens"}</span>
-            <span className="mz-mono text-base font-bold">{formatarNumero(total)} peças</span>
+            <span className="mz-mono text-base font-bold">{formatarNumero(total)} un</span>
           </div>
           <button type="button" disabled={!itens.length} onClick={onRevisar} className={`${C.btnAccent} w-full`}>
             Revisar e finalizar
@@ -1204,9 +1230,9 @@ function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar
 
           <div className="rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5">
             <dl className="grid gap-2 text-sm">
-              <div className="flex justify-between"><dt className={C.muted}>Amostras</dt><dd className="mz-mono font-semibold">{formatarNumero(totalAmostra)} pçs</dd></div>
-              <div className="flex justify-between"><dt className={C.muted}>Produção</dt><dd className="mz-mono font-semibold">{formatarNumero(totalProd)} pçs</dd></div>
-              <div className="flex justify-between border-t border-[color:var(--mz-line)] pt-2"><dt className="font-bold">Total</dt><dd className="mz-mono font-bold">{formatarNumero(total)} pçs</dd></div>
+              <div className="flex justify-between"><dt className={C.muted}>Amostras</dt><dd className="mz-mono font-semibold">{formatarNumero(totalAmostra)} un</dd></div>
+              <div className="flex justify-between"><dt className={C.muted}>Produção</dt><dd className="mz-mono font-semibold">{formatarNumero(totalProd)} un</dd></div>
+              <div className="flex justify-between border-t border-[color:var(--mz-line)] pt-2"><dt className="font-bold">Total</dt><dd className="mz-mono font-bold">{formatarNumero(total)} un</dd></div>
             </dl>
 
             {!confirmando ? (
@@ -1215,7 +1241,7 @@ function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar
               </button>
             ) : (
               <div className="mz-in mt-4 rounded-lg border border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)] p-3">
-                <p className="text-sm font-semibold">Enviar {itens.length} {itens.length === 1 ? "item" : "itens"} ({formatarNumero(total)} pçs) para a fábrica?</p>
+                <p className="text-sm font-semibold">Enviar {itens.length} {itens.length === 1 ? "item" : "itens"} ({formatarNumero(total)} un) para a fábrica?</p>
                 <div className="mt-3 flex gap-2">
                   <button type="button" onClick={() => setConfirmando(false)} className={`${C.btnGhost} flex-1`}>Cancelar</button>
                   <button type="button" onClick={onEnviar} className={`${C.btnPrimary} flex-1`}>Confirmar envio</button>
@@ -1365,7 +1391,7 @@ export default function MetalizaApp() {
     });
     setPeca(null);
     const prod = PRODUTOS.find((x) => x.ref === novo.ref);
-    setToast(`${novo.ref} · ${textoAcabamento(prod, novo.acabamento, novo.acabamentoBaixo)} · ${formatarNumero(novo.qtd)} pçs adicionadas (${TIPO_LABEL[novo.tipo]}).`);
+    setToast(`Adicionado (${TIPO_LABEL[novo.tipo]}): ${linhaPedido(prod, novo)}`);
   };
 
   const alterarQtd = (chave, q) => setItens((l) => l.map((i) => (i.chave === chave ? { ...i, qtd: q } : i)));

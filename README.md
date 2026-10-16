@@ -30,7 +30,22 @@ Todas as peças são ABS, um material fixo por referência. A foto é sempre a o
 
 Na EF 1170, aro e centro (cabochão) têm seletores independentes. Exemplo: `Aro: Ônix (ABS) | Centro: Efeito Aura (Aura)`.
 
-Peças bipartidas aparecem com a tag "Peça Bipartida" no catálogo e no pedido. Nos resumos, as duas cores aparecem por extenso, por exemplo `Cima: Ouro Light | Baixo: Grafite/Ônix`.
+## Identificação técnica
+
+As peças não têm nome fantasia: o identificador é a referência, sempre em caixa alta com o prefixo `Ref.`.
+
+- **Card:** mostra `Ref. EF 661` em destaque e, abaixo, as badges de categoria, material-base e, quando for o caso, `Bipartida`.
+- **Modal:** o título é `Ref. EF 661` e o subtítulo é `Categoria: Enfeite | Material: ABS`.
+- **Busca:** só por referência, sem diferenciar espaço ou caixa (`ef1170` encontra `EF 1170`).
+
+Linhas do carrinho, do e-mail e do WhatsApp:
+
+```
+Ref. EF 661 - Enfeite (ABS) | Acabamento: Ouro Light | Qtd: 10 un
+Ref. EF 661 - Enfeite (Aura) | Acabamento: Efeito Aura | Qtd: 10 un
+Ref. EF 1170 - Enfeite (ABS) | Aro: Ouro Light / Centro: Ônix | Qtd: 10 un
+Ref. EF 1170 - Enfeite (ABS) | Aro: Ouro Light / Centro: Cristal/Poli (Policarbonato) | Qtd: 100 un
+```
 
 Não existe nenhum campo livre de observação, nota ou instrução. A solicitação é 100% técnica: referência, material, partes, cores, tipo e quantidade.
 
