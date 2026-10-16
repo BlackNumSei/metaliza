@@ -2,19 +2,24 @@
 
 Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo comercial de uma empresa de cromagem/metalização de componentes para calçados femininos.
 
-- **Componente único:** `src/MetalizaApp.jsx` (export default `MetalizaApp`). Ele usa apenas `react` e classes Tailwind. Os tokens de cor e as fontes vêm de um `<style>` interno, então não exige configuração extra do Tailwind.
-- **Preview standalone:** `preview/index.html`, que abre direto no navegador (React e Tailwind via CDN). Para regenerar depois de editar o componente: `npm install && npm run preview:build`.
+- **Componente único:** `src/MetalizaApp.jsx` (export default `MetalizaApp`). Ele usa `react`, `lucide-react` (ícones de menu, fechar e setas do carrossel) e classes Tailwind. Os tokens de cor e as fontes vêm de um `<style>` interno, então não exige configuração extra do Tailwind.
+- **Preview standalone:** `preview/index.html`, que abre direto no navegador (React, lucide-react e Tailwind via CDN). Para regenerar depois de editar o componente: `npm install && npm run preview:build`.
 
 ## Fluxo
 
 1. **Login:** email/senha (`carlos.mendes@metaliza.com.br` / `demo123`) ou o botão "Entrar como Representante Demonstração".
 2. **Cliente:** 3 fábricas pré-cadastradas, seleção com 1 clique, e Cadastro Rápido (nome fantasia, contato/modelista, WhatsApp com máscara, cidade).
-3. **Catálogo técnico:** 3 peças reais, todas na coleção Verão 2026. As fotos originais estão embutidas no componente e aparecem inteiras, com `object-contain`, sem cortes nem alteração de cor:
-   - Ref. EF 661 (Enfeites);
-   - Ref. EF 1170 (Enfeites, com seletores de Aro e Centro);
-   - Ref. 1591 (Saltos).
+3. **Showroom:** é a vitrine do catálogo, com estética editorial de moda (títulos em Bodoni Moda e texto em Jost).
+   - **Carrossel de destaques no topo:** Verão 2026, Inverno 2026 e Acabamentos Exclusivos, com setas e indicadores. Passa sozinho a cada 7 s e pausa com o mouse em cima ou quando o usuário prefere menos movimento.
+   - **Menu hambúrguer:** abre uma gaveta lateral com as coleções (Todas as Peças, Verão 2026, Inverno 2026) e os dados do representante e do cliente. Fecha no X, no Esc ou clicando fora.
+   - **Peças:** 8 referências reais, divididas 4/4 entre Verão 2026 e Inverno 2026. As fotos originais estão embutidas no componente e aparecem inteiras, com `object-contain`, sem cortes nem alteração de cor:
 
-   O topo do catálogo tem as abas de coleção (Todas as Peças / Verão 2026). Abaixo ficam os filtros por categoria e por material-base, e a busca por referência.
+     | Coleção | Referências |
+     |---|---|
+     | Verão 2026 | EF 661 (Enfeites), EF 1170 (Enfeites, Aro + Centro), 1591 (Saltos), PS 1030 (Passador) |
+     | Inverno 2026 | EF 1143 (Enfeites), EF 1150 (Enfeites), PS 1027 (Passador), PS 057 (Passador) |
+
+   - **Filtros:** por categoria e por material-base, e busca por referência.
 4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça com duas partes (`bipartida: true` + `partes`) tem dois seletores independentes, como "Cor do Aro" e "Cor do Centro" na Ref. EF 1170. Saltos têm o seletor de tamanho, e Enfeites, Fivelas e Detalhe de salto têm o módulo de Afra. Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
 5. **Pedido:** painel lateral agrupado em Amostras e Produção, com ajuste de quantidade e remoção. O pedido é guardado separadamente para cada cliente.
 6. **Revisão e envio:** confirmação e número da solicitação. Depois vêm a simulação do e-mail para a fábrica (Para/Cc/Assunto/corpo) e o texto formatado para WhatsApp.
