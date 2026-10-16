@@ -50,40 +50,63 @@ const CLIENTES_INICIAIS = [
 ];
 
 const CATEGORIAS = ["Todos", "Enfeites", "Fivelas", "Ponteiras", "Passador", "Saltos", "Detalhe de salto"];
-const MATERIAIS = ["Todos", "ABS", "TPU", "PVC", "Policarbonato", "Aura"];
+// Material-base de injeção: fixo por referência. Aura e Policarbonato são efeitos de acabamento.
+const MATERIAIS = ["Todos", "ABS", "TPU", "PVC"];
 
 const PRODUTOS = [
   { ref: "MZ-ENF-1042", nome: "Enfeite Laço Clássico", categoria: "Enfeites", material: "ABS", medida: "38 × 22 mm", forma: "laco", bipartida: true },
-  { ref: "MZ-ENF-1187", nome: "Enfeite Corrente Elos", categoria: "Enfeites", material: "Policarbonato", medida: "60 × 12 mm", forma: "corrente", bipartida: false },
-  { ref: "MZ-ENF-1290", nome: "Enfeite Gota Facetada", categoria: "Enfeites", material: "Aura", medida: "18 × 26 mm", forma: "gota", bipartida: false },
+  { ref: "MZ-ENF-1187", nome: "Enfeite Corrente Elos", categoria: "Enfeites", material: "PVC", medida: "60 × 12 mm", forma: "corrente", bipartida: false },
+  { ref: "MZ-ENF-1290", nome: "Enfeite Gota Facetada", categoria: "Enfeites", material: "TPU", medida: "18 × 26 mm", forma: "gota", bipartida: false },
   { ref: "MZ-FIV-2210", nome: "Fivela Quadrada 25 mm", categoria: "Fivelas", material: "ABS", medida: "25 × 25 mm", forma: "fivelaQuadrada", bipartida: false },
-  { ref: "MZ-FIV-2315", nome: "Fivela Oval Vazada 18 mm", categoria: "Fivelas", material: "Aura", medida: "28 × 18 mm", forma: "fivelaOval", bipartida: false },
+  { ref: "MZ-FIV-2315", nome: "Fivela Oval Vazada 18 mm", categoria: "Fivelas", material: "PVC", medida: "28 × 18 mm", forma: "fivelaOval", bipartida: false },
   { ref: "MZ-PON-3104", nome: "Ponteira Bico Fino", categoria: "Ponteiras", material: "TPU", medida: "42 × 30 mm", forma: "ponteiraFina", bipartida: false },
   { ref: "MZ-PON-3120", nome: "Ponteira Quadrada", categoria: "Ponteiras", material: "ABS", medida: "40 × 34 mm", forma: "ponteiraQuadrada", bipartida: false },
   { ref: "MZ-PAS-4402", nome: "Passador Barra Lisa 30 mm", categoria: "Passador", material: "PVC", medida: "30 × 8 mm", forma: "passadorBarra", bipartida: false },
-  { ref: "MZ-PAS-4480", nome: "Passador Argola Dupla", categoria: "Passador", material: "Aura", medida: "34 × 16 mm", forma: "passadorArgola", bipartida: false },
+  { ref: "MZ-PAS-4480", nome: "Passador Argola Dupla", categoria: "Passador", material: "ABS", medida: "34 × 16 mm", forma: "passadorArgola", bipartida: false },
   { ref: "MZ-SAL-5501", nome: "Salto Taça 7 cm", categoria: "Saltos", material: "ABS", medida: "70 mm · base 14 mm", forma: "saltoTaca", bipartida: true },
-  { ref: "MZ-SAL-5630", nome: "Salto Bloco 5 cm", categoria: "Saltos", material: "Policarbonato", medida: "50 mm · base 32 mm", forma: "saltoBloco", bipartida: false },
+  { ref: "MZ-SAL-5630", nome: "Salto Bloco 5 cm", categoria: "Saltos", material: "ABS", medida: "50 mm · base 32 mm", forma: "saltoBloco", bipartida: false },
   { ref: "MZ-DTS-6012", nome: "Capa de Salto Anel", categoria: "Detalhe de salto", material: "TPU", medida: "Ø 16 × 9 mm", forma: "anel", bipartida: true },
   { ref: "MZ-DTS-6045", nome: "Friso de Salto Canelado", categoria: "Detalhe de salto", material: "PVC", medida: "48 × 10 mm", forma: "friso", bipartida: false },
 ];
 
 const ACABAMENTOS = [
-  { id: "ouro-light", nome: "Ouro Light", cores: ["#FBF0C6", "#E3C16B", "#B38A33", "#7A5A1C"] },
-  { id: "niquel", nome: "Níquel", cores: ["#FAFBFC", "#C9CED3", "#8C949B", "#555B61"] },
-  { id: "grafite", nome: "Grafite/Ônix", cores: ["#8A8E95", "#4A4E55", "#25272B", "#0E0F11"] },
-  { id: "ouro-velho", nome: "Ouro Velho", cores: ["#E2C68A", "#AE8742", "#6E4F22", "#3D2A10"] },
-  { id: "prata-velha", nome: "Prata Velha", cores: ["#E4E3DC", "#A5A49C", "#66655E", "#38372F"] },
+  // Banhos tradicionais: mantêm o material-base da peça
+  { id: "ouro-light", nome: "Ouro Light", grupo: "banho", cores: ["#FBF0C6", "#E3C16B", "#B38A33", "#7A5A1C"] },
+  { id: "niquel", nome: "Níquel", grupo: "banho", cores: ["#FAFBFC", "#C9CED3", "#8C949B", "#555B61"] },
+  { id: "grafite", nome: "Grafite/Ônix", grupo: "banho", cores: ["#8A8E95", "#4A4E55", "#25272B", "#0E0F11"] },
+  { id: "ouro-velho", nome: "Ouro Velho", grupo: "banho", cores: ["#E2C68A", "#AE8742", "#6E4F22", "#3D2A10"] },
+  { id: "prata-velha", nome: "Prata Velha", grupo: "banho", cores: ["#E4E3DC", "#A5A49C", "#66655E", "#38372F"] },
+  // Efeitos especiais: reclassificam o material da peça (ou da parte) no pedido
+  { id: "aura", nome: "Efeito Aura", rotulo: "Efeito Aura", grupo: "efeito", material: "Aura", detalhe: "Perolado iridescente", cores: ["#FBEAF6", "#B9D6F4", "#E7C6EE", "#93D9C9"] },
+  { id: "policarbonato", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", material: "Policarbonato", detalhe: "Transparente/Cristal", opacidade: 0.6, cores: ["#FFFFFF", "#DDEBF3", "#B6CCDA", "#86A0B2"] },
+];
+const GRUPOS_ACABAMENTO = [
+  { id: "banho", titulo: "Banhos tradicionais" },
+  { id: "efeito", titulo: "Efeitos especiais" },
 ];
 const ACABAMENTO_PADRAO = ACABAMENTOS[0];
 const acabamentoPorId = (id) => ACABAMENTOS.find((a) => a.id === id) || ACABAMENTO_PADRAO;
 
 const TIPO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção" };
 
-// Texto padronizado do acabamento de um item (peça única ou bipartida)
+// Material que vai para o pedido: efeito especial reclassifica; banho mantém o material-base
+const materialEfetivo = (produto, acabamentoId) => acabamentoPorId(acabamentoId).material || produto.material;
+const rotuloAcabamento = (acabamentoId) => {
+  const a = acabamentoPorId(acabamentoId);
+  return a.rotulo || a.nome;
+};
+
+// Texto padronizado de material + acabamento de um item (peça única ou bipartida)
 function textoAcabamento(produto, acabamento, acabamentoBaixo) {
-  if (!produto.bipartida) return acabamentoPorId(acabamento).nome;
-  return `Cima: ${acabamentoPorId(acabamento).nome} | Baixo: ${acabamentoPorId(acabamentoBaixo).nome}`;
+  if (!produto.bipartida) return `Material: ${materialEfetivo(produto, acabamento)} | Acabamento: ${rotuloAcabamento(acabamento)}`;
+  const parte = (id) => `${rotuloAcabamento(id)} (${materialEfetivo(produto, id)})`;
+  return `Parte de Cima: ${parte(acabamento)} | Parte de Baixo: ${parte(acabamentoBaixo)}`;
+}
+
+// Resumo curto do material no pedido (para chips da interface)
+function textoMaterial(produto, acabamento, acabamentoBaixo) {
+  if (!produto.bipartida) return materialEfetivo(produto, acabamento);
+  return `Cima: ${materialEfetivo(produto, acabamento)} · Baixo: ${materialEfetivo(produto, acabamentoBaixo)}`;
 }
 
 const EMAIL_PEDIDOS = "pedidos@metaliza.com.br";
@@ -121,7 +144,7 @@ function linhasItens(itens, negrito) {
     linhas.push(`${b(tipo === "amostra" ? "AMOSTRAS" : "PRODUÇÃO")} (prazo estimado ${PRAZO[tipo]})`);
     grupo.forEach((i) => {
       const p = PRODUTOS.find((x) => x.ref === i.ref);
-      linhas.push(`• ${i.ref} ${p.nome} | ${p.material} | ${p.bipartida ? "Bipartida" : "Peça única"} | ${textoAcabamento(p, i.acabamento, i.acabamentoBaixo)} | ${formatarNumero(i.qtd)} pçs`);
+      linhas.push(`• Ref. ${i.ref} ${p.nome} | ${p.bipartida ? "Bipartida | " : ""}${textoAcabamento(p, i.acabamento, i.acabamentoBaixo)} | ${formatarNumero(i.qtd)} pçs`);
     });
   });
   const total = itens.reduce((s, i) => s + i.qtd, 0);
@@ -381,12 +404,12 @@ function ImagemPeca({ produto, acabamento = ACABAMENTO_PADRAO, acabamentoBaixo =
         <ellipse cx="100" cy="182" rx="62" ry="6" fill="rgba(0,0,0,.12)" />
         {baixo ? (
           <>
-            <g clipPath={`url(#${gid}-cima)`}><FormaPeca forma={produto.forma} f={gid} /></g>
-            <g clipPath={`url(#${gid}-baixo)`}><FormaPeca forma={produto.forma} f={`${gid}-b`} /></g>
+            <g clipPath={`url(#${gid}-cima)`} opacity={acabamento.opacidade || 1}><FormaPeca forma={produto.forma} f={gid} /></g>
+            <g clipPath={`url(#${gid}-baixo)`} opacity={baixo.opacidade || 1}><FormaPeca forma={produto.forma} f={`${gid}-b`} /></g>
             <line x1="14" y1="100" x2="186" y2="100" stroke="rgba(0,0,0,.35)" strokeWidth="1" strokeDasharray="3 3" />
           </>
         ) : (
-          <FormaPeca forma={produto.forma} f={gid} />
+          <g opacity={acabamento.opacidade || 1}><FormaPeca forma={produto.forma} f={gid} /></g>
         )}
       </svg>
       {rotulo && (
@@ -791,7 +814,7 @@ function TelaCatalogo({ cliente, itensPedido, onAbrirPeca }) {
         <div className="min-w-0">
           <p className="mz-eyebrow">Passo 2 de 3 · Catálogo técnico</p>
           <h1 className="mz-display mt-1 text-2xl font-bold sm:text-3xl">Peças para {cliente.nome}</h1>
-          <p className={`mt-1 text-sm ${C.muted}`}>Fotos de referência em Ouro Light. O acabamento é escolhido ao abrir a peça.</p>
+          <p className={`mt-1 text-sm ${C.muted}`}>Fotos de referência em Ouro Light. Banho ou efeito especial é escolhido ao abrir a peça.</p>
         </div>
         <label htmlFor="mz-busca" className="relative w-full sm:w-80">
           <span className="sr-only">Buscar por referência ou nome</span>
@@ -802,7 +825,7 @@ function TelaCatalogo({ cliente, itensPedido, onAbrirPeca }) {
 
       <div className="mt-6 grid gap-4 rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4 lg:grid-cols-[1.6fr_1fr]">
         <Chips titulo="Categoria" opcoes={CATEGORIAS} valor={categoria} onChange={setCategoria} idBase="mz-cat" />
-        <Chips titulo="Substrato / Material" opcoes={MATERIAIS} valor={material} onChange={setMaterial} idBase="mz-mat" />
+        <Chips titulo="Material-base (injeção)" opcoes={MATERIAIS} valor={material} onChange={setMaterial} idBase="mz-mat" />
       </div>
 
       <div className={`mt-5 flex items-center justify-between text-sm ${C.muted}`}>
@@ -837,7 +860,7 @@ function TelaCatalogo({ cliente, itensPedido, onAbrirPeca }) {
                   <p className={`mz-mono text-xs font-semibold ${C.accentText}`}>{p.ref}</p>
                   <p className="text-sm font-bold leading-snug">{p.nome}</p>
                   <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
-                    <span className="rounded border border-[color:var(--mz-ink)] px-1.5 py-0.5 text-[11px] font-bold">{p.material}</span>
+                    <span className="rounded border border-[color:var(--mz-ink)] px-1.5 py-0.5 text-[11px] font-bold" title="Material-base de injeção">{p.material}</span>
                     <span className="rounded bg-[color:var(--mz-sunken)] px-1.5 py-0.5 text-[11px] font-semibold">{p.categoria}</span>
                     {p.bipartida && <TagBipartida />}
                   </div>
@@ -853,37 +876,52 @@ function TelaCatalogo({ cliente, itensPedido, onAbrirPeca }) {
 
 /* ----------------------------- tela 4: modal da peça ----------------------------- */
 
-function SeletorAcabamento({ titulo, valor, onChange }) {
+function SeletorAcabamento({ titulo, valor, onChange, produto }) {
+  const atual = acabamentoPorId(valor);
   return (
-    <fieldset>
-      <legend className="mz-eyebrow mb-3">{titulo} · <span className="text-[color:var(--mz-ink)]">{acabamentoPorId(valor).nome}</span></legend>
-      <div className="grid grid-cols-5 gap-2">
-        {ACABAMENTOS.map((a) => {
-          const ativo = a.id === valor;
-          return (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => onChange(a.id)}
-              aria-pressed={ativo}
-              aria-label={`${titulo}: ${a.nome}`}
-              className={`mz-focus flex min-w-0 flex-col items-center gap-1.5 rounded-lg border p-2 text-center transition ${
-                ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] hover:border-[color:var(--mz-ink)]"
-              }`}
-            >
-              <span className="relative">
-                <Swatch acabamento={a} size="h-10 w-10" />
-                {ativo && (
-                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--mz-accent)] text-[color:var(--mz-on-accent)]">
-                    <Icone.check className="h-3 w-3" />
+    <fieldset className="flex flex-col gap-3">
+      <legend className="mz-eyebrow mb-3">
+        {titulo} · <span className="text-[color:var(--mz-ink)]">{atual.nome}</span>
+      </legend>
+      {GRUPOS_ACABAMENTO.map((g) => (
+        <div key={g.id}>
+          <p className={`mb-1.5 text-[11px] font-semibold ${C.muted}`}>
+            {g.titulo}
+            {g.id === "banho" ? ` · mantém ${produto.material}` : " · reclassificam o material"}
+          </p>
+          <div className={`grid gap-2 ${g.id === "banho" ? "grid-cols-5" : "grid-cols-2"}`}>
+            {ACABAMENTOS.filter((a) => a.grupo === g.id).map((a) => {
+              const ativo = a.id === valor;
+              const efeito = a.grupo === "efeito";
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => onChange(a.id)}
+                  aria-pressed={ativo}
+                  aria-label={`${titulo}: ${a.nome}`}
+                  className={`mz-focus flex min-w-0 items-center gap-2 rounded-lg border p-2 transition ${efeito ? "text-left" : "flex-col text-center"} ${
+                    ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] hover:border-[color:var(--mz-ink)]"
+                  }`}
+                >
+                  <span className="relative shrink-0">
+                    <Swatch acabamento={a} size={efeito ? "h-9 w-9" : "h-10 w-10"} />
+                    {ativo && (
+                      <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--mz-accent)] text-[color:var(--mz-on-accent)]">
+                        <Icone.check className="h-3 w-3" />
+                      </span>
+                    )}
                   </span>
-                )}
-              </span>
-              <span className="text-[11px] font-semibold leading-tight">{a.nome}</span>
-            </button>
-          );
-        })}
-      </div>
+                  <span className="min-w-0 leading-tight">
+                    <span className={`block font-semibold ${efeito ? "text-xs" : "text-[11px]"}`}>{a.nome}</span>
+                    {efeito && <span className={`block text-[11px] ${C.muted}`}>{a.detalhe}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </fieldset>
   );
 }
@@ -983,7 +1021,7 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
               Foto de referência em Ouro Light. Selecione o acabamento desejado abaixo:
             </p>
             <dl className="grid grid-cols-2 gap-2 text-xs">
-              {[["Categoria", produto.categoria], ["Substrato", produto.material], ["Medida", produto.medida], ["Construção", produto.bipartida ? "Bipartida (cima + baixo)" : "Peça única"]].map(([k, v]) => (
+              {[["Categoria", produto.categoria], ["Material-base (fixo)", produto.material], ["Medida", produto.medida], ["Construção", produto.bipartida ? "Bipartida (cima + baixo)" : "Peça única"]].map(([k, v]) => (
                 <div key={k} className="rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2">
                   <dt className={C.muted}>{k}</dt>
                   <dd className="font-bold">{v}</dd>
@@ -997,16 +1035,25 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
             {produto.bipartida ? (
               <div className="flex flex-col gap-5">
                 <TagBipartida className="self-start" />
-                <SeletorAcabamento titulo="Cor da Parte de Cima" valor={acabamentoId} onChange={setAcabamentoId} />
-                <SeletorAcabamento titulo="Cor da Parte de Baixo" valor={baixoId} onChange={setBaixoId} />
+                <SeletorAcabamento titulo="Cor da Parte de Cima" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
+                <SeletorAcabamento titulo="Cor da Parte de Baixo" produto={produto} valor={baixoId} onChange={setBaixoId} />
               </div>
             ) : (
-              <SeletorAcabamento titulo="Cor do Acabamento" valor={acabamentoId} onChange={setAcabamentoId} />
+              <SeletorAcabamento titulo="Cor do Acabamento" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
             )}
+            <div className="-mt-2 flex flex-wrap items-center gap-2 rounded-md bg-[color:var(--mz-sunken)] px-3 py-2 text-xs">
+              <span className={C.muted}>Material no pedido:</span>
+              <b>{textoMaterial(produto, acabamentoId, baixoId)}</b>
+              {(acabamento.grupo === "efeito" || acabamentoBaixo?.grupo === "efeito") && (
+                <span className="rounded-full bg-[color:var(--mz-accent-soft)] px-2 py-0.5 font-bold text-[color:var(--mz-accent)]">
+                  Reclassificado pelo efeito especial
+                </span>
+              )}
+            </div>
             {foraDoPadrao && (
               <div className="mz-in -mt-3 flex items-center gap-3 rounded-md border border-[color:var(--mz-line)] p-2">
                 <ImagemPeca produto={produto} acabamento={acabamento} acabamentoBaixo={acabamentoBaixo} rotulo={false} className="!w-14 shrink-0 rounded" />
-                <p className={`text-xs ${C.muted}`}>Simulação de tonalidade: <b className="text-[color:var(--mz-ink)]">{descricaoAcabamento}</b>. A cor final segue o padrão de banho aprovado pelo laboratório.</p>
+                <p className={`text-xs ${C.muted}`}>Simulação: <b className="text-[color:var(--mz-ink)]">{descricaoAcabamento}</b>. A cor final segue o padrão aprovado pelo laboratório.</p>
               </div>
             )}
 
@@ -1119,7 +1166,7 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
             <p className="truncate text-sm font-bold">{p.nome}</p>
             <p className={`flex flex-wrap items-center gap-x-1.5 text-xs ${C.muted}`}>
               <SwatchesItem produto={p} acabamento={item.acabamento} acabamentoBaixo={item.acabamentoBaixo} size="h-3 w-3" />
-              <span className="font-semibold text-[color:var(--mz-ink)]">{textoAcabamento(p, item.acabamento, item.acabamentoBaixo)}</span> · {p.material}
+              <span className="font-semibold text-[color:var(--mz-ink)]">{textoAcabamento(p, item.acabamento, item.acabamentoBaixo)}</span>
             </p>
             {p.bipartida && <TagBipartida className="mt-1" />}
           </div>

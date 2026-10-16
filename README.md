@@ -9,10 +9,21 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 
 1. **Login:** email/senha (`carlos.mendes@metaliza.com.br` / `demo123`) ou o botão "Entrar como Representante Demonstração".
 2. **Cliente:** 3 fábricas pré-cadastradas, seleção com 1 clique, e Cadastro Rápido (nome fantasia, contato/modelista, WhatsApp com máscara, cidade).
-3. **Catálogo técnico:** 13 referências; filtros por categoria e por substrato; busca por código ou nome.
+3. **Catálogo técnico:** 13 referências; filtros por categoria e por material-base de injeção (ABS, TPU, PVC); busca por código ou nome.
 4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça bipartida (`bipartida: true`) tem dois seletores independentes, "Cor da Parte de Cima" e "Cor da Parte de Baixo". Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
 5. **Pedido:** painel lateral agrupado em Amostras e Produção, com ajuste de quantidade e remoção. O pedido é guardado separadamente para cada cliente.
 6. **Revisão e envio:** confirmação e número da solicitação. Depois vêm a simulação do e-mail para a fábrica (Para/Cc/Assunto/corpo) e o texto formatado para WhatsApp.
+
+## Material-base e acabamentos
+
+O material-base de injeção é fixo por referência (ABS, TPU ou PVC) e o representante não o altera. A cartela tem dois grupos:
+
+- **Banhos tradicionais:** Ouro Light (padrão), Níquel, Grafite/Ônix, Ouro Velho e Prata Velha. O pedido mantém o material-base, por exemplo `Material: ABS | Acabamento: Ouro Light`.
+- **Efeitos especiais:**
+  - **Efeito Aura:** reclassifica o material para Aura, por exemplo `Material: Aura | Acabamento: Efeito Aura`.
+  - **Policarbonato (Transparente/Cristal):** reclassifica o material para Policarbonato, por exemplo `Material: Policarbonato | Acabamento: Cristal/Poli`.
+
+Em peça bipartida, cada parte recebe seu acabamento de forma independente, por exemplo `Parte de Cima: Efeito Aura (Aura) | Parte de Baixo: Ouro Light (ABS)`.
 
 Peças bipartidas aparecem com a tag "Peça Bipartida" no catálogo e no pedido. Nos resumos, as duas cores aparecem por extenso, por exemplo `Cima: Ouro Light | Baixo: Grafite/Ônix`.
 
