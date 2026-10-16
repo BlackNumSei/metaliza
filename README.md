@@ -15,7 +15,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
    - Ref. 1591 (Saltos).
 
    O topo do catálogo tem as abas de coleção (Todas as Peças / Verão 2026). Abaixo ficam os filtros por categoria e por material-base, e a busca por referência.
-4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça bipartida (`bipartida: true`) tem dois seletores independentes, "Cor da Parte de Cima" e "Cor da Parte de Baixo". Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
+4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça com duas partes (`bipartida: true` + `partes`) tem dois seletores independentes, como "Cor do Aro" e "Cor do Centro" na Ref. EF 1170. Saltos têm o seletor de tamanho, e Enfeites, Fivelas e Detalhe de salto têm o módulo de Afra. Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
 5. **Pedido:** painel lateral agrupado em Amostras e Produção, com ajuste de quantidade e remoção. O pedido é guardado separadamente para cada cliente.
 6. **Revisão e envio:** confirmação e número da solicitação. Depois vêm a simulação do e-mail para a fábrica (Para/Cc/Assunto/corpo) e o texto formatado para WhatsApp.
 
@@ -47,7 +47,7 @@ Na EF 1170, aro e centro (cabochão) têm seletores independentes. Exemplo: `Aro
 
 As peças não têm nome fantasia: o identificador é a referência, sempre em caixa alta com o prefixo `Ref.`.
 
-- **Card:** mostra `Ref. EF 661` em destaque e, abaixo, as badges de categoria, material-base e, quando for o caso, `Bipartida`.
+- **Card:** mostra `Ref. EF 661` em destaque e, abaixo, `Enfeites • ABS`.
 - **Modal:** o título é `Ref. EF 661` e o subtítulo é `Categoria: Enfeite | Material: ABS`.
 - **Busca:** só por referência, sem diferenciar espaço ou caixa (`ef1170` encontra `EF 1170`).
 
