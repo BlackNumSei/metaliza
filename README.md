@@ -10,17 +10,33 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 1. **Login:** email/senha (`carlos.mendes@metaliza.com.br` / `demo123`) ou o botão "Entrar como Representante Demonstração".
 2. **Cliente:** 3 fábricas pré-cadastradas, seleção com 1 clique, e Cadastro Rápido (nome fantasia, contato/modelista, WhatsApp com máscara, cidade).
 3. **Showroom:** é a vitrine do catálogo, com estética editorial de moda (títulos em Bodoni Moda e texto em Jost).
-   - **Carrossel de destaques no topo:** Verão 2026, Inverno 2026 e Acabamentos Exclusivos, com setas e indicadores. Passa sozinho a cada 7 s e pausa com o mouse em cima ou quando o usuário prefere menos movimento.
-   - **Menu hambúrguer:** abre uma gaveta lateral com as coleções (Todas as Peças, Verão 2026, Inverno 2026) e os dados do representante e do cliente. Fecha no X, no Esc ou clicando fora.
-   - **Peças:** 8 referências reais, divididas 4/4 entre Verão 2026 e Inverno 2026. As fotos originais estão embutidas no componente e aparecem inteiras, com `object-contain`, sem cortes nem alteração de cor:
+   - **Carrossel de destaques no topo:** Verão 2026, Linha Permanente e Acabamentos Exclusivos, com setas e indicadores.
+   - **Menu hambúrguer:** abre uma gaveta lateral com as visões do catálogo e os dados do representante e do cliente. Fecha no X, no Esc ou clicando fora.
+   - **Peças:** 7 referências reais em ABS. As fotos originais estão embutidas e aparecem inteiras (`object-contain`), sem cortes nem alteração de cor:
 
-     | Coleção | Referências |
+     | Grupo | Referências |
      |---|---|
-     | Verão 2026 | EF 661 (Enfeites), EF 1170 (Enfeites, Aro + Centro), 1591 (Saltos), PS 1030 (Passador) |
-     | Inverno 2026 | EF 1143 (Enfeites), EF 1150 (Enfeites), PS 1027 (Passador), PS 057 (Passador) |
+     | Lançamento Verão 2026 | EF 661 (Enfeites), EF 1170 (Enfeites, Aro + Centro), PS 1030 (Passadores) |
+     | Linha permanente | EF 1143 (Enfeites), EF 1150 (Enfeites), PS 1027 (Passadores), PS 057 (Passadores) |
 
+   - **Categorias:** Enfeites, Fivelas, Passadores e Ponteiras.
    - **Filtros:** por categoria e por material-base, e busca por referência.
-4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça com duas partes (`bipartida: true` + `partes`) tem dois seletores independentes, como "Cor do Aro" e "Cor do Centro" na Ref. EF 1170. Saltos têm o seletor de tamanho, e Enfeites, Fivelas e Detalhe de salto têm o módulo de Afra. Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
+
+## Coleções e ciclo de 90 dias
+
+- **Exclusividade:** as peças de uma coleção de lançamento aparecem só na visão da coleção (ex.: Verão 2026), e não no **Catálogo Geral / Linha** enquanto a coleção estiver em vigor. **Todas as Peças** mostra o acervo completo.
+- **Ciclo:**
+  - Cada coleção vale 90 dias a partir do lançamento.
+  - A gaveta mostra "🔥 Coleção ativa • Restam N dias" com uma barra de progresso.
+  - Na demonstração, o lançamento é simulado 48 dias antes do dia atual, para sempre abrir com 42 dias restantes.
+  - Ao fim do prazo, a coleção se encerra sozinha.
+- **Teste:**
+  - O botão "Simular expiração (90 dias)", na gaveta, encerra a coleção e migra as peças para o Catálogo Geral / Linha.
+  - A coleção fica riscada no menu, e o slide do carrossel passa a levar para a linha permanente.
+  - "Desfazer simulação" reativa a coleção.
+- **Espelho do pedido:** a linha `Coleção:` mostra o lançamento ativo ou "Linha permanente", calculado no momento do envio.
+
+4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça com duas partes (`bipartida: true` + `partes`) tem dois seletores independentes, como "Cor do Aro" e "Cor do Centro" na Ref. EF 1170. Enfeites e Fivelas têm o módulo de Afra. Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
 5. **Pedido:** painel lateral agrupado em Amostras e Produção, com ajuste de quantidade e remoção. O pedido é guardado separadamente para cada cliente.
 6. **Revisão e envio:** confirmação e número da solicitação. Depois vêm a simulação do e-mail para a fábrica (Para/Cc/Assunto/corpo) e o texto formatado para WhatsApp.
 
@@ -42,9 +58,8 @@ Na EF 1170, aro e centro (cabochão) têm seletores independentes. Exemplo: `Aro
   - Para selecionar, digite `1554` (ou "ouro queimado") no campo "Buscar cor por código ou nome".
   - A cor aparece como "Cor encontrada pelo código" e já fica selecionada.
   - Um nome que corresponde a várias cores, como "ouro", lista as opções em vez de escolher uma.
-- **Tamanho:** botões 1, 2, 3 e 4 (padrão 1), apenas para Saltos.
 - **Afra:**
-  - Aparece só em Enfeites, Fivelas e Detalhe de salto. Não existe para Saltos, Passador e Ponteiras.
+  - Aparece só em Enfeites e Fivelas. Não existe para Passadores e Ponteiras.
   - Opções "Sem Afra" (padrão) ou "Com Afra", com os códigos da Linha 800 (800–807) e da Linha 900 (901–907).
 - **Peças com duas partes:** a Ref. EF 1170 tem seletores separados para Aro e Centro, sem nenhuma etiqueta extra.
 
@@ -59,9 +74,9 @@ As peças não têm nome fantasia: o identificador é a referência, sempre em c
 O espelho do e-mail e do WhatsApp traz Representante, Cliente e Coleção, e depois as linhas abaixo, com cor e código:
 
 ```
-Ref. 1591 - Salto (ABS) | Tam: 3 | Acabamento: [1554] Ouro Queimado | Qtd: 10 un
-Ref. EF 1170 - Enfeite (ABS) | Aro: [3] Ônix / Centro: [1554] Ouro Queimado | Afra: 905 | Qtd: 10 un
-Ref. EF 661 - Enfeite (Aura) | Acabamento: [8] Efeito Aura | Sem Afra | Qtd: 10 un
+Ref. EF 661 - Enfeite (ABS) | Acabamento: [1554] Ouro Queimado | Afra: 801 | Qtd: 10 un
+Ref. EF 1170 - Enfeite (ABS) | Aro: [3] Ônix / Centro: [8] Efeito Aura (Aura) | Sem Afra | Qtd: 10 un
+Ref. PS 1030 - Passador (ABS) | Acabamento: [6] Ouro Light | Qtd: 10 un
 ```
 
 Não existe nenhum campo livre de observação, nota ou instrução. A solicitação é 100% técnica: referência, material, partes, cores, tipo e quantidade.
