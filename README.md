@@ -9,15 +9,12 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 
 1. **Login:** email/senha (`carlos.mendes@metaliza.com.br` / `demo123`) ou o botão "Entrar como Representante Demonstração".
 2. **Cliente:** 3 fábricas pré-cadastradas, seleção com 1 clique, e Cadastro Rápido (nome fantasia, contato/modelista, WhatsApp com máscara, cidade).
-3. **Catálogo técnico:** 3 peças reais. As fotos originais estão embutidas no componente e aparecem inteiras, com `object-contain`, sem cortes nem alteração de cor:
-   - EF 661 (Enfeites, peça única);
-   - EF 1170 (Enfeites, bipartida: aro + cabochão);
-   - FV 24K (Fivelas);
-   - 1591 (Saltos, Sola 1902).
+3. **Catálogo técnico:** 3 peças reais, todas na coleção Verão 2026. As fotos originais estão embutidas no componente e aparecem inteiras, com `object-contain`, sem cortes nem alteração de cor:
+   - Ref. EF 661 (Enfeites);
+   - Ref. EF 1170 (Enfeites, com seletores de Aro e Centro);
+   - Ref. 1591 (Saltos).
 
-   Peça sem foto cadastrada mostra "Foto da peça pendente". Cada foto pode ter o próprio `fundo` (cor do fundo da imagem) para se fundir ao quadro.
-
-   Tem filtros por categoria e por material-base, e busca por código ou nome.
+   O topo do catálogo tem as abas de coleção (Todas as Peças / Verão 2026). Abaixo ficam os filtros por categoria e por material-base, e a busca por referência.
 4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça bipartida (`bipartida: true`) tem dois seletores independentes, "Cor da Parte de Cima" e "Cor da Parte de Baixo". Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
 5. **Pedido:** painel lateral agrupado em Amostras e Produção, com ajuste de quantidade e remoção. O pedido é guardado separadamente para cada cliente.
 6. **Revisão e envio:** confirmação e número da solicitação. Depois vêm a simulação do e-mail para a fábrica (Para/Cc/Assunto/corpo) e o texto formatado para WhatsApp.
@@ -35,17 +32,16 @@ Na EF 1170, aro e centro (cabochão) têm seletores independentes. Exemplo: `Aro
 
 ## Regras técnicas do modal
 
-- **Código da cor:**
-  - Códigos: 6 Ouro Light (padrão), 1 Ouro 24k, 2 Níquel, 3 Ônix, 4 Marrom, 8 Efeito Aura e 9 Policarbonato.
-  - Cada botão mostra o código ao lado da cor.
-  - O campo "Código da cor" seleciona a cor ao digitar o número e avisa quando o código não existe.
-  - Na peça bipartida, cada parte tem o seu campo.
-- **Tamanho:** botões 1, 2, 3 e 4 (padrão 1). Aparecem apenas para a categoria Saltos.
+- **Cores da cartela:** 6 Ouro Light (padrão), 1 Ouro 24k, 2 Níquel, 3 Ônix, 4 Marrom, 8 Efeito Aura e 9 Policarbonato. Cada botão mostra o código junto da cor.
+- **Cor oculta:** 1554 Ouro Queimado não aparece na cartela.
+  - Para selecionar, digite `1554` (ou "ouro queimado") no campo "Buscar cor por código ou nome".
+  - A cor aparece como "Cor encontrada pelo código" e já fica selecionada.
+  - Um nome que corresponde a várias cores, como "ouro", lista as opções em vez de escolher uma.
+- **Tamanho:** botões 1, 2, 3 e 4 (padrão 1), apenas para Saltos.
 - **Afra:**
-  - Opções "Sem Afra" (padrão) ou "Com Afra".
-  - "Com Afra" abre os códigos da Linha 800 (800–807) e da Linha 900 (901–907).
-  - O item só entra no pedido depois que um código é escolhido.
-  - Não aparece para Passador e Ponteiras.
+  - Aparece só em Enfeites, Fivelas e Detalhe de salto. Não existe para Saltos, Passador e Ponteiras.
+  - Opções "Sem Afra" (padrão) ou "Com Afra", com os códigos da Linha 800 (800–807) e da Linha 900 (901–907).
+- **Peças com duas partes:** a Ref. EF 1170 tem seletores separados para Aro e Centro, sem nenhuma etiqueta extra.
 
 ## Identificação técnica
 
@@ -55,13 +51,12 @@ As peças não têm nome fantasia: o identificador é a referência, sempre em c
 - **Modal:** o título é `Ref. EF 661` e o subtítulo é `Categoria: Enfeite | Material: ABS`.
 - **Busca:** só por referência, sem diferenciar espaço ou caixa (`ef1170` encontra `EF 1170`).
 
-Linhas do carrinho, do e-mail e do WhatsApp:
+O espelho do e-mail e do WhatsApp traz Representante, Cliente e Coleção, e depois as linhas abaixo, com cor e código:
 
 ```
-Ref. 1591 - Salto (ABS) | Tam: 2 | Acabamento: Ouro Light | Afra: 802 | Qtd: 10 un
-Ref. EF 661 - Enfeite (ABS) | Acabamento: Ouro Light | Sem Afra | Qtd: 10 un
-Ref. FV 24K - Fivela (Aura) | Acabamento: Efeito Aura | Sem Afra | Qtd: 10 un
-Ref. EF 1170 - Enfeite (ABS) | Aro: Ouro Light / Centro: Ônix | Afra: 905 | Qtd: 10 un
+Ref. 1591 - Salto (ABS) | Tam: 3 | Acabamento: [1554] Ouro Queimado | Qtd: 10 un
+Ref. EF 1170 - Enfeite (ABS) | Aro: [3] Ônix / Centro: [1554] Ouro Queimado | Afra: 905 | Qtd: 10 un
+Ref. EF 661 - Enfeite (Aura) | Acabamento: [8] Efeito Aura | Sem Afra | Qtd: 10 un
 ```
 
 Não existe nenhum campo livre de observação, nota ou instrução. A solicitação é 100% técnica: referência, material, partes, cores, tipo e quantidade.
