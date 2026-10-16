@@ -53,19 +53,19 @@ const CATEGORIAS = ["Todos", "Enfeites", "Fivelas", "Ponteiras", "Passador", "Sa
 const MATERIAIS = ["Todos", "ABS", "TPU", "PVC", "Policarbonato", "Aura"];
 
 const PRODUTOS = [
-  { ref: "MZ-ENF-1042", nome: "Enfeite Laço Clássico", categoria: "Enfeites", material: "ABS", medida: "38 × 22 mm", forma: "laco" },
-  { ref: "MZ-ENF-1187", nome: "Enfeite Corrente Elos", categoria: "Enfeites", material: "Policarbonato", medida: "60 × 12 mm", forma: "corrente" },
-  { ref: "MZ-ENF-1290", nome: "Enfeite Gota Facetada", categoria: "Enfeites", material: "Aura", medida: "18 × 26 mm", forma: "gota" },
-  { ref: "MZ-FIV-2210", nome: "Fivela Quadrada 25 mm", categoria: "Fivelas", material: "ABS", medida: "25 × 25 mm", forma: "fivelaQuadrada" },
-  { ref: "MZ-FIV-2315", nome: "Fivela Oval Vazada 18 mm", categoria: "Fivelas", material: "Aura", medida: "28 × 18 mm", forma: "fivelaOval" },
-  { ref: "MZ-PON-3104", nome: "Ponteira Bico Fino", categoria: "Ponteiras", material: "TPU", medida: "42 × 30 mm", forma: "ponteiraFina" },
-  { ref: "MZ-PON-3120", nome: "Ponteira Quadrada", categoria: "Ponteiras", material: "ABS", medida: "40 × 34 mm", forma: "ponteiraQuadrada" },
-  { ref: "MZ-PAS-4402", nome: "Passador Barra Lisa 30 mm", categoria: "Passador", material: "PVC", medida: "30 × 8 mm", forma: "passadorBarra" },
-  { ref: "MZ-PAS-4480", nome: "Passador Argola Dupla", categoria: "Passador", material: "Aura", medida: "34 × 16 mm", forma: "passadorArgola" },
-  { ref: "MZ-SAL-5501", nome: "Salto Taça 7 cm", categoria: "Saltos", material: "ABS", medida: "70 mm · base 14 mm", forma: "saltoTaca" },
-  { ref: "MZ-SAL-5630", nome: "Salto Bloco 5 cm", categoria: "Saltos", material: "Policarbonato", medida: "50 mm · base 32 mm", forma: "saltoBloco" },
-  { ref: "MZ-DTS-6012", nome: "Capa de Salto Anel", categoria: "Detalhe de salto", material: "TPU", medida: "Ø 16 × 9 mm", forma: "anel" },
-  { ref: "MZ-DTS-6045", nome: "Friso de Salto Canelado", categoria: "Detalhe de salto", material: "PVC", medida: "48 × 10 mm", forma: "friso" },
+  { ref: "MZ-ENF-1042", nome: "Enfeite Laço Clássico", categoria: "Enfeites", material: "ABS", medida: "38 × 22 mm", forma: "laco", bipartida: true },
+  { ref: "MZ-ENF-1187", nome: "Enfeite Corrente Elos", categoria: "Enfeites", material: "Policarbonato", medida: "60 × 12 mm", forma: "corrente", bipartida: false },
+  { ref: "MZ-ENF-1290", nome: "Enfeite Gota Facetada", categoria: "Enfeites", material: "Aura", medida: "18 × 26 mm", forma: "gota", bipartida: false },
+  { ref: "MZ-FIV-2210", nome: "Fivela Quadrada 25 mm", categoria: "Fivelas", material: "ABS", medida: "25 × 25 mm", forma: "fivelaQuadrada", bipartida: false },
+  { ref: "MZ-FIV-2315", nome: "Fivela Oval Vazada 18 mm", categoria: "Fivelas", material: "Aura", medida: "28 × 18 mm", forma: "fivelaOval", bipartida: false },
+  { ref: "MZ-PON-3104", nome: "Ponteira Bico Fino", categoria: "Ponteiras", material: "TPU", medida: "42 × 30 mm", forma: "ponteiraFina", bipartida: false },
+  { ref: "MZ-PON-3120", nome: "Ponteira Quadrada", categoria: "Ponteiras", material: "ABS", medida: "40 × 34 mm", forma: "ponteiraQuadrada", bipartida: false },
+  { ref: "MZ-PAS-4402", nome: "Passador Barra Lisa 30 mm", categoria: "Passador", material: "PVC", medida: "30 × 8 mm", forma: "passadorBarra", bipartida: false },
+  { ref: "MZ-PAS-4480", nome: "Passador Argola Dupla", categoria: "Passador", material: "Aura", medida: "34 × 16 mm", forma: "passadorArgola", bipartida: false },
+  { ref: "MZ-SAL-5501", nome: "Salto Taça 7 cm", categoria: "Saltos", material: "ABS", medida: "70 mm · base 14 mm", forma: "saltoTaca", bipartida: true },
+  { ref: "MZ-SAL-5630", nome: "Salto Bloco 5 cm", categoria: "Saltos", material: "Policarbonato", medida: "50 mm · base 32 mm", forma: "saltoBloco", bipartida: false },
+  { ref: "MZ-DTS-6012", nome: "Capa de Salto Anel", categoria: "Detalhe de salto", material: "TPU", medida: "Ø 16 × 9 mm", forma: "anel", bipartida: true },
+  { ref: "MZ-DTS-6045", nome: "Friso de Salto Canelado", categoria: "Detalhe de salto", material: "PVC", medida: "48 × 10 mm", forma: "friso", bipartida: false },
 ];
 
 const ACABAMENTOS = [
@@ -79,6 +79,14 @@ const ACABAMENTO_PADRAO = ACABAMENTOS[0];
 const acabamentoPorId = (id) => ACABAMENTOS.find((a) => a.id === id) || ACABAMENTO_PADRAO;
 
 const TIPO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção" };
+
+// Texto padronizado do acabamento de um item (peça única ou bipartida)
+function textoAcabamento(produto, acabamento, acabamentoBaixo) {
+  if (!produto.bipartida) return acabamentoPorId(acabamento).nome;
+  return `Cima: ${acabamentoPorId(acabamento).nome} | Baixo: ${acabamentoPorId(acabamentoBaixo).nome}`;
+}
+
+const EMAIL_PEDIDOS = "pedidos@metaliza.com.br";
 
 /* ----------------------------- utilidades ----------------------------- */
 
@@ -103,29 +111,53 @@ function gerarNumeroPedido(seq) {
   return `PV-${ano}-${String(4180 + seq).padStart(5, "0")}`;
 }
 
-function montarMensagem({ numero, rep, cliente, itens, observacao }) {
+function linhasItens(itens, negrito) {
+  const b = (t) => (negrito ? `*${t}*` : t);
   const linhas = [];
-  linhas.push(`*Metaliza · Solicitação ${numero}*`);
-  linhas.push(`Data: ${hojeFormatado()}`);
-  linhas.push(`Cliente: ${cliente.nome} (${cliente.cidade})`);
-  linhas.push(`Contato: ${cliente.contato}`);
-  linhas.push(`Representante: ${rep.nome} · ${rep.regiao}`);
   ["amostra", "producao"].forEach((tipo) => {
     const grupo = itens.filter((i) => i.tipo === tipo);
     if (!grupo.length) return;
     linhas.push("");
-    linhas.push(`*${tipo === "amostra" ? "AMOSTRAS" : "PRODUÇÃO"}* (prazo estimado ${PRAZO[tipo]})`);
+    linhas.push(`${b(tipo === "amostra" ? "AMOSTRAS" : "PRODUÇÃO")} (prazo estimado ${PRAZO[tipo]})`);
     grupo.forEach((i) => {
       const p = PRODUTOS.find((x) => x.ref === i.ref);
-      linhas.push(`• ${i.ref} ${p.nome} | ${p.material} | ${acabamentoPorId(i.acabamento).nome} | ${formatarNumero(i.qtd)} pçs`);
-      if (i.obs) linhas.push(`   Obs.: ${i.obs}`);
+      linhas.push(`• ${i.ref} ${p.nome} | ${p.material} | ${p.bipartida ? "Bipartida" : "Peça única"} | ${textoAcabamento(p, i.acabamento, i.acabamentoBaixo)} | ${formatarNumero(i.qtd)} pçs`);
     });
   });
   const total = itens.reduce((s, i) => s + i.qtd, 0);
   linhas.push("");
   linhas.push(`Total: ${formatarNumero(total)} peças em ${itens.length} ${itens.length === 1 ? "item" : "itens"}`);
-  if (observacao) linhas.push(`Observações gerais: ${observacao}`);
-  return linhas.join("\n");
+  return linhas;
+}
+
+function montarMensagem({ numero, rep, cliente, itens }) {
+  return [
+    `*Metaliza · Solicitação ${numero}*`,
+    `Data: ${hojeFormatado()}`,
+    `Cliente: ${cliente.nome} (${cliente.cidade})`,
+    `Contato: ${cliente.contato}`,
+    `Representante: ${rep.nome} · ${rep.regiao}`,
+    ...linhasItens(itens, true),
+  ].join("\n");
+}
+
+function montarEmail({ numero, rep, cliente, itens }) {
+  const total = itens.reduce((s, i) => s + i.qtd, 0);
+  return {
+    para: EMAIL_PEDIDOS,
+    cc: rep.email,
+    assunto: `[${numero}] ${cliente.nome} · ${itens.length} ${itens.length === 1 ? "item" : "itens"} · ${formatarNumero(total)} pçs`,
+    corpo: [
+      `Solicitação ${numero} registrada em ${hojeFormatado()}.`,
+      "",
+      `Cliente: ${cliente.nome}`,
+      `Contato: ${cliente.contato}`,
+      `WhatsApp: ${cliente.whatsapp}`,
+      `Cidade: ${cliente.cidade}`,
+      `Representante: ${rep.nome} (${rep.codigo}) · ${rep.regiao}`,
+      ...linhasItens(itens, false),
+    ].join("\n"),
+  };
 }
 
 /* ----------------------------- estilos/tokens ----------------------------- */
@@ -316,31 +348,74 @@ function FormaPeca({ forma, f }) {
   }
 }
 
-function ImagemPeca({ produto, acabamento = ACABAMENTO_PADRAO, className = "", rotulo = true }) {
+function ImagemPeca({ produto, acabamento = ACABAMENTO_PADRAO, acabamentoBaixo = null, className = "", rotulo = true }) {
   const uid = useId().replace(/:/g, "");
   const gid = `mz-g-${uid}`;
-  const [c1, c2, c3, c4] = acabamento.cores;
+  const baixo = produto.bipartida ? acabamentoBaixo || acabamento : null;
+  const gradiente = (id, a) => {
+    const [c1, c2, c3, c4] = a.cores;
+    return (
+      <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor={c1} />
+        <stop offset="0.35" stopColor={c2} />
+        <stop offset="0.55" stopColor={c1} />
+        <stop offset="0.78" stopColor={c3} />
+        <stop offset="1" stopColor={c4} />
+      </linearGradient>
+    );
+  };
+  const nome = baixo && baixo.id !== acabamento.id ? `${acabamento.nome} / ${baixo.nome}` : acabamento.nome;
   return (
     <div className={`mz-studio relative flex aspect-square w-full max-w-full items-center justify-center overflow-hidden ${className}`}>
-      <svg viewBox="0 0 200 200" className="h-4/5 w-4/5 drop-shadow-[0_10px_12px_rgba(0,0,0,0.22)]" role="img" aria-label={`${produto.nome} em ${acabamento.nome}`}>
+      <svg viewBox="0 0 200 200" className="h-4/5 w-4/5 drop-shadow-[0_10px_12px_rgba(0,0,0,0.22)]" role="img" aria-label={`${produto.nome} em ${nome}`}>
         <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor={c1} />
-            <stop offset="0.35" stopColor={c2} />
-            <stop offset="0.55" stopColor={c1} />
-            <stop offset="0.78" stopColor={c3} />
-            <stop offset="1" stopColor={c4} />
-          </linearGradient>
+          {gradiente(gid, acabamento)}
+          {baixo && gradiente(`${gid}-b`, baixo)}
+          {baixo && (
+            <>
+              <clipPath id={`${gid}-cima`}><rect x="0" y="0" width="200" height="100" /></clipPath>
+              <clipPath id={`${gid}-baixo`}><rect x="0" y="100" width="200" height="100" /></clipPath>
+            </>
+          )}
         </defs>
         <ellipse cx="100" cy="182" rx="62" ry="6" fill="rgba(0,0,0,.12)" />
-        <FormaPeca forma={produto.forma} f={gid} />
+        {baixo ? (
+          <>
+            <g clipPath={`url(#${gid}-cima)`}><FormaPeca forma={produto.forma} f={gid} /></g>
+            <g clipPath={`url(#${gid}-baixo)`}><FormaPeca forma={produto.forma} f={`${gid}-b`} /></g>
+            <line x1="14" y1="100" x2="186" y2="100" stroke="rgba(0,0,0,.35)" strokeWidth="1" strokeDasharray="3 3" />
+          </>
+        ) : (
+          <FormaPeca forma={produto.forma} f={gid} />
+        )}
       </svg>
       {rotulo && (
-        <span className="mz-mono absolute bottom-2 left-2 rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
-          {acabamento.nome}
+        <span className="mz-mono absolute bottom-2 left-2 max-w-[calc(100%-1rem)] truncate rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+          {nome}
         </span>
       )}
     </div>
+  );
+}
+
+function SwatchesItem({ produto, acabamento, acabamentoBaixo, size }) {
+  return (
+    <span className="inline-flex shrink-0 -space-x-1">
+      <Swatch acabamento={acabamentoPorId(acabamento)} size={size} />
+      {produto.bipartida && <Swatch acabamento={acabamentoPorId(acabamentoBaixo)} size={size} />}
+    </span>
+  );
+}
+
+function TagBipartida({ className = "" }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded border border-dashed border-[color:var(--mz-accent)] px-1.5 py-0.5 text-[11px] font-bold text-[color:var(--mz-accent)] ${className}`}>
+      <svg viewBox="0 0 12 12" className="h-3 w-3" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="9" height="4" rx="1" fill="currentColor" />
+        <rect x="1.5" y="6.5" width="9" height="4" rx="1" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      </svg>
+      Peça Bipartida
+    </span>
   );
 }
 
@@ -764,6 +839,7 @@ function TelaCatalogo({ cliente, itensPedido, onAbrirPeca }) {
                   <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
                     <span className="rounded border border-[color:var(--mz-ink)] px-1.5 py-0.5 text-[11px] font-bold">{p.material}</span>
                     <span className="rounded bg-[color:var(--mz-sunken)] px-1.5 py-0.5 text-[11px] font-semibold">{p.categoria}</span>
+                    {p.bipartida && <TagBipartida />}
                   </div>
                 </div>
               </button>
@@ -777,17 +853,55 @@ function TelaCatalogo({ cliente, itensPedido, onAbrirPeca }) {
 
 /* ----------------------------- tela 4: modal da peça ----------------------------- */
 
+function SeletorAcabamento({ titulo, valor, onChange }) {
+  return (
+    <fieldset>
+      <legend className="mz-eyebrow mb-3">{titulo} · <span className="text-[color:var(--mz-ink)]">{acabamentoPorId(valor).nome}</span></legend>
+      <div className="grid grid-cols-5 gap-2">
+        {ACABAMENTOS.map((a) => {
+          const ativo = a.id === valor;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => onChange(a.id)}
+              aria-pressed={ativo}
+              aria-label={`${titulo}: ${a.nome}`}
+              className={`mz-focus flex min-w-0 flex-col items-center gap-1.5 rounded-lg border p-2 text-center transition ${
+                ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] hover:border-[color:var(--mz-ink)]"
+              }`}
+            >
+              <span className="relative">
+                <Swatch acabamento={a} size="h-10 w-10" />
+                {ativo && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--mz-accent)] text-[color:var(--mz-on-accent)]">
+                    <Icone.check className="h-3 w-3" />
+                  </span>
+                )}
+              </span>
+              <span className="text-[11px] font-semibold leading-tight">{a.nome}</span>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 function ModalPeca({ produto, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
+  const [baixoId, setBaixoId] = useState(ACABAMENTO_PADRAO.id);
   const [tipo, setTipo] = useState("amostra");
   const [qtd, setQtd] = useState(REGRAS.amostra.min);
   const [texto, setTexto] = useState(String(REGRAS.amostra.min));
   const [aviso, setAviso] = useState("");
   const [tremer, setTremer] = useState(0);
-  const [obs, setObs] = useState("");
 
   const regra = REGRAS[tipo];
   const acabamento = acabamentoPorId(acabamentoId);
+  const acabamentoBaixo = produto.bipartida ? acabamentoPorId(baixoId) : null;
+  const descricaoAcabamento = textoAcabamento(produto, acabamentoId, baixoId);
+  const foraDoPadrao = acabamentoId !== ACABAMENTO_PADRAO.id || (produto.bipartida && baixoId !== ACABAMENTO_PADRAO.id);
 
   useEffect(() => {
     const esc = (e) => e.key === "Escape" && onFechar();
@@ -868,8 +982,8 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
               <Swatch acabamento={ACABAMENTO_PADRAO} size="mt-0.5 h-4 w-4" />
               Foto de referência em Ouro Light. Selecione o acabamento desejado abaixo:
             </p>
-            <dl className="grid grid-cols-3 gap-2 text-xs">
-              {[["Categoria", produto.categoria], ["Substrato", produto.material], ["Medida", produto.medida]].map(([k, v]) => (
+            <dl className="grid grid-cols-2 gap-2 text-xs">
+              {[["Categoria", produto.categoria], ["Substrato", produto.material], ["Medida", produto.medida], ["Construção", produto.bipartida ? "Bipartida (cima + baixo)" : "Peça única"]].map(([k, v]) => (
                 <div key={k} className="rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2">
                   <dt className={C.muted}>{k}</dt>
                   <dd className="font-bold">{v}</dd>
@@ -880,41 +994,21 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
 
           {/* Configuração */}
           <div className="flex flex-col gap-6 p-5">
-            <fieldset>
-              <legend className="mz-eyebrow mb-3">Acabamento · <span className="text-[color:var(--mz-ink)]">{acabamento.nome}</span></legend>
-              <div className="grid grid-cols-5 gap-2">
-                {ACABAMENTOS.map((a) => {
-                  const ativo = a.id === acabamentoId;
-                  return (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => setAcabamentoId(a.id)}
-                      aria-pressed={ativo}
-                      className={`mz-focus flex min-w-0 flex-col items-center gap-1.5 rounded-lg border p-2 text-center transition ${
-                        ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] hover:border-[color:var(--mz-ink)]"
-                      }`}
-                    >
-                      <span className="relative">
-                        <Swatch acabamento={a} size="h-10 w-10" />
-                        {ativo && (
-                          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--mz-accent)] text-[color:var(--mz-on-accent)]">
-                            <Icone.check className="h-3 w-3" />
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-[11px] font-semibold leading-tight">{a.nome}</span>
-                    </button>
-                  );
-                })}
+            {produto.bipartida ? (
+              <div className="flex flex-col gap-5">
+                <TagBipartida className="self-start" />
+                <SeletorAcabamento titulo="Cor da Parte de Cima" valor={acabamentoId} onChange={setAcabamentoId} />
+                <SeletorAcabamento titulo="Cor da Parte de Baixo" valor={baixoId} onChange={setBaixoId} />
               </div>
-              {acabamentoId !== ACABAMENTO_PADRAO.id && (
-                <div className="mz-in mt-3 flex items-center gap-3 rounded-md border border-[color:var(--mz-line)] p-2">
-                  <ImagemPeca produto={produto} acabamento={acabamento} rotulo={false} className="!w-14 shrink-0 rounded" />
-                  <p className={`text-xs ${C.muted}`}>Simulação de tonalidade em <b className="text-[color:var(--mz-ink)]">{acabamento.nome}</b>. A cor final segue o padrão de banho aprovado pelo laboratório.</p>
-                </div>
-              )}
-            </fieldset>
+            ) : (
+              <SeletorAcabamento titulo="Cor do Acabamento" valor={acabamentoId} onChange={setAcabamentoId} />
+            )}
+            {foraDoPadrao && (
+              <div className="mz-in -mt-3 flex items-center gap-3 rounded-md border border-[color:var(--mz-line)] p-2">
+                <ImagemPeca produto={produto} acabamento={acabamento} acabamentoBaixo={acabamentoBaixo} rotulo={false} className="!w-14 shrink-0 rounded" />
+                <p className={`text-xs ${C.muted}`}>Simulação de tonalidade: <b className="text-[color:var(--mz-ink)]">{descricaoAcabamento}</b>. A cor final segue o padrão de banho aprovado pelo laboratório.</p>
+              </div>
+            )}
 
             <fieldset>
               <legend className="mz-eyebrow mb-3">Tipo de solicitação</legend>
@@ -978,24 +1072,20 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
               </div>
             </div>
 
-            <label htmlFor="mz-obs" className="flex flex-col gap-2">
-              <span className="mz-eyebrow">Observação para a produção (opcional)</span>
-              <textarea id="mz-obs" rows={2} className={C.input} placeholder="Ex.: verniz fosco, furo de fixação 2 mm, embalar por par…" value={obs} onChange={(e) => setObs(e.target.value)} />
-            </label>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] px-5 py-4">
           <div className="flex min-w-0 items-center gap-2 text-sm">
-            <Swatch acabamento={acabamento} size="h-6 w-6" />
+            <SwatchesItem produto={produto} acabamento={acabamentoId} acabamentoBaixo={baixoId} size="h-6 w-6" />
             <span className="min-w-0 truncate">
-              <b className="mz-mono">{valido ? formatarNumero(Number(texto)) : "—"}</b> pçs · {acabamento.nome} · {TIPO_LABEL[tipo]}
+              <b className="mz-mono">{valido ? formatarNumero(Number(texto)) : "—"}</b> pçs · {descricaoAcabamento} · {TIPO_LABEL[tipo]}
             </span>
           </div>
           <button
             type="button"
             disabled={!valido}
-            onClick={() => onAdicionar({ ref: produto.ref, acabamento: acabamentoId, tipo, qtd: Number(texto), obs: obs.trim() })}
+            onClick={() => onAdicionar({ ref: produto.ref, acabamento: acabamentoId, acabamentoBaixo: produto.bipartida ? baixoId : null, tipo, qtd: Number(texto) })}
             className={`${C.btnAccent} w-full sm:w-auto`}
           >
             <Icone.sacola className="h-4 w-4" /> Adicionar ao pedido
@@ -1021,15 +1111,17 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
 
   return (
     <li className="flex gap-3 py-3">
-      <ImagemPeca produto={p} acabamento={a} rotulo={false} className="!w-16 shrink-0 rounded-md" />
+      <ImagemPeca produto={p} acabamento={a} acabamentoBaixo={item.acabamentoBaixo ? acabamentoPorId(item.acabamentoBaixo) : null} rotulo={false} className="!w-16 shrink-0 rounded-md" />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className={`mz-mono text-[11px] font-semibold ${C.accentText}`}>{p.ref}</p>
             <p className="truncate text-sm font-bold">{p.nome}</p>
             <p className={`flex flex-wrap items-center gap-x-1.5 text-xs ${C.muted}`}>
-              <Swatch acabamento={a} size="h-3 w-3" /> {a.nome} · {p.material}
+              <SwatchesItem produto={p} acabamento={item.acabamento} acabamentoBaixo={item.acabamentoBaixo} size="h-3 w-3" />
+              <span className="font-semibold text-[color:var(--mz-ink)]">{textoAcabamento(p, item.acabamento, item.acabamentoBaixo)}</span> · {p.material}
             </p>
+            {p.bipartida && <TagBipartida className="mt-1" />}
           </div>
           {onRemover && (
             <button type="button" onClick={onRemover} className={`mz-focus shrink-0 rounded p-1 ${C.muted} hover:text-[color:var(--mz-warn)]`} aria-label={`Remover ${p.ref}`}>
@@ -1037,7 +1129,6 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
             </button>
           )}
         </div>
-        {item.obs && <p className={`mt-1 text-xs italic ${C.muted}`}>Obs.: {item.obs}</p>}
         {compacto ? (
           <p className="mz-mono mt-1 text-sm font-semibold">{formatarNumero(item.qtd)} pçs</p>
         ) : (
@@ -1131,7 +1222,6 @@ function PainelPedido({ cliente, itens, onFechar, onQtd, onRemover, onRevisar })
 /* ----------------------------- revisão e envio ----------------------------- */
 
 function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar }) {
-  const [obsGeral, setObsGeral] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const total = itens.reduce((s, i) => s + i.qtd, 0);
   const totalAmostra = itens.filter((i) => i.tipo === "amostra").reduce((s, i) => s + i.qtd, 0);
@@ -1177,10 +1267,6 @@ function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar
               <div className="flex justify-between"><dt className={C.muted}>Produção</dt><dd className="mz-mono font-semibold">{formatarNumero(totalProd)} pçs</dd></div>
               <div className="flex justify-between border-t border-[color:var(--mz-line)] pt-2"><dt className="font-bold">Total</dt><dd className="mz-mono font-bold">{formatarNumero(total)} pçs</dd></div>
             </dl>
-            <label htmlFor="mz-obs-geral" className="mt-4 flex flex-col gap-2">
-              <span className="mz-eyebrow">Observações gerais</span>
-              <textarea id="mz-obs-geral" rows={3} className={C.input} placeholder="Ex.: entregar amostras junto com a coleção Verão 27; faturar para a matriz." value={obsGeral} onChange={(e) => setObsGeral(e.target.value)} />
-            </label>
 
             {!confirmando ? (
               <button type="button" disabled={!itens.length} onClick={() => setConfirmando(true)} className={`${C.btnAccent} mt-4 w-full`}>
@@ -1191,7 +1277,7 @@ function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar
                 <p className="text-sm font-semibold">Enviar {itens.length} {itens.length === 1 ? "item" : "itens"} ({formatarNumero(total)} pçs) para a fábrica?</p>
                 <div className="mt-3 flex gap-2">
                   <button type="button" onClick={() => setConfirmando(false)} className={`${C.btnGhost} flex-1`}>Cancelar</button>
-                  <button type="button" onClick={() => onEnviar(obsGeral.trim())} className={`${C.btnPrimary} flex-1`}>Confirmar envio</button>
+                  <button type="button" onClick={onEnviar} className={`${C.btnPrimary} flex-1`}>Confirmar envio</button>
                 </div>
               </div>
             )}
@@ -1202,55 +1288,92 @@ function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar
   );
 }
 
-function TelaEnviado({ pedido, onNovoMesmoCliente, onTrocarCliente }) {
-  const [copiado, setCopiado] = useState(false);
-  const fone = somenteDigitos(pedido.cliente.whatsapp);
-  const linkWhats = `https://wa.me/55${fone}?text=${encodeURIComponent(pedido.mensagem)}`;
-
-  const copiar = async () => {
+function useCopiar() {
+  const [copiado, setCopiado] = useState(null);
+  const copiar = async (id, texto) => {
     try {
-      await navigator.clipboard.writeText(pedido.mensagem);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2000);
+      await navigator.clipboard.writeText(texto);
+      setCopiado(id);
+      setTimeout(() => setCopiado(null), 2000);
     } catch {
-      const el = document.getElementById("mz-msg");
-      if (el) { el.focus(); el.select(); }
+      const el = document.getElementById(id);
+      if (el) { el.focus(); el.select?.(); }
     }
   };
+  return [copiado, copiar];
+}
+
+function TelaEnviado({ pedido, onNovoMesmoCliente, onTrocarCliente }) {
+  const [copiado, copiar] = useCopiar();
+  const [emailEnviadoEm, setEmailEnviadoEm] = useState(null);
+  const { email } = pedido;
+  const fone = somenteDigitos(pedido.cliente.whatsapp);
+  const linkWhats = `https://wa.me/55${fone}?text=${encodeURIComponent(pedido.mensagem)}`;
+  const textoEmail = `Para: ${email.para}\nCc: ${email.cc}\nAssunto: ${email.assunto}\n\n${email.corpo}`;
 
   return (
-    <main className="mz-gutter mx-auto max-w-3xl py-10">
-      <div className="mz-in rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-6 shadow-[var(--mz-shadow)]">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--mz-ok-soft)] text-[color:var(--mz-ok)]">
-            <Icone.check className="h-6 w-6" />
-          </span>
-          <div>
-            <p className="mz-eyebrow">Solicitação registrada</p>
-            <h1 className="mz-display text-2xl font-bold">
-              <span className="mz-mono">{pedido.numero}</span>
-            </h1>
+    <main className="mz-gutter mx-auto max-w-5xl py-10">
+      <div className="mz-in flex items-center gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-ok-soft)] text-[color:var(--mz-ok)]">
+          <Icone.check className="h-6 w-6" />
+        </span>
+        <div className="min-w-0">
+          <p className="mz-eyebrow">Solicitação registrada</p>
+          <h1 className="mz-display mz-mono text-2xl font-bold">{pedido.numero}</h1>
+        </div>
+      </div>
+      <p className={`mt-3 text-sm ${C.muted}`}>
+        {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"} para <b className="text-[color:var(--mz-ink)]">{pedido.cliente.nome}</b>, registrados em {pedido.data}. Dispare o e-mail para a fábrica e envie o resumo ao cliente.
+      </p>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        {/* E-mail (simulação) */}
+        <section className="flex min-w-0 flex-col rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="mz-display text-lg font-bold">E-mail para a fábrica</h2>
+            <span className="rounded-full bg-[color:var(--mz-sunken)] px-2 py-0.5 text-[11px] font-bold">Simulação</span>
           </div>
-        </div>
-        <p className={`mt-3 text-sm ${C.muted}`}>
-          {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"} para <b className="text-[color:var(--mz-ink)]">{pedido.cliente.nome}</b>, registrados em {pedido.data}. Envie o resumo ao cliente pelo WhatsApp.
-        </p>
+          <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+            <dt className={C.muted}>Para</dt><dd className="mz-mono min-w-0 break-all">{email.para}</dd>
+            <dt className={C.muted}>Cc</dt><dd className="mz-mono min-w-0 break-all">{email.cc}</dd>
+            <dt className={C.muted}>Assunto</dt><dd className="min-w-0 font-semibold">{email.assunto}</dd>
+          </dl>
+          <textarea id="mz-email" readOnly rows={12} value={email.corpo} aria-label="Corpo do e-mail" className={`${C.input} mz-mono mt-3 flex-1 text-xs leading-relaxed`} />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" disabled={!!emailEnviadoEm} onClick={() => setEmailEnviadoEm(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }))} className={C.btnAccent}>
+              {emailEnviadoEm ? <><Icone.check className="h-4 w-4" /> E-mail enviado</> : "Simular envio do e-mail"}
+            </button>
+            <button type="button" onClick={() => copiar("mz-email", textoEmail)} className={C.btnGhost}>
+              {copiado === "mz-email" ? <><Icone.check className="h-4 w-4" /> Copiado</> : "Copiar e-mail"}
+            </button>
+          </div>
+          {emailEnviadoEm && (
+            <p role="status" className="mt-2 text-xs font-semibold text-[color:var(--mz-ok)]">
+              Envio simulado às {emailEnviadoEm} para {email.para} (cópia para {email.cc}).
+            </p>
+          )}
+        </section>
 
-        <label htmlFor="mz-msg" className="mz-eyebrow mt-6 block">Resumo para WhatsApp</label>
-        <textarea id="mz-msg" readOnly rows={10} value={pedido.mensagem} className={`${C.input} mz-mono mt-2 text-xs leading-relaxed`} />
+        {/* WhatsApp */}
+        <section className="flex min-w-0 flex-col rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="mz-display text-lg font-bold">Resumo para WhatsApp</h2>
+            <span className="mz-mono text-xs font-semibold">{pedido.cliente.whatsapp}</span>
+          </div>
+          <p className={`mt-3 text-sm ${C.muted}`}>Destino: {pedido.cliente.contato}</p>
+          <textarea id="mz-msg" readOnly rows={12} value={pedido.mensagem} aria-label="Texto para WhatsApp" className={`${C.input} mz-mono mt-3 flex-1 text-xs leading-relaxed`} />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={() => copiar("mz-msg", pedido.mensagem)} className={C.btnPrimary}>
+              {copiado === "mz-msg" ? <><Icone.check className="h-4 w-4" /> Copiado</> : "Copiar texto"}
+            </button>
+            <a href={linkWhats} target="_blank" rel="noreferrer" className={C.btnGhost}>Abrir no WhatsApp</a>
+          </div>
+        </section>
+      </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" onClick={copiar} className={C.btnPrimary}>
-            {copiado ? <><Icone.check className="h-4 w-4" /> Copiado</> : "Copiar resumo"}
-          </button>
-          <a href={linkWhats} target="_blank" rel="noreferrer" className={C.btnAccent}>Abrir no WhatsApp</a>
-        </div>
-        <p className={`mt-2 text-xs ${C.muted}`}>Destino: <span className="mz-mono">{pedido.cliente.whatsapp}</span> · {pedido.cliente.contato}</p>
-
-        <div className="mt-8 grid gap-2 border-t border-[color:var(--mz-line)] pt-5 sm:grid-cols-2">
-          <button type="button" onClick={onNovoMesmoCliente} className={C.btnGhost}>Nova solicitação para {pedido.cliente.nome.split(" ")[0]}…</button>
-          <button type="button" onClick={onTrocarCliente} className={C.btnGhost}>Atender outro cliente</button>
-        </div>
+      <div className="mt-8 grid gap-2 border-t border-[color:var(--mz-line)] pt-5 sm:grid-cols-2">
+        <button type="button" onClick={onNovoMesmoCliente} className={C.btnGhost}>Nova solicitação para {pedido.cliente.nome}</button>
+        <button type="button" onClick={onTrocarCliente} className={C.btnGhost}>Atender outro cliente</button>
       </div>
     </main>
   );
@@ -1291,22 +1414,23 @@ export default function MetalizaApp() {
   const trocarCliente = () => { setPedidoAberto(false); setPeca(null); setTela("clientes"); };
 
   const adicionar = (novo) => {
-    const chave = `${novo.ref}|${novo.acabamento}|${novo.tipo}`;
+    const chave = `${novo.ref}|${novo.acabamento}|${novo.acabamentoBaixo || "-"}|${novo.tipo}`;
     setItens((lista) => {
       const existente = lista.find((i) => i.chave === chave);
       if (existente) {
-        return lista.map((i) => (i.chave === chave ? { ...i, qtd: i.qtd + novo.qtd, obs: novo.obs || i.obs } : i));
+        return lista.map((i) => (i.chave === chave ? { ...i, qtd: i.qtd + novo.qtd } : i));
       }
       return [...lista, { ...novo, chave }];
     });
     setPeca(null);
-    setToast(`${novo.ref} · ${acabamentoPorId(novo.acabamento).nome} · ${formatarNumero(novo.qtd)} pçs adicionadas (${TIPO_LABEL[novo.tipo]}).`);
+    const prod = PRODUTOS.find((x) => x.ref === novo.ref);
+    setToast(`${novo.ref} · ${textoAcabamento(prod, novo.acabamento, novo.acabamentoBaixo)} · ${formatarNumero(novo.qtd)} pçs adicionadas (${TIPO_LABEL[novo.tipo]}).`);
   };
 
   const alterarQtd = (chave, q) => setItens((l) => l.map((i) => (i.chave === chave ? { ...i, qtd: q } : i)));
   const remover = (chave) => setItens((l) => l.filter((i) => i.chave !== chave));
 
-  const enviar = (observacao) => {
+  const enviar = () => {
     const numero = gerarNumeroPedido(historico.length + 1);
     const registro = {
       numero,
@@ -1314,8 +1438,8 @@ export default function MetalizaApp() {
       clienteId: cliente.id,
       cliente,
       itens,
-      observacao,
-      mensagem: montarMensagem({ numero, rep, cliente, itens, observacao }),
+      mensagem: montarMensagem({ numero, rep, cliente, itens }),
+      email: montarEmail({ numero, rep, cliente, itens }),
     };
     setHistorico((h) => [...h, registro]);
     setUltimoPedido(registro);
