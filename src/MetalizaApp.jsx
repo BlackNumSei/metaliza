@@ -50,7 +50,6 @@ const CLIENTES_INICIAIS = [
   },
 ];
 
-// Coleções: "Todas as Peças" mostra o catálogo inteiro
 // Coleções de lançamento: exclusivas por 90 dias; depois as peças migram para a Linha Permanente.
 const DIA_MS = 86400000;
 const CICLO_DIAS = 90;
@@ -60,15 +59,16 @@ const LANCAMENTOS = [{ nome: "Verão 2026", lancadaEm: new Date(inicioDoDia().ge
 const diasRestantes = (l) => Math.max(0, Math.ceil((l.lancadaEm.getTime() + CICLO_DIAS * DIA_MS - inicioDoDia().getTime()) / DIA_MS));
 const diasPassados = (l) => Math.min(CICLO_DIAS, CICLO_DIAS - diasRestantes(l));
 
-const VISAO_GERAL = "Catálogo Geral / Linha";
-const TODAS_AS_PECAS = "Todas as Peças";
-const VISOES = [VISAO_GERAL, ...LANCAMENTOS.map((l) => l.nome), TODAS_AS_PECAS];
+const VISAO_GERAL = "Catálogo Geral / Linha Permanente";
+// Navegação: só a linha permanente e as coleções de lançamento (sem visão misturada)
+const VISOES = [VISAO_GERAL, ...LANCAMENTOS.map((l) => l.nome)];
+// Abertura padrão: o primeiro lançamento em vigor; sem lançamento ativo, a linha permanente
+const visaoInicial = (ativas) => LANCAMENTOS.find((l) => ativas.has(l.nome))?.nome || VISAO_GERAL;
 
 // ativas = Set com os nomes das coleções em vigor
 const emLancamento = (p, ativas) => Boolean(p.colecao && ativas.has(p.colecao));
 const pecasDaVisao = (visao, ativas) =>
   PRODUTOS.filter((p) => {
-    if (visao === TODAS_AS_PECAS) return true;
     if (visao === VISAO_GERAL) return !emLancamento(p, ativas);
     return p.colecao === visao && emLancamento(p, ativas);
   });
@@ -664,7 +664,6 @@ function GavetaMenu({ rep, cliente, colecao, ativas, encerradas, onEscolherColec
                     )}
                     {encerrada && <span className={`mt-1 text-xs ${C.muted}`}>Coleção encerrada · peças migradas para a Linha Permanente</span>}
                     {v === VISAO_GERAL && <span className={`mt-1 text-xs ${C.muted}`}>Peças permanentes, fora do período de lançamento</span>}
-                    {v === TODAS_AS_PECAS && <span className={`mt-1 text-xs ${C.muted}`}>Acervo da linha + lançamentos</span>}
                   </button>
                 </li>
               );
@@ -745,17 +744,6 @@ const SLIDES = [
     estilo: { background: "linear-gradient(120deg, #1B1917 0%, #2A2420 100%)", color: "#F1ECE3" },
     suave: "#B9AE9F",
   },
-  {
-    id: "acabamentos",
-    eyebrow: "Acabamentos Exclusivos",
-    titulo: "Banhos Especiais, Efeito Aura e Cristal",
-    texto: "Sete acabamentos na cartela, do Ouro Light ao Policarbonato, e cores especiais sob código.",
-    cta: "Ver todas as peças",
-    colecao: TODAS_AS_PECAS,
-    swatches: true,
-    estilo: { background: "linear-gradient(135deg, #2B2A28 0%, #3B3631 55%, #514636 100%)", color: "#F4EFE6" },
-    suave: "#C9BEAE",
-  },
 ];
 
 function HeroCarrossel({ ativas, onVerColecao }) {
@@ -819,18 +807,6 @@ function HeroCarrossel({ ativas, onVerColecao }) {
                   </button>
                 </div>
 
-                {sl.swatches ? (
-                  <div className="grid grid-cols-4 gap-x-3 gap-y-5 sm:grid-cols-7 md:grid-cols-4">
-                    {ACABAMENTOS.filter((a) => !a.oculta).map((a) => (
-                      <div key={a.id} className="flex flex-col items-center gap-2 text-center">
-                        <Swatch acabamento={a} size="h-14 w-14 sm:h-16 sm:w-16" />
-                        <span className="text-[11px] leading-tight" style={{ color: sl.suave }}>
-                          <span className="mz-mono font-semibold" style={{ color: "inherit" }}>{a.codigo}</span> {a.nome}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
                   <div className="grid grid-cols-[1.3fr_1fr] gap-3">
                     {sl.fotos.map((ref, k) => {
                       const prod = PRODUTOS.find((x) => x.ref === ref);
@@ -844,7 +820,6 @@ function HeroCarrossel({ ativas, onVerColecao }) {
                       );
                     })}
                   </div>
-                )}
               </div>
             </div>
           );
@@ -1077,9 +1052,7 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbri
             <p className={`mt-2 text-sm font-light ${C.muted}`}>
               {lanc
                 ? <>🔥 Lançamento exclusivo · restam <b className="font-medium text-[color:var(--mz-ink)]">{diasRestantes(lanc)} dias</b> · </>
-                : colecao === VISAO_GERAL
-                  ? "Linha permanente · "
-                  : "Acervo completo: linha + lançamentos · "}
+                : "Linha permanente · peças fora do período de lançamento · "}
               {daColecao.length} referências · fotos originais em Ouro Light
             </p>
           </div>
@@ -1853,12 +1826,12 @@ export default function MetalizaApp() {
   const [ultimoPedido, setUltimoPedido] = useState(null);
   const [toast, setToast] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
-  const [colecao, setColecao] = useState(TODAS_AS_PECAS);
   const [encerradas, setEncerradas] = useState([]);
   const ativas = useMemo(
     () => new Set(LANCAMENTOS.filter((l) => !encerradas.includes(l.nome) && diasRestantes(l) > 0).map((l) => l.nome)),
     [encerradas]
   );
+  const [colecao, setColecao] = useState(() => visaoInicial(ativas));
 
   const itens = (cliente && itensPorCliente[cliente.id]) || [];
   const itensAtuais = itens;
@@ -1873,7 +1846,7 @@ export default function MetalizaApp() {
   const entrar = (r) => { setRep(r); setTela("clientes"); };
   const sair = () => { setRep(null); setCliente(null); setPeca(null); setPedidoAberto(false); setMenuAberto(false); setTela("clientes"); };
 
-  const selecionarCliente = (c) => { setCliente(c); setTela("catalogo"); window.scrollTo?.(0, 0); };
+  const selecionarCliente = (c) => { setCliente(c); setColecao(visaoInicial(ativas)); setTela("catalogo"); window.scrollTo?.(0, 0); };
   const cadastrarCliente = (c) => {
     setClientes((l) => [c, ...l]);
     setToast(`${c.nome} cadastrado.`);
@@ -1888,6 +1861,7 @@ export default function MetalizaApp() {
   };
   const desfazerExpiracao = (nome) => {
     setEncerradas((l) => l.filter((n) => n !== nome));
+    setColecao(nome);
     setToast(`${nome} reativada para a demonstração.`);
   };
   const escolherColecao = (c) => {

@@ -10,7 +10,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 1. **Login:** email/senha (`carlos.mendes@metaliza.com.br` / `demo123`) ou o botão "Entrar como Representante Demonstração".
 2. **Cliente:** 3 fábricas pré-cadastradas, seleção com 1 clique, e Cadastro Rápido (nome fantasia, contato/modelista, WhatsApp com máscara, cidade).
 3. **Showroom:** é a vitrine do catálogo, com estética editorial de moda (títulos em Bodoni Moda e texto em Jost).
-   - **Carrossel de destaques no topo:** Verão 2026, Linha Permanente e Acabamentos Exclusivos, com setas e indicadores.
+   - **Carrossel de destaques no topo:** só banners de coleção (Verão 2026 e Catálogo Geral / Linha Permanente), com setas e indicadores.
    - **Menu hambúrguer:** abre uma gaveta lateral com as visões do catálogo e os dados do representante e do cliente. Fecha no X, no Esc ou clicando fora.
    - **Peças:** 7 referências reais em ABS. As fotos originais estão embutidas e aparecem inteiras (`object-contain`), sem cortes nem alteração de cor:
 
@@ -24,7 +24,8 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 
 ## Coleções e ciclo de 90 dias
 
-- **Exclusividade:** as peças de uma coleção de lançamento aparecem só na visão da coleção (ex.: Verão 2026), e não no **Catálogo Geral / Linha** enquanto a coleção estiver em vigor. **Todas as Peças** mostra o acervo completo.
+- **Exclusividade:** a navegação tem só duas visões, **Catálogo Geral / Linha Permanente** e **Verão 2026**, sem uma visão misturada. As peças de lançamento aparecem só na visão da coleção enquanto ela estiver em vigor.
+- **Abertura:** depois de escolher o cliente, o app abre no lançamento ativo (Verão 2026). Sem lançamento ativo, abre na linha permanente.
 - **Ciclo:**
   - Cada coleção vale 90 dias a partir do lançamento.
   - A gaveta mostra "🔥 Coleção ativa • Restam N dias" com uma barra de progresso.
@@ -33,7 +34,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 - **Teste:**
   - O botão "Simular expiração (90 dias)", na gaveta, encerra a coleção e migra as peças para o Catálogo Geral / Linha.
   - A coleção fica riscada no menu, e o slide do carrossel passa a levar para a linha permanente.
-  - "Desfazer simulação" reativa a coleção.
+  - "Desfazer simulação" reativa a coleção e volta para ela.
 - **Espelho do pedido:** a linha `Coleção:` mostra o lançamento ativo ou "Linha permanente", calculado no momento do envio.
 
 4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça com duas partes (`bipartida: true` + `partes`) tem dois seletores independentes, como "Cor do Aro" e "Cor do Centro" na Ref. EF 1170. Enfeites e Fivelas têm o módulo de Afra. Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.

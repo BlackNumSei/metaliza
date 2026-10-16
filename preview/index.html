@@ -58,12 +58,14 @@ const inicioDoDia = (d = /* @__PURE__ */ new Date()) => {
 const LANCAMENTOS = [{ nome: "Ver\xE3o 2026", lancadaEm: new Date(inicioDoDia().getTime() - 48 * DIA_MS) }];
 const diasRestantes = (l) => Math.max(0, Math.ceil((l.lancadaEm.getTime() + CICLO_DIAS * DIA_MS - inicioDoDia().getTime()) / DIA_MS));
 const diasPassados = (l) => Math.min(CICLO_DIAS, CICLO_DIAS - diasRestantes(l));
-const VISAO_GERAL = "Cat\xE1logo Geral / Linha";
-const TODAS_AS_PECAS = "Todas as Pe\xE7as";
-const VISOES = [VISAO_GERAL, ...LANCAMENTOS.map((l) => l.nome), TODAS_AS_PECAS];
+const VISAO_GERAL = "Cat\xE1logo Geral / Linha Permanente";
+const VISOES = [VISAO_GERAL, ...LANCAMENTOS.map((l) => l.nome)];
+const visaoInicial = (ativas) => {
+  var _a;
+  return ((_a = LANCAMENTOS.find((l) => ativas.has(l.nome))) == null ? void 0 : _a.nome) || VISAO_GERAL;
+};
 const emLancamento = (p, ativas) => Boolean(p.colecao && ativas.has(p.colecao));
 const pecasDaVisao = (visao, ativas) => PRODUTOS.filter((p) => {
-  if (visao === TODAS_AS_PECAS) return true;
   if (visao === VISAO_GERAL) return !emLancamento(p, ativas);
   return p.colecao === visao && emLancamento(p, ativas);
 });
@@ -440,8 +442,7 @@ function GavetaMenu({ rep, cliente, colecao, ativas, encerradas, onEscolherColec
         /* @__PURE__ */ React.createElement("span", { className: "flex w-full items-baseline justify-between gap-3" }, /* @__PURE__ */ React.createElement("span", { className: `mz-display text-2xl ${ativo ? "text-[color:var(--mz-accent)]" : ""} ${encerrada ? "line-through opacity-50" : ""}` }, v), /* @__PURE__ */ React.createElement("span", { className: `mz-ref text-xs ${C.muted}` }, String(qtd).padStart(2, "0"))),
         lanc && !encerrada && /* @__PURE__ */ React.createElement("span", { className: "mt-1.5 flex w-full flex-col gap-1" }, /* @__PURE__ */ React.createElement("span", { className: `text-xs ${C.muted}` }, "\u{1F525} Cole\xE7\xE3o ativa \u2022 Restam ", /* @__PURE__ */ React.createElement("b", { className: "font-medium text-[color:var(--mz-ink)]" }, diasRestantes(lanc), " dias")), /* @__PURE__ */ React.createElement("span", { className: "h-0.5 w-full overflow-hidden rounded-full bg-[color:var(--mz-line)]", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("span", { className: "block h-full bg-[color:var(--mz-accent)]", style: { width: `${diasPassados(lanc) / CICLO_DIAS * 100}%` } }))),
         encerrada && /* @__PURE__ */ React.createElement("span", { className: `mt-1 text-xs ${C.muted}` }, "Cole\xE7\xE3o encerrada \xB7 pe\xE7as migradas para a Linha Permanente"),
-        v === VISAO_GERAL && /* @__PURE__ */ React.createElement("span", { className: `mt-1 text-xs ${C.muted}` }, "Pe\xE7as permanentes, fora do per\xEDodo de lan\xE7amento"),
-        v === TODAS_AS_PECAS && /* @__PURE__ */ React.createElement("span", { className: `mt-1 text-xs ${C.muted}` }, "Acervo da linha + lan\xE7amentos")
+        v === VISAO_GERAL && /* @__PURE__ */ React.createElement("span", { className: `mt-1 text-xs ${C.muted}` }, "Pe\xE7as permanentes, fora do per\xEDodo de lan\xE7amento")
       ));
     })), /* @__PURE__ */ React.createElement("div", { className: "mt-6 rounded border border-dashed border-[color:var(--mz-line)] p-4" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Demonstra\xE7\xE3o"), LANCAMENTOS.map((l) => /* @__PURE__ */ React.createElement("div", { key: l.nome, className: "mt-2" }, encerradas.includes(l.nome) ? /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onDesfazerExpiracao(l.nome), className: `${C.btnGhost} w-full !py-2 text-xs` }, "Desfazer simula\xE7\xE3o \xB7 reativar ", l.nome) : /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onSimularExpiracao(l.nome), className: `${C.btnPrimary} w-full !py-2 text-xs` }, "Simular expira\xE7\xE3o (90 dias) \xB7 ", l.nome))), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-[11px] leading-snug ${C.muted}` }, "Encerra a cole\xE7\xE3o e migra as pe\xE7as exclusivas para o Cat\xE1logo Geral / Linha."))),
     /* @__PURE__ */ React.createElement("div", { className: "mt-auto flex flex-col gap-4 border-t border-[color:var(--mz-line)] px-6 py-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Representante"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-medium" }, rep.nome, " ", /* @__PURE__ */ React.createElement("span", { className: `mz-mono text-xs ${C.muted}` }, rep.codigo)), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, rep.regiao)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Cliente / F\xE1brica"), cliente ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-medium" }, cliente.nome), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, cliente.contato, " \xB7 ", cliente.cidade)) : /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-sm ${C.muted}` }, "Nenhuma f\xE1brica selecionada."), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onTrocarCliente, className: `mz-focus mt-2 text-sm font-medium underline underline-offset-4 ${C.accentText}` }, cliente ? "Trocar cliente" : "Escolher cliente")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onSair, className: `mz-focus self-start text-sm ${C.muted} hover:text-[color:var(--mz-ink)]` }, "Sair da conta"))
@@ -470,17 +471,6 @@ const SLIDES = [
     fotos: ["EF 1150", "PS 1027", "EF 1143"],
     estilo: { background: "linear-gradient(120deg, #1B1917 0%, #2A2420 100%)", color: "#F1ECE3" },
     suave: "#B9AE9F"
-  },
-  {
-    id: "acabamentos",
-    eyebrow: "Acabamentos Exclusivos",
-    titulo: "Banhos Especiais, Efeito Aura e Cristal",
-    texto: "Sete acabamentos na cartela, do Ouro Light ao Policarbonato, e cores especiais sob c\xF3digo.",
-    cta: "Ver todas as pe\xE7as",
-    colecao: TODAS_AS_PECAS,
-    swatches: true,
-    estilo: { background: "linear-gradient(135deg, #2B2A28 0%, #3B3631 55%, #514636 100%)", color: "#F4EFE6" },
-    suave: "#C9BEAE"
   }
 ];
 function HeroCarrossel({ ativas, onVerColecao }) {
@@ -534,7 +524,7 @@ function HeroCarrossel({ ativas, onVerColecao }) {
           sl.cta,
           " ",
           /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true" }, "\u2192")
-        )), sl.swatches ? /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-4 gap-x-3 gap-y-5 sm:grid-cols-7 md:grid-cols-4" }, ACABAMENTOS.filter((a) => !a.oculta).map((a) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "flex flex-col items-center gap-2 text-center" }, /* @__PURE__ */ React.createElement(Swatch, { acabamento: a, size: "h-14 w-14 sm:h-16 sm:w-16" }), /* @__PURE__ */ React.createElement("span", { className: "text-[11px] leading-tight", style: { color: sl.suave } }, /* @__PURE__ */ React.createElement("span", { className: "mz-mono font-semibold", style: { color: "inherit" } }, a.codigo), " ", a.nome)))) : /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-[1.3fr_1fr] gap-3" }, sl.fotos.map((ref, k) => {
+        )), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-[1.3fr_1fr] gap-3" }, sl.fotos.map((ref, k) => {
           const prod = PRODUTOS.find((x) => x.ref === ref);
           return /* @__PURE__ */ React.createElement("figure", { key: ref, className: `flex flex-col overflow-hidden ${k === 0 ? "row-span-2" : ""}` }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-1 items-center justify-center", style: { background: fundoDaFoto(prod) } }, /* @__PURE__ */ React.createElement(ImagemPeca, { produto: prod, alturaMax: k === 0 ? 300 : 140 })), /* @__PURE__ */ React.createElement("figcaption", { className: "mz-ref mt-1.5 text-[10px]", style: { color: sl.suave } }, rotuloRef(prod)));
         })))
@@ -656,7 +646,7 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbri
     limpar();
     (_a = vitrineRef.current) == null ? void 0 : _a.scrollIntoView({ behavior: "smooth", block: "start" });
   };
-  return /* @__PURE__ */ React.createElement("main", { className: "pb-24" }, /* @__PURE__ */ React.createElement(HeroCarrossel, { ativas, onVerColecao: verColecao }), /* @__PURE__ */ React.createElement("section", { ref: vitrineRef, className: "mz-gutter mx-auto max-w-7xl scroll-mt-20 pt-12", "aria-labelledby": "mz-vitrine-titulo" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-end justify-between gap-6 border-b border-[color:var(--mz-line)] pb-6" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Vitrine \xB7 Atendendo ", cliente.nome), /* @__PURE__ */ React.createElement("h1", { id: "mz-vitrine-titulo", className: "mz-display mt-2 text-4xl sm:text-5xl" }, colecao), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-sm font-light ${C.muted}` }, lanc ? /* @__PURE__ */ React.createElement(React.Fragment, null, "\u{1F525} Lan\xE7amento exclusivo \xB7 restam ", /* @__PURE__ */ React.createElement("b", { className: "font-medium text-[color:var(--mz-ink)]" }, diasRestantes(lanc), " dias"), " \xB7 ") : colecao === VISAO_GERAL ? "Linha permanente \xB7 " : "Acervo completo: linha + lan\xE7amentos \xB7 ", daColecao.length, " refer\xEAncias \xB7 fotos originais em Ouro Light")), /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-busca", className: "relative w-full sm:w-72" }, /* @__PURE__ */ React.createElement("span", { className: "sr-only" }, "Buscar por refer\xEAncia"), /* @__PURE__ */ React.createElement(Icone.busca, { className: `pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}` }), /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("main", { className: "pb-24" }, /* @__PURE__ */ React.createElement(HeroCarrossel, { ativas, onVerColecao: verColecao }), /* @__PURE__ */ React.createElement("section", { ref: vitrineRef, className: "mz-gutter mx-auto max-w-7xl scroll-mt-20 pt-12", "aria-labelledby": "mz-vitrine-titulo" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-end justify-between gap-6 border-b border-[color:var(--mz-line)] pb-6" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Vitrine \xB7 Atendendo ", cliente.nome), /* @__PURE__ */ React.createElement("h1", { id: "mz-vitrine-titulo", className: "mz-display mt-2 text-4xl sm:text-5xl" }, colecao), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-sm font-light ${C.muted}` }, lanc ? /* @__PURE__ */ React.createElement(React.Fragment, null, "\u{1F525} Lan\xE7amento exclusivo \xB7 restam ", /* @__PURE__ */ React.createElement("b", { className: "font-medium text-[color:var(--mz-ink)]" }, diasRestantes(lanc), " dias"), " \xB7 ") : "Linha permanente \xB7 pe\xE7as fora do per\xEDodo de lan\xE7amento \xB7 ", daColecao.length, " refer\xEAncias \xB7 fotos originais em Ouro Light")), /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-busca", className: "relative w-full sm:w-72" }, /* @__PURE__ */ React.createElement("span", { className: "sr-only" }, "Buscar por refer\xEAncia"), /* @__PURE__ */ React.createElement(Icone.busca, { className: `pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}` }), /* @__PURE__ */ React.createElement(
     "input",
     {
       id: "mz-busca",
@@ -967,12 +957,12 @@ function MetalizaApp() {
   const [ultimoPedido, setUltimoPedido] = useState(null);
   const [toast, setToast] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
-  const [colecao, setColecao] = useState(TODAS_AS_PECAS);
   const [encerradas, setEncerradas] = useState([]);
   const ativas = useMemo(
     () => new Set(LANCAMENTOS.filter((l) => !encerradas.includes(l.nome) && diasRestantes(l) > 0).map((l) => l.nome)),
     [encerradas]
   );
+  const [colecao, setColecao] = useState(() => visaoInicial(ativas));
   const itens = cliente && itensPorCliente[cliente.id] || [];
   const itensAtuais = itens;
   const setItens = (fn) => setItensPorCliente((m) => ({ ...m, [cliente.id]: fn(m[cliente.id] || []) }));
@@ -996,6 +986,7 @@ function MetalizaApp() {
   const selecionarCliente = (c) => {
     var _a;
     setCliente(c);
+    setColecao(visaoInicial(ativas));
     setTela("catalogo");
     (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
   };
@@ -1018,6 +1009,7 @@ function MetalizaApp() {
   };
   const desfazerExpiracao = (nome) => {
     setEncerradas((l) => l.filter((n) => n !== nome));
+    setColecao(nome);
     setToast(`${nome} reativada para a demonstra\xE7\xE3o.`);
   };
   const escolherColecao = (c) => {
