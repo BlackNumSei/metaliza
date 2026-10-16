@@ -406,10 +406,20 @@ function TelaLogin({ onEntrar }) {
     setErro("");
   } })), erro && /* @__PURE__ */ React.createElement("p", { role: "alert", className: "flex items-start gap-2 rounded-md bg-[color:var(--mz-warn-soft)] px-3 py-2 text-sm text-[color:var(--mz-warn)]" }, /* @__PURE__ */ React.createElement(Icone.alerta, { className: "mt-0.5 h-4 w-4 shrink-0" }), " ", erro), /* @__PURE__ */ React.createElement("button", { type: "submit", className: C.btnPrimary }, "Entrar"), /* @__PURE__ */ React.createElement("div", { className: `flex items-center gap-3 text-xs ${C.muted}` }, /* @__PURE__ */ React.createElement("span", { className: "h-px flex-1 bg-[color:var(--mz-line)]" }), " ou ", /* @__PURE__ */ React.createElement("span", { className: "h-px flex-1 bg-[color:var(--mz-line)]" })), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onEntrar(REPRESENTANTE_DEMO), className: C.btnAccent }, "Entrar como Representante Demonstra\xE7\xE3o"), /* @__PURE__ */ React.createElement("p", { className: `text-xs ${C.muted}` }, "Demonstra\xE7\xE3o: ", /* @__PURE__ */ React.createElement("span", { className: "mz-mono" }, REPRESENTANTE_DEMO.email), " \xB7 senha ", /* @__PURE__ */ React.createElement("span", { className: "mz-mono" }, REPRESENTANTE_DEMO.senha)))));
 }
-function Cabecalho({ cliente, qtdItens, onAbrirMenu, onTrocarCliente, onAbrirPedido }) {
-  return /* @__PURE__ */ React.createElement("header", { className: "sticky top-[env(safe-area-inset-top,0px)] z-30 border-b border-[color:var(--mz-line)] bg-[color:var(--mz-bg)]/95 backdrop-blur" }, /* @__PURE__ */ React.createElement("div", { className: "mz-gutter mx-auto flex max-w-7xl items-center gap-3 py-3" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onAbrirMenu, "aria-label": "Abrir menu de cole\xE7\xF5es", className: "mz-focus -ml-1 rounded-full p-2 transition hover:bg-[color:var(--mz-sunken)]" }, /* @__PURE__ */ React.createElement(Menu, { className: "h-5 w-5", strokeWidth: 1.5 })), /* @__PURE__ */ React.createElement("div", { className: "flex min-w-0 flex-col leading-none" }, /* @__PURE__ */ React.createElement("span", { className: "mz-logo text-lg sm:text-xl" }, "Metaliza"), /* @__PURE__ */ React.createElement("span", { className: "mz-eyebrow mt-1 hidden text-[9px] sm:block" }, "Showroom \xB7 Componentes metalizados")), /* @__PURE__ */ React.createElement("div", { className: "ml-auto flex items-center gap-2" }, cliente && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onTrocarCliente, className: "mz-focus hidden max-w-[16rem] border-r border-[color:var(--mz-line)] px-3 text-right sm:block", title: "Trocar cliente" }, /* @__PURE__ */ React.createElement("span", { className: "mz-eyebrow block text-[9px]" }, "Atendendo"), /* @__PURE__ */ React.createElement("span", { className: "block truncate text-sm font-medium" }, cliente.nome)), cliente && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onAbrirPedido, className: "mz-focus relative inline-flex items-center gap-2 rounded-full border border-[color:var(--mz-ink)] px-4 py-2 text-sm font-medium transition hover:bg-[color:var(--mz-ink)] hover:text-[color:var(--mz-bg)]" }, /* @__PURE__ */ React.createElement(Icone.sacola, { className: "h-4 w-4" }), "Pedido", qtdItens > 0 && /* @__PURE__ */ React.createElement("span", { className: "mz-mono rounded-full bg-[color:var(--mz-accent)] px-1.5 text-[11px] font-bold text-[color:var(--mz-on-accent)]" }, qtdItens)))));
+function Cabecalho({ cliente, apresentacao, qtdItens, onAbrirMenu, onTrocarCliente, onAbrirPedido }) {
+  return /* @__PURE__ */ React.createElement("header", { className: "sticky top-[env(safe-area-inset-top,0px)] z-30 border-b border-[color:var(--mz-line)] bg-[color:var(--mz-bg)]/95 backdrop-blur" }, /* @__PURE__ */ React.createElement("div", { className: "mz-gutter mx-auto flex max-w-7xl items-center gap-3 py-3" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onAbrirMenu, "aria-label": "Abrir menu de cole\xE7\xF5es", className: "mz-focus -ml-1 rounded-full p-2 transition hover:bg-[color:var(--mz-sunken)]" }, /* @__PURE__ */ React.createElement(Menu, { className: "h-5 w-5", strokeWidth: 1.5 })), /* @__PURE__ */ React.createElement("div", { className: "flex min-w-0 flex-col leading-none" }, /* @__PURE__ */ React.createElement("span", { className: "mz-logo text-lg sm:text-xl" }, "Metaliza"), /* @__PURE__ */ React.createElement("span", { className: "mz-eyebrow mt-1 hidden text-[9px] sm:block" }, "Showroom \xB7 Componentes metalizados")), /* @__PURE__ */ React.createElement("div", { className: "ml-auto flex items-center gap-2" }, apresentacao && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      onClick: onTrocarCliente,
+      title: "Selecionar cliente",
+      className: "mz-focus hidden items-center gap-2 rounded-full border border-[color:var(--mz-accent)] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-[color:var(--mz-accent)] sm:inline-flex"
+    },
+    /* @__PURE__ */ React.createElement("span", { className: "h-1.5 w-1.5 rounded-full bg-[color:var(--mz-accent)]", "aria-hidden": "true" }),
+    "Modo Apresenta\xE7\xE3o \u2022 Sem cliente selecionado"
+  ), cliente && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onTrocarCliente, className: "mz-focus hidden max-w-[16rem] border-r border-[color:var(--mz-line)] px-3 text-right sm:block", title: "Trocar cliente" }, /* @__PURE__ */ React.createElement("span", { className: "mz-eyebrow block text-[9px]" }, "Atendendo"), /* @__PURE__ */ React.createElement("span", { className: "block truncate text-sm font-medium" }, cliente.nome)), (cliente || apresentacao) && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onAbrirPedido, className: "mz-focus relative inline-flex items-center gap-2 rounded-full border border-[color:var(--mz-ink)] px-4 py-2 text-sm font-medium transition hover:bg-[color:var(--mz-ink)] hover:text-[color:var(--mz-bg)]" }, /* @__PURE__ */ React.createElement(Icone.sacola, { className: "h-4 w-4" }), "Pedido", qtdItens > 0 && /* @__PURE__ */ React.createElement("span", { className: "mz-mono rounded-full bg-[color:var(--mz-accent)] px-1.5 text-[11px] font-bold text-[color:var(--mz-on-accent)]" }, qtdItens)))), apresentacao && /* @__PURE__ */ React.createElement("div", { className: "mz-gutter flex items-center justify-between gap-3 border-t border-[color:var(--mz-line)] py-2 sm:hidden" }, /* @__PURE__ */ React.createElement("span", { className: "flex min-w-0 items-center gap-2 text-[10px] font-medium uppercase tracking-[0.04em] text-[color:var(--mz-accent)]" }, /* @__PURE__ */ React.createElement("span", { className: "h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--mz-accent)]", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "truncate" }, "Modo Apresenta\xE7\xE3o \u2022 Sem cliente selecionado")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onTrocarCliente, className: `mz-focus shrink-0 text-xs underline underline-offset-4 ${C.accentText}` }, "Selecionar")));
 }
-function GavetaMenu({ rep, cliente, colecao, ativas, encerradas, onEscolherColecao, onSimularExpiracao, onDesfazerExpiracao, onTrocarCliente, onSair, onFechar }) {
+function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, onEscolherColecao, onSimularExpiracao, onDesfazerExpiracao, onTrocarCliente, onTrocarModo, onSair, onFechar }) {
   const fecharRef = useRef(null);
   useEffect(() => {
     var _a;
@@ -445,7 +455,7 @@ function GavetaMenu({ rep, cliente, colecao, ativas, encerradas, onEscolherColec
         v === VISAO_GERAL && /* @__PURE__ */ React.createElement("span", { className: `mt-1 text-xs ${C.muted}` }, "Pe\xE7as permanentes, fora do per\xEDodo de lan\xE7amento")
       ));
     })), /* @__PURE__ */ React.createElement("div", { className: "mt-6 rounded border border-dashed border-[color:var(--mz-line)] p-4" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Demonstra\xE7\xE3o"), LANCAMENTOS.map((l) => /* @__PURE__ */ React.createElement("div", { key: l.nome, className: "mt-2" }, encerradas.includes(l.nome) ? /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onDesfazerExpiracao(l.nome), className: `${C.btnGhost} w-full !py-2 text-xs` }, "Desfazer simula\xE7\xE3o \xB7 reativar ", l.nome) : /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onSimularExpiracao(l.nome), className: `${C.btnPrimary} w-full !py-2 text-xs` }, "Simular expira\xE7\xE3o (90 dias) \xB7 ", l.nome))), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-[11px] leading-snug ${C.muted}` }, "Encerra a cole\xE7\xE3o e migra as pe\xE7as exclusivas para o Cat\xE1logo Geral / Linha."))),
-    /* @__PURE__ */ React.createElement("div", { className: "mt-auto flex flex-col gap-4 border-t border-[color:var(--mz-line)] px-6 py-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Representante"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-medium" }, rep.nome, " ", /* @__PURE__ */ React.createElement("span", { className: `mz-mono text-xs ${C.muted}` }, rep.codigo)), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, rep.regiao)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Cliente / F\xE1brica"), cliente ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-medium" }, cliente.nome), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, cliente.contato, " \xB7 ", cliente.cidade)) : /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-sm ${C.muted}` }, "Nenhuma f\xE1brica selecionada."), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onTrocarCliente, className: `mz-focus mt-2 text-sm font-medium underline underline-offset-4 ${C.accentText}` }, cliente ? "Trocar cliente" : "Escolher cliente")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onSair, className: `mz-focus self-start text-sm ${C.muted} hover:text-[color:var(--mz-ink)]` }, "Sair da conta"))
+    /* @__PURE__ */ React.createElement("div", { className: "mt-auto flex flex-col gap-4 border-t border-[color:var(--mz-line)] px-6 py-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Representante"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-medium" }, rep.nome, " ", /* @__PURE__ */ React.createElement("span", { className: `mz-mono text-xs ${C.muted}` }, rep.codigo)), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, rep.regiao)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Cliente / F\xE1brica"), cliente ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-medium" }, cliente.nome), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, cliente.contato, " \xB7 ", cliente.cidade)) : /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-sm ${C.muted}` }, apresentacao ? "Modo Apresenta\xE7\xE3o \xB7 sem cliente selecionado." : "Nenhuma f\xE1brica selecionada."), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onTrocarCliente, className: `mz-focus mt-2 text-sm font-medium underline underline-offset-4 ${C.accentText}` }, cliente ? "Trocar cliente" : "Escolher cliente")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-x-5 gap-y-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onTrocarModo, className: `mz-focus text-sm ${C.muted} hover:text-[color:var(--mz-ink)]` }, "Trocar modo de acesso"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onSair, className: `mz-focus text-sm ${C.muted} hover:text-[color:var(--mz-ink)]` }, "Sair da conta")))
   ));
 }
 const SLIDES = [
@@ -556,7 +566,78 @@ function HeroCarrossel({ ativas, onVerColecao }) {
     ))))
   );
 }
-function TelaClientes({ clientes, historico, onSelecionar, onCadastrar }) {
+function TelaModo({ rep, onAtendimento, onApresentacao }) {
+  const primeiroNome = rep.nome.split(" ")[0];
+  const opcoes = [
+    {
+      id: "atendimento",
+      numero: "01",
+      titulo: "Atendimento a Cliente",
+      texto: "Escolha a f\xE1brica (ou fa\xE7a o cadastro r\xE1pido) e siga para o cat\xE1logo com carrinho e pedidos liberados.",
+      acao: "Escolher a f\xE1brica",
+      onClick: onAtendimento,
+      destaque: true
+    },
+    {
+      id: "apresentacao",
+      numero: "02",
+      titulo: "Apenas Mostrar Cat\xE1logo",
+      texto: "Modo Apresenta\xE7\xE3o: folheie as cole\xE7\xF5es com estilistas e modelistas, sem cliente e sem compromisso de pedido.",
+      acao: "Abrir a vitrine",
+      onClick: onApresentacao
+    }
+  ];
+  return /* @__PURE__ */ React.createElement("main", { className: "mz-gutter mx-auto flex min-h-[calc(100vh-4.5rem)] max-w-5xl flex-col justify-center py-12" }, /* @__PURE__ */ React.createElement("div", { className: "mz-in" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Metaliza \xB7 ", rep.regiao), /* @__PURE__ */ React.createElement("h1", { className: "mz-display mt-3 text-4xl sm:text-5xl" }, "Ol\xE1, ", primeiroNome, ". Como ser\xE1 esta visita?"), /* @__PURE__ */ React.createElement("p", { className: `mt-3 max-w-xl text-base font-light ${C.muted}` }, "Voc\xEA pode trocar de modo a qualquer momento pelo menu. No modo apresenta\xE7\xE3o, o cliente \xE9 pedido s\xF3 quando voc\xEA for montar o pedido.")), /* @__PURE__ */ React.createElement("div", { className: "mt-10 grid gap-4 md:grid-cols-2" }, opcoes.map((o) => /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      key: o.id,
+      type: "button",
+      onClick: o.onClick,
+      className: `mz-focus group flex min-h-[15rem] flex-col justify-between border p-7 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--mz-shadow)] ${o.destaque ? "border-[color:var(--mz-ink)] bg-[color:var(--mz-ink)] text-[color:var(--mz-bg)]" : "border-[color:var(--mz-line)] bg-[color:var(--mz-surface)]"}`
+    },
+    /* @__PURE__ */ React.createElement("span", { className: "mz-ref text-xs opacity-70" }, o.numero),
+    /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { className: "mz-display block text-3xl" }, o.titulo), /* @__PURE__ */ React.createElement("span", { className: "mt-3 block max-w-sm text-sm font-light leading-relaxed opacity-80" }, o.texto)),
+    /* @__PURE__ */ React.createElement("span", { className: "mt-6 inline-flex items-center gap-3 self-start border-b border-current pb-1 text-xs font-medium uppercase tracking-[0.2em] transition group-hover:gap-4" }, o.acao, " ", /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true" }, "\u2192"))
+  ))));
+}
+function ModalEscolherCliente({ pendente, clientes, historico, onSelecionar, onCadastrar, onFechar }) {
+  const fecharRef = useRef(null);
+  useEffect(() => {
+    var _a;
+    (_a = fecharRef.current) == null ? void 0 : _a.focus();
+    const esc = (e) => e.key === "Escape" && onFechar();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [onFechar]);
+  const prod = pendente && PRODUTOS.find((x) => x.ref === pendente.ref);
+  return /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-50 overflow-y-auto bg-black/55 sm:p-6", onMouseDown: (e) => e.target === e.currentTarget && onFechar() }, /* @__PURE__ */ React.createElement("div", { role: "dialog", "aria-modal": "true", "aria-label": "Para iniciar o pedido, selecione o cliente que est\xE1 atendendo", className: "mz-in relative mx-auto max-w-5xl bg-[color:var(--mz-bg)] shadow-2xl sm:rounded-lg" }, /* @__PURE__ */ React.createElement("button", { ref: fecharRef, type: "button", onClick: onFechar, "aria-label": "Fechar sele\xE7\xE3o de cliente", className: "mz-focus absolute right-3 top-3 z-10 rounded-full p-2 transition hover:bg-[color:var(--mz-sunken)]" }, /* @__PURE__ */ React.createElement(X, { className: "h-5 w-5", strokeWidth: 1.5 })), /* @__PURE__ */ React.createElement(
+    TelaClientes,
+    {
+      como: "div",
+      className: "px-5 py-8 sm:px-8",
+      clientes,
+      historico,
+      onSelecionar,
+      onCadastrar,
+      eyebrow: "Modo Apresenta\xE7\xE3o \xB7 Iniciar pedido",
+      titulo: "Para iniciar o pedido, selecione o cliente que est\xE1 atendendo",
+      subtitulo: pendente ? "A pe\xE7a abaixo entra no carrinho assim que voc\xEA escolher o cliente." : "Escolha a f\xE1brica para abrir o pedido.",
+      topo: pendente && /* @__PURE__ */ React.createElement("div", { className: "mb-6 flex items-center gap-3 border border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)] p-3 pr-10" }, /* @__PURE__ */ React.createElement(ImagemPeca, { produto: prod, miniatura: true }), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Pe\xE7a aguardando \xB7 ", TIPO_LABEL[pendente.tipo]), /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-sm font-medium" }, linhaPedido(prod, pendente))))
+    }
+  )));
+}
+function TelaClientes({
+  clientes,
+  historico,
+  onSelecionar,
+  onCadastrar,
+  como: Tag = "main",
+  eyebrow = "Atendimento \xB7 Cliente",
+  titulo = "Para qual f\xE1brica \xE9 este atendimento?",
+  subtitulo = "O cat\xE1logo abre depois que voc\xEA escolhe o cliente.",
+  topo = null,
+  className = "mz-gutter mx-auto max-w-6xl py-8"
+}) {
   const [abrirCadastro, setAbrirCadastro] = useState(false);
   const [form, setForm] = useState({ nome: "", contato: "", whatsapp: "", cidade: "" });
   const [erros, setErros] = useState({});
@@ -586,7 +667,7 @@ function TelaClientes({ clientes, historico, onSelecionar, onCadastrar }) {
       ...extra
     }
   ), erros[chave] && /* @__PURE__ */ React.createElement("span", { className: "text-xs font-medium text-[color:var(--mz-warn)]" }, erros[chave]));
-  return /* @__PURE__ */ React.createElement("main", { className: "mz-gutter mx-auto max-w-6xl py-8" }, /* @__PURE__ */ React.createElement("div", { className: "mz-in flex flex-wrap items-end justify-between gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Passo 1 de 3 \xB7 Cliente"), /* @__PURE__ */ React.createElement("h1", { className: "mz-display mt-1 text-2xl font-bold sm:text-3xl" }, "Para qual f\xE1brica \xE9 este atendimento?"), /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-sm ${C.muted}` }, "O cat\xE1logo abre depois que voc\xEA escolhe o cliente.")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro((v) => !v), className: C.btnGhost, "aria-expanded": abrirCadastro }, /* @__PURE__ */ React.createElement(Icone.mais, { className: "h-4 w-4" }), " Cadastro R\xE1pido de Novo Cliente")), abrirCadastro && /* @__PURE__ */ React.createElement("form", { onSubmit: salvar, noValidate: true, className: "mz-in mt-6 rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5 shadow-[var(--mz-shadow)]" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-3" }, /* @__PURE__ */ React.createElement("h2", { className: "mz-display text-lg font-bold" }, "Novo cliente"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro(false), className: `mz-focus rounded p-1 ${C.muted}`, "aria-label": "Fechar cadastro" }, /* @__PURE__ */ React.createElement(Icone.fechar, { className: "h-5 w-5" }))), /* @__PURE__ */ React.createElement("div", { className: "mt-4 grid gap-4 sm:grid-cols-2" }, campo("nome", "Nome fantasia", "Ex.: Cal\xE7ados L\xEDrio"), campo("contato", "Contato / Modelista", "Ex.: Ana Paula (modelista)"), campo("whatsapp", "WhatsApp", "(00) 00000-0000", { inputMode: "tel" }), campo("cidade", "Cidade", "Ex.: Sapiranga/RS")), /* @__PURE__ */ React.createElement("div", { className: "mt-5 flex flex-wrap justify-end gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro(false), className: C.btnGhost }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "submit", className: C.btnAccent }, "Salvar e atender este cliente"))), /* @__PURE__ */ React.createElement("ul", { className: "mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" }, clientes.map((c) => {
+  return /* @__PURE__ */ React.createElement(Tag, { className }, topo, /* @__PURE__ */ React.createElement("div", { className: "mz-in flex flex-wrap items-end justify-between gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, eyebrow), /* @__PURE__ */ React.createElement("h1", { className: "mz-display mt-1 text-2xl font-bold sm:text-3xl" }, titulo), /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-sm ${C.muted}` }, subtitulo)), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro((v) => !v), className: C.btnGhost, "aria-expanded": abrirCadastro }, /* @__PURE__ */ React.createElement(Icone.mais, { className: "h-4 w-4" }), " Cadastro R\xE1pido de Novo Cliente")), abrirCadastro && /* @__PURE__ */ React.createElement("form", { onSubmit: salvar, noValidate: true, className: "mz-in mt-6 rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5 shadow-[var(--mz-shadow)]" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-3" }, /* @__PURE__ */ React.createElement("h2", { className: "mz-display text-lg font-bold" }, "Novo cliente"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro(false), className: `mz-focus rounded p-1 ${C.muted}`, "aria-label": "Fechar cadastro" }, /* @__PURE__ */ React.createElement(Icone.fechar, { className: "h-5 w-5" }))), /* @__PURE__ */ React.createElement("div", { className: "mt-4 grid gap-4 sm:grid-cols-2" }, campo("nome", "Nome fantasia", "Ex.: Cal\xE7ados L\xEDrio"), campo("contato", "Contato / Modelista", "Ex.: Ana Paula (modelista)"), campo("whatsapp", "WhatsApp", "(00) 00000-0000", { inputMode: "tel" }), campo("cidade", "Cidade", "Ex.: Sapiranga/RS")), /* @__PURE__ */ React.createElement("div", { className: "mt-5 flex flex-wrap justify-end gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro(false), className: C.btnGhost }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "submit", className: C.btnAccent }, "Salvar e atender este cliente"))), /* @__PURE__ */ React.createElement("ul", { className: "mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" }, clientes.map((c) => {
     const enviados = historico.filter((h) => h.clienteId === c.id).length;
     return /* @__PURE__ */ React.createElement("li", { key: c.id }, /* @__PURE__ */ React.createElement(
       "button",
@@ -646,7 +727,7 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbri
     limpar();
     (_a = vitrineRef.current) == null ? void 0 : _a.scrollIntoView({ behavior: "smooth", block: "start" });
   };
-  return /* @__PURE__ */ React.createElement("main", { className: "pb-24" }, /* @__PURE__ */ React.createElement(HeroCarrossel, { ativas, onVerColecao: verColecao }), /* @__PURE__ */ React.createElement("section", { ref: vitrineRef, className: "mz-gutter mx-auto max-w-7xl scroll-mt-20 pt-12", "aria-labelledby": "mz-vitrine-titulo" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-end justify-between gap-6 border-b border-[color:var(--mz-line)] pb-6" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Vitrine \xB7 Atendendo ", cliente.nome), /* @__PURE__ */ React.createElement("h1", { id: "mz-vitrine-titulo", className: "mz-display mt-2 text-4xl sm:text-5xl" }, colecao), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-sm font-light ${C.muted}` }, lanc ? /* @__PURE__ */ React.createElement(React.Fragment, null, "\u{1F525} Lan\xE7amento exclusivo \xB7 restam ", /* @__PURE__ */ React.createElement("b", { className: "font-medium text-[color:var(--mz-ink)]" }, diasRestantes(lanc), " dias"), " \xB7 ") : "Linha permanente \xB7 pe\xE7as fora do per\xEDodo de lan\xE7amento \xB7 ", daColecao.length, " refer\xEAncias \xB7 fotos originais em Ouro Light")), /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-busca", className: "relative w-full sm:w-72" }, /* @__PURE__ */ React.createElement("span", { className: "sr-only" }, "Buscar por refer\xEAncia"), /* @__PURE__ */ React.createElement(Icone.busca, { className: `pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}` }), /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("main", { className: "pb-24" }, /* @__PURE__ */ React.createElement(HeroCarrossel, { ativas, onVerColecao: verColecao }), /* @__PURE__ */ React.createElement("section", { ref: vitrineRef, className: "mz-gutter mx-auto max-w-7xl scroll-mt-20 pt-12", "aria-labelledby": "mz-vitrine-titulo" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-end justify-between gap-6 border-b border-[color:var(--mz-line)] pb-6" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, cliente ? `Vitrine \xB7 Atendendo ${cliente.nome}` : "Vitrine \xB7 Modo Apresenta\xE7\xE3o"), /* @__PURE__ */ React.createElement("h1", { id: "mz-vitrine-titulo", className: "mz-display mt-2 text-4xl sm:text-5xl" }, colecao), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-sm font-light ${C.muted}` }, lanc ? /* @__PURE__ */ React.createElement(React.Fragment, null, "\u{1F525} Lan\xE7amento exclusivo \xB7 restam ", /* @__PURE__ */ React.createElement("b", { className: "font-medium text-[color:var(--mz-ink)]" }, diasRestantes(lanc), " dias"), " \xB7 ") : "Linha permanente \xB7 pe\xE7as fora do per\xEDodo de lan\xE7amento \xB7 ", daColecao.length, " refer\xEAncias \xB7 fotos originais em Ouro Light")), /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-busca", className: "relative w-full sm:w-72" }, /* @__PURE__ */ React.createElement("span", { className: "sr-only" }, "Buscar por refer\xEAncia"), /* @__PURE__ */ React.createElement(Icone.busca, { className: `pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}` }), /* @__PURE__ */ React.createElement(
     "input",
     {
       id: "mz-busca",
@@ -723,7 +804,7 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
   )), atual.oculta && /* @__PURE__ */ React.createElement("div", { className: "mz-in" }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, "Cor encontrada pelo c\xF3digo \xB7 fora da cartela padr\xE3o"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2" }, /* @__PURE__ */ React.createElement(BotaoCor, { a: atual, ativo: true, titulo, largo: true, onClick: () => {
   } }))), GRUPOS_ACABAMENTO.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.id }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, g.titulo, g.id === "banho" ? ` \xB7 mant\xE9m ${produto.material}` : " \xB7 reclassificam o material"), /* @__PURE__ */ React.createElement("div", { className: `grid gap-2 ${g.id === "banho" ? "grid-cols-5" : "grid-cols-2"}` }, ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => /* @__PURE__ */ React.createElement(BotaoCor, { key: a.id, a, ativo: a.id === valor, titulo, largo: a.grupo === "efeito", onClick: () => onChange(a.id) }))))));
 }
-function ModalPeca({ produto, onFechar, onAdicionar }) {
+function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
   const [baixoId, setBaixoId] = useState(ACABAMENTO_PADRAO.id);
   const [comAfra, setComAfra] = useState(false);
@@ -855,7 +936,7 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
         "aria-describedby": "mz-qtd-aviso"
       }
     ), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: aumentar, "aria-label": `Aumentar ${regra.passo}`, className: "mz-focus flex w-12 items-center justify-center rounded-md border border-[color:var(--mz-line)] transition hover:border-[color:var(--mz-ink)]" }, /* @__PURE__ */ React.createElement(Icone.mais, { className: "h-5 w-5" }))), /* @__PURE__ */ React.createElement("div", { id: "mz-qtd-aviso", "aria-live": "assertive", className: "min-h-[2.25rem] pt-2" }, aviso && /* @__PURE__ */ React.createElement("p", { className: "flex items-center gap-2 rounded-md bg-[color:var(--mz-warn-soft)] px-3 py-1.5 text-sm font-semibold text-[color:var(--mz-warn)]" }, /* @__PURE__ */ React.createElement(Icone.alerta, { className: "h-4 w-4 shrink-0" }), " ", aviso))))),
-    /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] px-5 py-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex min-w-0 items-center gap-2 text-sm" }, /* @__PURE__ */ React.createElement(SwatchesItem, { produto, acabamento: acabamentoId, acabamentoBaixo: baixoId, size: "h-6 w-6" }), /* @__PURE__ */ React.createElement("span", { className: "min-w-0 truncate" }, /* @__PURE__ */ React.createElement("b", { className: "mz-mono" }, valido ? formatarNumero(Number(texto)) : "\u2014"), " un \xB7 ", detalhes, " \xB7 ", TIPO_LABEL[tipo])), /* @__PURE__ */ React.createElement(
+    /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] px-5 py-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex min-w-0 items-center gap-2 text-sm" }, /* @__PURE__ */ React.createElement(SwatchesItem, { produto, acabamento: acabamentoId, acabamentoBaixo: baixoId, size: "h-6 w-6" }), /* @__PURE__ */ React.createElement("span", { className: "min-w-0 truncate" }, /* @__PURE__ */ React.createElement("b", { className: "mz-mono" }, valido ? formatarNumero(Number(texto)) : "\u2014"), " un \xB7 ", detalhes, " \xB7 ", TIPO_LABEL[tipo])), semCliente && /* @__PURE__ */ React.createElement("p", { className: `w-full text-xs ${C.muted} sm:order-last` }, "Modo Apresenta\xE7\xE3o: ao adicionar, voc\xEA escolhe o cliente e a pe\xE7a entra no pedido dele."), /* @__PURE__ */ React.createElement(
       "button",
       {
         type: "button",
@@ -957,6 +1038,9 @@ function MetalizaApp() {
   const [ultimoPedido, setUltimoPedido] = useState(null);
   const [toast, setToast] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [modo, setModo] = useState(null);
+  const [pendente, setPendente] = useState(null);
+  const [escolhendoCliente, setEscolhendoCliente] = useState(false);
   const [encerradas, setEncerradas] = useState([]);
   const ativas = useMemo(
     () => new Set(LANCAMENTOS.filter((l) => !encerradas.includes(l.nome) && diasRestantes(l) > 0).map((l) => l.nome)),
@@ -966,6 +1050,7 @@ function MetalizaApp() {
   const itens = cliente && itensPorCliente[cliente.id] || [];
   const itensAtuais = itens;
   const setItens = (fn) => setItensPorCliente((m) => ({ ...m, [cliente.id]: fn(m[cliente.id] || []) }));
+  const apresentacao = modo === "apresentacao" && !cliente;
   useEffect(() => {
     if (!toast) return void 0;
     const t = setTimeout(() => setToast(null), 2600);
@@ -973,22 +1058,71 @@ function MetalizaApp() {
   }, [toast]);
   const entrar = (r) => {
     setRep(r);
-    setTela("clientes");
+    setTela("modo");
   };
   const sair = () => {
     setRep(null);
     setCliente(null);
+    setModo(null);
+    setPendente(null);
+    setEscolhendoCliente(false);
     setPeca(null);
     setPedidoAberto(false);
     setMenuAberto(false);
+    setTela("modo");
+  };
+  const iniciarAtendimento = () => {
+    var _a;
+    setModo("atendimento");
     setTela("clientes");
+    (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+  };
+  const iniciarApresentacao = () => {
+    var _a;
+    setModo("apresentacao");
+    setCliente(null);
+    setColecao(visaoInicial(ativas));
+    setTela("catalogo");
+    (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+  };
+  const trocarModo = () => {
+    var _a;
+    setMenuAberto(false);
+    setPedidoAberto(false);
+    setPeca(null);
+    setCliente(null);
+    setTela("modo");
+    (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
   };
   const selecionarCliente = (c) => {
     var _a;
     setCliente(c);
+    setModo("atendimento");
     setColecao(visaoInicial(ativas));
     setTela("catalogo");
     (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+  };
+  const vincularClienteDoModal = (c) => {
+    setCliente(c);
+    setModo("atendimento");
+    setEscolhendoCliente(false);
+    if (pendente) {
+      adicionarPara(c.id, pendente);
+      const prod = PRODUTOS.find((x) => x.ref === pendente.ref);
+      setToast(`Atendendo ${c.nome}. Adicionado: ${linhaPedido(prod, pendente)}`);
+      setPendente(null);
+    } else {
+      setToast(`Atendendo ${c.nome}. Pedido liberado.`);
+    }
+  };
+  const cadastrarClienteDoModal = (c) => {
+    setClientes((l) => [c, ...l]);
+    vincularClienteDoModal(c);
+  };
+  const cancelarEscolhaCliente = () => {
+    setEscolhendoCliente(false);
+    if (pendente) setToast("Pe\xE7a n\xE3o adicionada: nenhum cliente selecionado.");
+    setPendente(null);
   };
   const cadastrarCliente = (c) => {
     setClientes((l) => [c, ...l]);
@@ -999,6 +1133,10 @@ function MetalizaApp() {
     setPedidoAberto(false);
     setPeca(null);
     setMenuAberto(false);
+    if (modo === "apresentacao" && !cliente) {
+      setEscolhendoCliente(true);
+      return;
+    }
     setTela("clientes");
   };
   const simularExpiracao = (nome) => {
@@ -1016,7 +1154,7 @@ function MetalizaApp() {
     var _a;
     setColecao(c);
     setMenuAberto(false);
-    if (!cliente) {
+    if (!cliente && modo !== "apresentacao") {
       setTela("clientes");
       setToast("Escolha a f\xE1brica para abrir o cat\xE1logo.");
       return;
@@ -1024,16 +1162,23 @@ function MetalizaApp() {
     setTela("catalogo");
     (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
   };
-  const adicionar = (novo) => {
+  const adicionarPara = (clienteId, novo) => {
     const chave = [novo.ref, novo.acabamento, novo.acabamentoBaixo || "-", novo.afra || "sem-afra", novo.tipo].join("|");
-    setItens((lista) => {
+    setItensPorCliente((m) => {
+      const lista = m[clienteId] || [];
       const existente = lista.find((i) => i.chave === chave);
-      if (existente) {
-        return lista.map((i) => i.chave === chave ? { ...i, qtd: i.qtd + novo.qtd } : i);
-      }
-      return [...lista, { ...novo, chave }];
+      const nova = existente ? lista.map((i) => i.chave === chave ? { ...i, qtd: i.qtd + novo.qtd } : i) : [...lista, { ...novo, chave }];
+      return { ...m, [clienteId]: nova };
     });
+  };
+  const adicionar = (novo) => {
     setPeca(null);
+    if (!cliente) {
+      setPendente(novo);
+      setEscolhendoCliente(true);
+      return;
+    }
+    adicionarPara(cliente.id, novo);
     const prod = PRODUTOS.find((x) => x.ref === novo.ref);
     setToast(`Adicionado (${TIPO_LABEL[novo.tipo]}): ${linhaPedido(prod, novo)}`);
   };
@@ -1063,17 +1208,19 @@ function MetalizaApp() {
   return /* @__PURE__ */ React.createElement("div", { className: "mz-root" }, /* @__PURE__ */ React.createElement("style", null, ESTILOS), !rep ? /* @__PURE__ */ React.createElement(TelaLogin, { onEntrar: entrar }) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
     Cabecalho,
     {
-      cliente: tela === "clientes" ? null : cliente,
+      cliente: tela === "clientes" || tela === "modo" ? null : cliente,
+      apresentacao: apresentacao && tela === "catalogo",
       qtdItens,
       onAbrirMenu: () => setMenuAberto(true),
       onTrocarCliente: trocarCliente,
-      onAbrirPedido: () => setPedidoAberto(true)
+      onAbrirPedido: () => cliente ? setPedidoAberto(true) : setEscolhendoCliente(true)
     }
   ), menuAberto && /* @__PURE__ */ React.createElement(
     GavetaMenu,
     {
       rep,
       cliente,
+      apresentacao,
       colecao,
       ativas,
       encerradas,
@@ -1081,10 +1228,11 @@ function MetalizaApp() {
       onSimularExpiracao: simularExpiracao,
       onDesfazerExpiracao: desfazerExpiracao,
       onTrocarCliente: trocarCliente,
+      onTrocarModo: trocarModo,
       onSair: sair,
       onFechar: () => setMenuAberto(false)
     }
-  ), tela === "clientes" && /* @__PURE__ */ React.createElement(TelaClientes, { clientes, historico, onSelecionar: selecionarCliente, onCadastrar: cadastrarCliente }), tela === "catalogo" && cliente && /* @__PURE__ */ React.createElement(TelaCatalogo, { cliente, itensPedido: itens, colecao, ativas, onColecao: setColecao, onAbrirPeca: setPeca }), tela === "revisao" && cliente && /* @__PURE__ */ React.createElement(TelaRevisao, { rep, cliente, itens, onVoltar: () => setTela("catalogo"), onQtd: alterarQtd, onRemover: remover, onEnviar: enviar }), tela === "enviado" && ultimoPedido && /* @__PURE__ */ React.createElement(TelaEnviado, { pedido: ultimoPedido, onNovoMesmoCliente: () => setTela("catalogo"), onTrocarCliente: trocarCliente }), tela === "catalogo" && qtdItens > 0 && !pedidoAberto && !peca && /* @__PURE__ */ React.createElement("div", { className: "pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setPedidoAberto(true), className: `${C.btnPrimary} pointer-events-auto shadow-[var(--mz-shadow)]` }, /* @__PURE__ */ React.createElement(Icone.sacola, { className: "h-4 w-4" }), " Ver pedido \xB7 ", qtdItens, " ", qtdItens === 1 ? "item" : "itens")), peca && /* @__PURE__ */ React.createElement(ModalPeca, { produto: peca, onFechar: () => setPeca(null), onAdicionar: adicionar }), pedidoAberto && cliente && /* @__PURE__ */ React.createElement(
+  ), tela === "modo" && /* @__PURE__ */ React.createElement(TelaModo, { rep, onAtendimento: iniciarAtendimento, onApresentacao: iniciarApresentacao }), tela === "clientes" && /* @__PURE__ */ React.createElement(TelaClientes, { clientes, historico, onSelecionar: selecionarCliente, onCadastrar: cadastrarCliente }), tela === "catalogo" && (cliente || apresentacao) && /* @__PURE__ */ React.createElement(TelaCatalogo, { cliente, itensPedido: itens, colecao, ativas, onColecao: setColecao, onAbrirPeca: setPeca }), tela === "revisao" && cliente && /* @__PURE__ */ React.createElement(TelaRevisao, { rep, cliente, itens, onVoltar: () => setTela("catalogo"), onQtd: alterarQtd, onRemover: remover, onEnviar: enviar }), tela === "enviado" && ultimoPedido && /* @__PURE__ */ React.createElement(TelaEnviado, { pedido: ultimoPedido, onNovoMesmoCliente: () => setTela("catalogo"), onTrocarCliente: trocarCliente }), tela === "catalogo" && qtdItens > 0 && !pedidoAberto && !peca && /* @__PURE__ */ React.createElement("div", { className: "pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setPedidoAberto(true), className: `${C.btnPrimary} pointer-events-auto shadow-[var(--mz-shadow)]` }, /* @__PURE__ */ React.createElement(Icone.sacola, { className: "h-4 w-4" }), " Ver pedido \xB7 ", qtdItens, " ", qtdItens === 1 ? "item" : "itens")), peca && /* @__PURE__ */ React.createElement(ModalPeca, { produto: peca, semCliente: !cliente, onFechar: () => setPeca(null), onAdicionar: adicionar }), pedidoAberto && cliente && /* @__PURE__ */ React.createElement(
     PainelPedido,
     {
       cliente,
@@ -1098,6 +1246,16 @@ function MetalizaApp() {
         setTela("revisao");
         (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
       }
+    }
+  ), escolhendoCliente && /* @__PURE__ */ React.createElement(
+    ModalEscolherCliente,
+    {
+      pendente,
+      clientes,
+      historico,
+      onSelecionar: vincularClienteDoModal,
+      onCadastrar: cadastrarClienteDoModal,
+      onFechar: cancelarEscolhaCliente
     }
   ), toast && /* @__PURE__ */ React.createElement("div", { role: "status", className: "fixed left-1/2 top-[calc(env(safe-area-inset-top,0px)+4.5rem)] z-[60] w-[min(92vw,28rem)] -translate-x-1/2 rounded-lg bg-[color:var(--mz-ink)] px-4 py-3 text-sm font-semibold text-[color:var(--mz-bg)] shadow-2xl" }, toast)));
 }

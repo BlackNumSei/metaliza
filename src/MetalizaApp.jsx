@@ -577,7 +577,7 @@ function TelaLogin({ onEntrar }) {
 
 /* ----------------------------- cabeçalho ----------------------------- */
 
-function Cabecalho({ cliente, qtdItens, onAbrirMenu, onTrocarCliente, onAbrirPedido }) {
+function Cabecalho({ cliente, apresentacao, qtdItens, onAbrirMenu, onTrocarCliente, onAbrirPedido }) {
   return (
     <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 border-b border-[color:var(--mz-line)] bg-[color:var(--mz-bg)]/95 backdrop-blur">
       <div className="mz-gutter mx-auto flex max-w-7xl items-center gap-3 py-3">
@@ -590,13 +590,24 @@ function Cabecalho({ cliente, qtdItens, onAbrirMenu, onTrocarCliente, onAbrirPed
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          {apresentacao && (
+            <button
+              type="button"
+              onClick={onTrocarCliente}
+              title="Selecionar cliente"
+              className="mz-focus hidden items-center gap-2 rounded-full border border-[color:var(--mz-accent)] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-[color:var(--mz-accent)] sm:inline-flex"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--mz-accent)]" aria-hidden="true" />
+              Modo Apresentação • Sem cliente selecionado
+            </button>
+          )}
           {cliente && (
             <button type="button" onClick={onTrocarCliente} className="mz-focus hidden max-w-[16rem] border-r border-[color:var(--mz-line)] px-3 text-right sm:block" title="Trocar cliente">
               <span className="mz-eyebrow block text-[9px]">Atendendo</span>
               <span className="block truncate text-sm font-medium">{cliente.nome}</span>
             </button>
           )}
-          {cliente && (
+          {(cliente || apresentacao) && (
             <button type="button" onClick={onAbrirPedido} className="mz-focus relative inline-flex items-center gap-2 rounded-full border border-[color:var(--mz-ink)] px-4 py-2 text-sm font-medium transition hover:bg-[color:var(--mz-ink)] hover:text-[color:var(--mz-bg)]">
               <Icone.sacola className="h-4 w-4" />
               Pedido
@@ -607,11 +618,20 @@ function Cabecalho({ cliente, qtdItens, onAbrirMenu, onTrocarCliente, onAbrirPed
           )}
         </div>
       </div>
+      {apresentacao && (
+        <div className="mz-gutter flex items-center justify-between gap-3 border-t border-[color:var(--mz-line)] py-2 sm:hidden">
+          <span className="flex min-w-0 items-center gap-2 text-[10px] font-medium uppercase tracking-[0.04em] text-[color:var(--mz-accent)]">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--mz-accent)]" aria-hidden="true" />
+            <span className="truncate">Modo Apresentação • Sem cliente selecionado</span>
+          </span>
+          <button type="button" onClick={onTrocarCliente} className={`mz-focus shrink-0 text-xs underline underline-offset-4 ${C.accentText}`}>Selecionar</button>
+        </div>
+      )}
     </header>
   );
 }
 
-function GavetaMenu({ rep, cliente, colecao, ativas, encerradas, onEscolherColecao, onSimularExpiracao, onDesfazerExpiracao, onTrocarCliente, onSair, onFechar }) {
+function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, onEscolherColecao, onSimularExpiracao, onDesfazerExpiracao, onTrocarCliente, onTrocarModo, onSair, onFechar }) {
   const fecharRef = useRef(null);
   useEffect(() => {
     fecharRef.current?.focus();
@@ -703,15 +723,20 @@ function GavetaMenu({ rep, cliente, colecao, ativas, encerradas, onEscolherColec
                 <p className={`text-sm ${C.muted}`}>{cliente.contato} · {cliente.cidade}</p>
               </>
             ) : (
-              <p className={`mt-1 text-sm ${C.muted}`}>Nenhuma fábrica selecionada.</p>
+              <p className={`mt-1 text-sm ${C.muted}`}>{apresentacao ? "Modo Apresentação · sem cliente selecionado." : "Nenhuma fábrica selecionada."}</p>
             )}
             <button type="button" onClick={onTrocarCliente} className={`mz-focus mt-2 text-sm font-medium underline underline-offset-4 ${C.accentText}`}>
               {cliente ? "Trocar cliente" : "Escolher cliente"}
             </button>
           </div>
-          <button type="button" onClick={onSair} className={`mz-focus self-start text-sm ${C.muted} hover:text-[color:var(--mz-ink)]`}>
-            Sair da conta
-          </button>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <button type="button" onClick={onTrocarModo} className={`mz-focus text-sm ${C.muted} hover:text-[color:var(--mz-ink)]`}>
+              Trocar modo de acesso
+            </button>
+            <button type="button" onClick={onSair} className={`mz-focus text-sm ${C.muted} hover:text-[color:var(--mz-ink)]`}>
+              Sair da conta
+            </button>
+          </div>
         </div>
       </nav>
     </div>
@@ -860,9 +885,122 @@ function HeroCarrossel({ ativas, onVerColecao }) {
   );
 }
 
+/* ----------------------------- modo de acesso ----------------------------- */
+
+function TelaModo({ rep, onAtendimento, onApresentacao }) {
+  const primeiroNome = rep.nome.split(" ")[0];
+  const opcoes = [
+    {
+      id: "atendimento",
+      numero: "01",
+      titulo: "Atendimento a Cliente",
+      texto: "Escolha a fábrica (ou faça o cadastro rápido) e siga para o catálogo com carrinho e pedidos liberados.",
+      acao: "Escolher a fábrica",
+      onClick: onAtendimento,
+      destaque: true,
+    },
+    {
+      id: "apresentacao",
+      numero: "02",
+      titulo: "Apenas Mostrar Catálogo",
+      texto: "Modo Apresentação: folheie as coleções com estilistas e modelistas, sem cliente e sem compromisso de pedido.",
+      acao: "Abrir a vitrine",
+      onClick: onApresentacao,
+    },
+  ];
+  return (
+    <main className="mz-gutter mx-auto flex min-h-[calc(100vh-4.5rem)] max-w-5xl flex-col justify-center py-12">
+      <div className="mz-in">
+        <p className="mz-eyebrow">Metaliza · {rep.regiao}</p>
+        <h1 className="mz-display mt-3 text-4xl sm:text-5xl">Olá, {primeiroNome}. Como será esta visita?</h1>
+        <p className={`mt-3 max-w-xl text-base font-light ${C.muted}`}>
+          Você pode trocar de modo a qualquer momento pelo menu. No modo apresentação, o cliente é pedido só quando você for montar o pedido.
+        </p>
+      </div>
+      <div className="mt-10 grid gap-4 md:grid-cols-2">
+        {opcoes.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={o.onClick}
+            className={`mz-focus group flex min-h-[15rem] flex-col justify-between border p-7 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--mz-shadow)] ${
+              o.destaque
+                ? "border-[color:var(--mz-ink)] bg-[color:var(--mz-ink)] text-[color:var(--mz-bg)]"
+                : "border-[color:var(--mz-line)] bg-[color:var(--mz-surface)]"
+            }`}
+          >
+            <span className="mz-ref text-xs opacity-70">{o.numero}</span>
+            <span>
+              <span className="mz-display block text-3xl">{o.titulo}</span>
+              <span className="mt-3 block max-w-sm text-sm font-light leading-relaxed opacity-80">{o.texto}</span>
+            </span>
+            <span className="mt-6 inline-flex items-center gap-3 self-start border-b border-current pb-1 text-xs font-medium uppercase tracking-[0.2em] transition group-hover:gap-4">
+              {o.acao} <span aria-hidden="true">→</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </main>
+  );
+}
+
+function ModalEscolherCliente({ pendente, clientes, historico, onSelecionar, onCadastrar, onFechar }) {
+  const fecharRef = useRef(null);
+  useEffect(() => {
+    fecharRef.current?.focus();
+    const esc = (e) => e.key === "Escape" && onFechar();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [onFechar]);
+  const prod = pendente && PRODUTOS.find((x) => x.ref === pendente.ref);
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/55 sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onFechar()}>
+      <div role="dialog" aria-modal="true" aria-label="Para iniciar o pedido, selecione o cliente que está atendendo" className="mz-in relative mx-auto max-w-5xl bg-[color:var(--mz-bg)] shadow-2xl sm:rounded-lg">
+        <button ref={fecharRef} type="button" onClick={onFechar} aria-label="Fechar seleção de cliente" className="mz-focus absolute right-3 top-3 z-10 rounded-full p-2 transition hover:bg-[color:var(--mz-sunken)]">
+          <X className="h-5 w-5" strokeWidth={1.5} />
+        </button>
+        <TelaClientes
+          como="div"
+          className="px-5 py-8 sm:px-8"
+          clientes={clientes}
+          historico={historico}
+          onSelecionar={onSelecionar}
+          onCadastrar={onCadastrar}
+          eyebrow="Modo Apresentação · Iniciar pedido"
+          titulo="Para iniciar o pedido, selecione o cliente que está atendendo"
+          subtitulo={pendente ? "A peça abaixo entra no carrinho assim que você escolher o cliente." : "Escolha a fábrica para abrir o pedido."}
+          topo={
+            pendente && (
+              <div className="mb-6 flex items-center gap-3 border border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)] p-3 pr-10">
+                <ImagemPeca produto={prod} miniatura />
+                <div className="min-w-0">
+                  <p className="mz-eyebrow">Peça aguardando · {TIPO_LABEL[pendente.tipo]}</p>
+                  <p className="mt-1 text-sm font-medium">{linhaPedido(prod, pendente)}</p>
+                </div>
+              </div>
+            )
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
 /* ----------------------------- tela 2: clientes ----------------------------- */
 
-function TelaClientes({ clientes, historico, onSelecionar, onCadastrar }) {
+function TelaClientes({
+  clientes,
+  historico,
+  onSelecionar,
+  onCadastrar,
+  como: Tag = "main",
+  eyebrow = "Atendimento · Cliente",
+  titulo = "Para qual fábrica é este atendimento?",
+  subtitulo = "O catálogo abre depois que você escolhe o cliente.",
+  topo = null,
+  className = "mz-gutter mx-auto max-w-6xl py-8",
+}) {
   const [abrirCadastro, setAbrirCadastro] = useState(false);
   const [form, setForm] = useState({ nome: "", contato: "", whatsapp: "", cidade: "" });
   const [erros, setErros] = useState({});
@@ -899,12 +1037,13 @@ function TelaClientes({ clientes, historico, onSelecionar, onCadastrar }) {
   );
 
   return (
-    <main className="mz-gutter mx-auto max-w-6xl py-8">
+    <Tag className={className}>
+      {topo}
       <div className="mz-in flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="mz-eyebrow">Passo 1 de 3 · Cliente</p>
-          <h1 className="mz-display mt-1 text-2xl font-bold sm:text-3xl">Para qual fábrica é este atendimento?</h1>
-          <p className={`mt-1 text-sm ${C.muted}`}>O catálogo abre depois que você escolhe o cliente.</p>
+          <p className="mz-eyebrow">{eyebrow}</p>
+          <h1 className="mz-display mt-1 text-2xl font-bold sm:text-3xl">{titulo}</h1>
+          <p className={`mt-1 text-sm ${C.muted}`}>{subtitulo}</p>
         </div>
         <button type="button" onClick={() => setAbrirCadastro((v) => !v)} className={C.btnGhost} aria-expanded={abrirCadastro}>
           <Icone.mais className="h-4 w-4" /> Cadastro Rápido de Novo Cliente
@@ -976,7 +1115,7 @@ function TelaClientes({ clientes, historico, onSelecionar, onCadastrar }) {
           );
         })}
       </ul>
-    </main>
+    </Tag>
   );
 }
 
@@ -1047,7 +1186,7 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbri
       <section ref={vitrineRef} className="mz-gutter mx-auto max-w-7xl scroll-mt-20 pt-12" aria-labelledby="mz-vitrine-titulo">
         <div className="flex flex-wrap items-end justify-between gap-6 border-b border-[color:var(--mz-line)] pb-6">
           <div className="min-w-0">
-            <p className="mz-eyebrow">Vitrine · Atendendo {cliente.nome}</p>
+            <p className="mz-eyebrow">{cliente ? `Vitrine · Atendendo ${cliente.nome}` : "Vitrine · Modo Apresentação"}</p>
             <h1 id="mz-vitrine-titulo" className="mz-display mt-2 text-4xl sm:text-5xl">{colecao}</h1>
             <p className={`mt-2 text-sm font-light ${C.muted}`}>
               {lanc
@@ -1244,7 +1383,7 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
   );
 }
 
-function ModalPeca({ produto, onFechar, onAdicionar }) {
+function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
   const [baixoId, setBaixoId] = useState(ACABAMENTO_PADRAO.id);
   const [comAfra, setComAfra] = useState(false);
@@ -1503,6 +1642,7 @@ function ModalPeca({ produto, onFechar, onAdicionar }) {
               <b className="mz-mono">{valido ? formatarNumero(Number(texto)) : "—"}</b> un · {detalhes} · {TIPO_LABEL[tipo]}
             </span>
           </div>
+          {semCliente && <p className={`w-full text-xs ${C.muted} sm:order-last`}>Modo Apresentação: ao adicionar, você escolhe o cliente e a peça entra no pedido dele.</p>}
           <button
             type="button"
             disabled={!valido}
@@ -1826,6 +1966,9 @@ export default function MetalizaApp() {
   const [ultimoPedido, setUltimoPedido] = useState(null);
   const [toast, setToast] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [modo, setModo] = useState(null); // "atendimento" | "apresentacao"
+  const [pendente, setPendente] = useState(null); // peça configurada no modo apresentação, aguardando o cliente
+  const [escolhendoCliente, setEscolhendoCliente] = useState(false);
   const [encerradas, setEncerradas] = useState([]);
   const ativas = useMemo(
     () => new Set(LANCAMENTOS.filter((l) => !encerradas.includes(l.nome) && diasRestantes(l) > 0).map((l) => l.nome)),
@@ -1836,6 +1979,7 @@ export default function MetalizaApp() {
   const itens = (cliente && itensPorCliente[cliente.id]) || [];
   const itensAtuais = itens;
   const setItens = (fn) => setItensPorCliente((m) => ({ ...m, [cliente.id]: fn(m[cliente.id] || []) }));
+  const apresentacao = modo === "apresentacao" && !cliente;
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -1843,16 +1987,58 @@ export default function MetalizaApp() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const entrar = (r) => { setRep(r); setTela("clientes"); };
-  const sair = () => { setRep(null); setCliente(null); setPeca(null); setPedidoAberto(false); setMenuAberto(false); setTela("clientes"); };
+  const entrar = (r) => { setRep(r); setTela("modo"); };
+  const sair = () => {
+    setRep(null); setCliente(null); setModo(null); setPendente(null); setEscolhendoCliente(false);
+    setPeca(null); setPedidoAberto(false); setMenuAberto(false); setTela("modo");
+  };
+  const iniciarAtendimento = () => { setModo("atendimento"); setTela("clientes"); window.scrollTo?.(0, 0); };
+  const iniciarApresentacao = () => {
+    setModo("apresentacao");
+    setCliente(null);
+    setColecao(visaoInicial(ativas));
+    setTela("catalogo");
+    window.scrollTo?.(0, 0);
+  };
+  const trocarModo = () => { setMenuAberto(false); setPedidoAberto(false); setPeca(null); setCliente(null); setTela("modo"); window.scrollTo?.(0, 0); };
 
-  const selecionarCliente = (c) => { setCliente(c); setColecao(visaoInicial(ativas)); setTela("catalogo"); window.scrollTo?.(0, 0); };
+  const selecionarCliente = (c) => { setCliente(c); setModo("atendimento"); setColecao(visaoInicial(ativas)); setTela("catalogo"); window.scrollTo?.(0, 0); };
+
+  // Modo apresentação: o cliente escolhido no modal recebe a peça pendente e o app entra em atendimento
+  const vincularClienteDoModal = (c) => {
+    setCliente(c);
+    setModo("atendimento");
+    setEscolhendoCliente(false);
+    if (pendente) {
+      adicionarPara(c.id, pendente);
+      const prod = PRODUTOS.find((x) => x.ref === pendente.ref);
+      setToast(`Atendendo ${c.nome}. Adicionado: ${linhaPedido(prod, pendente)}`);
+      setPendente(null);
+    } else {
+      setToast(`Atendendo ${c.nome}. Pedido liberado.`);
+    }
+  };
+  const cadastrarClienteDoModal = (c) => {
+    setClientes((l) => [c, ...l]);
+    vincularClienteDoModal(c);
+  };
+  const cancelarEscolhaCliente = () => {
+    setEscolhendoCliente(false);
+    if (pendente) setToast("Peça não adicionada: nenhum cliente selecionado.");
+    setPendente(null);
+  };
   const cadastrarCliente = (c) => {
     setClientes((l) => [c, ...l]);
     setToast(`${c.nome} cadastrado.`);
     selecionarCliente(c);
   };
-  const trocarCliente = () => { setPedidoAberto(false); setPeca(null); setMenuAberto(false); setTela("clientes"); };
+  const trocarCliente = () => {
+    setPedidoAberto(false);
+    setPeca(null);
+    setMenuAberto(false);
+    if (modo === "apresentacao" && !cliente) { setEscolhendoCliente(true); return; }
+    setTela("clientes");
+  };
   const simularExpiracao = (nome) => {
     const migradas = PRODUTOS.filter((p) => p.colecao === nome).length;
     setEncerradas((l) => [...new Set([...l, nome])]);
@@ -1867,21 +2053,32 @@ export default function MetalizaApp() {
   const escolherColecao = (c) => {
     setColecao(c);
     setMenuAberto(false);
-    if (!cliente) { setTela("clientes"); setToast("Escolha a fábrica para abrir o catálogo."); return; }
+    if (!cliente && modo !== "apresentacao") { setTela("clientes"); setToast("Escolha a fábrica para abrir o catálogo."); return; }
     setTela("catalogo");
     window.scrollTo?.(0, 0);
   };
 
-  const adicionar = (novo) => {
+  const adicionarPara = (clienteId, novo) => {
     const chave = [novo.ref, novo.acabamento, novo.acabamentoBaixo || "-", novo.afra || "sem-afra", novo.tipo].join("|");
-    setItens((lista) => {
+    setItensPorCliente((m) => {
+      const lista = m[clienteId] || [];
       const existente = lista.find((i) => i.chave === chave);
-      if (existente) {
-        return lista.map((i) => (i.chave === chave ? { ...i, qtd: i.qtd + novo.qtd } : i));
-      }
-      return [...lista, { ...novo, chave }];
+      const nova = existente
+        ? lista.map((i) => (i.chave === chave ? { ...i, qtd: i.qtd + novo.qtd } : i))
+        : [...lista, { ...novo, chave }];
+      return { ...m, [clienteId]: nova };
     });
+  };
+
+  const adicionar = (novo) => {
     setPeca(null);
+    // Sem cliente (modo apresentação): guarda a peça e pede o cliente antes de montar o pedido
+    if (!cliente) {
+      setPendente(novo);
+      setEscolhendoCliente(true);
+      return;
+    }
+    adicionarPara(cliente.id, novo);
     const prod = PRODUTOS.find((x) => x.ref === novo.ref);
     setToast(`Adicionado (${TIPO_LABEL[novo.tipo]}): ${linhaPedido(prod, novo)}`);
   };
@@ -1921,16 +2118,18 @@ export default function MetalizaApp() {
       ) : (
         <>
           <Cabecalho
-            cliente={tela === "clientes" ? null : cliente}
+            cliente={tela === "clientes" || tela === "modo" ? null : cliente}
+            apresentacao={apresentacao && tela === "catalogo"}
             qtdItens={qtdItens}
             onAbrirMenu={() => setMenuAberto(true)}
             onTrocarCliente={trocarCliente}
-            onAbrirPedido={() => setPedidoAberto(true)}
+            onAbrirPedido={() => (cliente ? setPedidoAberto(true) : setEscolhendoCliente(true))}
           />
           {menuAberto && (
             <GavetaMenu
               rep={rep}
               cliente={cliente}
+              apresentacao={apresentacao}
               colecao={colecao}
               ativas={ativas}
               encerradas={encerradas}
@@ -1938,15 +2137,17 @@ export default function MetalizaApp() {
               onSimularExpiracao={simularExpiracao}
               onDesfazerExpiracao={desfazerExpiracao}
               onTrocarCliente={trocarCliente}
+              onTrocarModo={trocarModo}
               onSair={sair}
               onFechar={() => setMenuAberto(false)}
             />
           )}
 
+          {tela === "modo" && <TelaModo rep={rep} onAtendimento={iniciarAtendimento} onApresentacao={iniciarApresentacao} />}
           {tela === "clientes" && (
             <TelaClientes clientes={clientes} historico={historico} onSelecionar={selecionarCliente} onCadastrar={cadastrarCliente} />
           )}
-          {tela === "catalogo" && cliente && (
+          {tela === "catalogo" && (cliente || apresentacao) && (
             <TelaCatalogo cliente={cliente} itensPedido={itens} colecao={colecao} ativas={ativas} onColecao={setColecao} onAbrirPeca={setPeca} />
           )}
           {tela === "revisao" && cliente && (
@@ -1964,7 +2165,7 @@ export default function MetalizaApp() {
             </div>
           )}
 
-          {peca && <ModalPeca produto={peca} onFechar={() => setPeca(null)} onAdicionar={adicionar} />}
+          {peca && <ModalPeca produto={peca} semCliente={!cliente} onFechar={() => setPeca(null)} onAdicionar={adicionar} />}
           {pedidoAberto && cliente && (
             <PainelPedido
               cliente={cliente}
@@ -1973,6 +2174,17 @@ export default function MetalizaApp() {
               onQtd={alterarQtd}
               onRemover={remover}
               onRevisar={() => { setPedidoAberto(false); setTela("revisao"); window.scrollTo?.(0, 0); }}
+            />
+          )}
+
+          {escolhendoCliente && (
+            <ModalEscolherCliente
+              pendente={pendente}
+              clientes={clientes}
+              historico={historico}
+              onSelecionar={vincularClienteDoModal}
+              onCadastrar={cadastrarClienteDoModal}
+              onFechar={cancelarEscolhaCliente}
             />
           )}
 

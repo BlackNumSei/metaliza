@@ -8,7 +8,16 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 ## Fluxo
 
 1. **Login:** email/senha (`carlos.mendes@metaliza.com.br` / `demo123`) ou o botão "Entrar como Representante Demonstração".
-2. **Cliente:** 3 fábricas pré-cadastradas, seleção com 1 clique, e Cadastro Rápido (nome fantasia, contato/modelista, WhatsApp com máscara, cidade).
+2. **Modo de acesso**, logo após o login:
+   - **Atendimento a Cliente:**
+     - Abre a seleção de cliente: 3 fábricas pré-cadastradas, seleção com 1 clique, e Cadastro Rápido (nome fantasia, contato/modelista, WhatsApp com máscara, cidade).
+     - Depois segue para o catálogo com carrinho e pedidos liberados.
+   - **Apenas Mostrar Catálogo (Modo Apresentação):**
+     - Vai direto para a vitrine, sem cliente. O cabeçalho mostra `Modo Apresentação • Sem cliente selecionado`.
+     - Ao tocar em "Adicionar ao pedido" (ou no botão Pedido), a peça configurada fica guardada e abre o modal "Para iniciar o pedido, selecione o cliente que está atendendo", com a lista de clientes e o cadastro rápido.
+     - Escolhido o cliente, a peça entra no carrinho dele e o app passa para o atendimento normal.
+     - Fechar o modal descarta a peça pendente.
+   - A gaveta lateral tem "Trocar modo de acesso".
 3. **Showroom:** é a vitrine do catálogo, com estética editorial de moda (títulos em Bodoni Moda e texto em Jost).
    - **Carrossel de destaques no topo:** só banners de coleção (Verão 2026 e Catálogo Geral / Linha Permanente), com setas e indicadores.
    - **Menu hambúrguer:** abre uma gaveta lateral com as visões do catálogo e os dados do representante e do cliente. Fecha no X, no Esc ou clicando fora.
