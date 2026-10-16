@@ -13,7 +13,9 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
    - EF 661 (Enfeites, peça única);
    - EF 1170 (Enfeites, bipartida: aro + cabochão);
    - FV 24K (Fivelas);
-   - 1591 (Saltos, Sola 1902). A foto ainda não foi recebida: o app mostra "Foto da peça pendente" até ela ser adicionada em `FOTOS.s1591`.
+   - 1591 (Saltos, Sola 1902).
+
+   Peça sem foto cadastrada mostra "Foto da peça pendente". Cada foto pode ter o próprio `fundo` (cor do fundo da imagem) para se fundir ao quadro.
 
    Tem filtros por categoria e por material-base, e busca por código ou nome.
 4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça bipartida (`bipartida: true`) tem dois seletores independentes, "Cor da Parte de Cima" e "Cor da Parte de Baixo". Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
