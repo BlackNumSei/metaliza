@@ -1,0 +1,11 @@
+{
+  "name": "metaliza-representante",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "preview:build": "node scripts/build-preview.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.23.1"
+  }
+}
