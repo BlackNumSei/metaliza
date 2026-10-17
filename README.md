@@ -5,6 +5,22 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 - **Componente único:** `src/MetalizaApp.jsx` (export default `MetalizaApp`). Ele usa `react`, `lucide-react` (ícones de menu, fechar e setas do carrossel) e classes Tailwind. Os tokens de cor e as fontes vêm de um `<style>` interno, então não exige configuração extra do Tailwind.
 - **Preview standalone:** `preview/index.html`, que abre direto no navegador (React, lucide-react e Tailwind via CDN). Para regenerar depois de editar o componente: `npm install && npm run preview:build`.
 
+## Identidade visual e uso no celular
+
+- **Marca:**
+  - Logo oficial da Metaliza no cabeçalho, no menu lateral e no login.
+  - Cor primária é o azul da logo (`#203F6E`), usado em botões, estados ativos, bordas de seleção e badges.
+  - Fundo branco, com cinzas de apoio `#F8FAFC` e `#F1F5F9` e textos `#0F172A` e `#334155`. Fonte Plus Jakarta Sans.
+- **Mobile-first:**
+  - Botões, seletores e chips com no mínimo 44–48 px de altura.
+  - Campos com texto de 16 px, para o iPhone não dar zoom.
+  - Catálogo em grade de 2 colunas no celular, com as fotos inteiras (`object-contain`).
+  - Filtros em faixa com rolagem horizontal.
+  - Carrossel com troca por deslize (swipe).
+- **Bottom sheets:** a peça, a seleção de cliente e o pedido sobem de baixo, com alça (arrastar para baixo fecha). No computador viram janela centralizada e painel lateral.
+- **Barra inferior fixa no catálogo:** mostra o cliente e o resumo do pedido ("Ver pedido"), ou "Selecionar cliente" no Modo Apresentação.
+- **Menu lateral:** ocupa 84% da largura no celular. Fecha no X, no Esc ou tocando fora.
+
 ## Fluxo
 
 1. **Login:** email/senha (`carlos.mendes@metaliza.com.br` / `demo123`) ou o botão "Entrar como Representante Demonstração".
@@ -18,7 +34,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
      - Escolhido o cliente, a peça entra no carrinho dele e o app passa para o atendimento normal.
      - Fechar o modal descarta a peça pendente.
    - A gaveta lateral tem "Trocar modo de acesso".
-3. **Showroom:** é a vitrine do catálogo, com estética editorial de moda (títulos em Bodoni Moda e texto em Jost).
+3. **Showroom:** é a vitrine do catálogo.
    - **Carrossel de destaques no topo:** só banners de coleção (Verão 2026 e Catálogo Geral / Linha Permanente), com setas e indicadores.
    - **Menu hambúrguer:** abre uma gaveta lateral com as visões do catálogo e os dados do representante e do cliente. Fecha no X, no Esc ou clicando fora.
    - **Peças:** 7 referências reais em ABS. As fotos originais estão embutidas e aparecem inteiras (`object-contain`), sem cortes nem alteração de cor:
