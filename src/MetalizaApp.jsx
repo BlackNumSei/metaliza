@@ -74,12 +74,13 @@ const pecasDaVisao = (visao, ativas) =>
   });
 const rotuloColecao = (p, ativas) => (emLancamento(p, ativas) ? p.colecao : "Linha permanente");
 
-const CATEGORIAS = ["Todos", "Enfeites", "Fivelas", "Passadores", "Ponteiras"];
+const CATEGORIAS = ["Todos", "Enfeites", "Fivelas", "Passadores", "Ponteiras", "Correntes"];
 // Material-base de injeção: fixo por referência. Aura e Policarbonato são efeitos de acabamento.
 const MATERIAIS = ["Todos", "ABS", "TPU", "PVC"];
 
-const PRODUTOS = [
+let PRODUTOS = [
   // Lançamento Verão 2026 (exclusivas enquanto a coleção estiver ativa)
+  { ref: "CR 101", categoria: "Correntes", material: "ABS", bipartida: false, foto: "cr101", colecao: "Linha" },
   { ref: "EF 661", categoria: "Enfeites", material: "ABS", bipartida: false, foto: "ef661", colecao: "Verão 2026" },
   {
     ref: "EF 1170",
@@ -87,8 +88,8 @@ const PRODUTOS = [
     material: "ABS",
     bipartida: true,
     partes: [
-      { curto: "Aro", nome: "Aro externo martelado" },
-      { curto: "Centro", nome: "Cabochão/Centro" },
+      { curto: "Parte de Cima", nome: "Parte de Cima" },
+      { curto: "Parte de Baixo", nome: "Parte de Baixo" },
     ],
     foto: "ef1170",
     colecao: "Verão 2026",
@@ -113,7 +114,7 @@ const ACABAMENTOS = [
   // Efeitos especiais: reclassificam o material da peça (ou da parte) no pedido
   {
     id: "aura", codigo: "8", nome: "Efeito Aura", rotulo: "Efeito Aura", grupo: "efeito", material: "Aura", detalhe: "Furta-cor iridescente",
-   
+
     cores: ["#FBE3F3", "#B5D8F6", "#E5C3F0", "#9AE3CF"],
   },
   { id: "policarbonato", codigo: "9", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", material: "Policarbonato", detalhe: "Translúcido/Cristal", cores: ["#FFFFFF", "#E3EEF5", "#BFD3E0", "#90A9BA"] },
@@ -124,7 +125,7 @@ const GRUPOS_ACABAMENTO = [
 ];
 const ACABAMENTO_PADRAO = ACABAMENTOS[0];
 const acabamentoPorCodigo = (cod) => ACABAMENTOS.find((a) => a.codigo === String(cod).trim());
-const semAcento = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 // Busca por código exato ou por nome (só seleciona quando o nome identifica uma única cor)
 function buscarAcabamento(termo) {
   const t = semAcento(termo);
@@ -151,7 +152,7 @@ const LINHAS_AFRA = [
 const acabamentoPorId = (id) => ACABAMENTOS.find((a) => a.id === id) || ACABAMENTO_PADRAO;
 
 const TIPO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção" };
-
+const ehCorrente = (produto) => produto?.categoria === "Correntes" || produto?.ref?.startsWith("CR");
 // Material que vai para o pedido: efeito especial reclassifica; banho mantém o material-base
 // Categoria no singular para a identificação da peça (filtros usam o plural)
 const CATEGORIA_SINGULAR = {
@@ -159,6 +160,7 @@ const CATEGORIA_SINGULAR = {
   Fivelas: "Fivela",
   Ponteiras: "Ponteira",
   Passadores: "Passador",
+  Correntes: "Corrente",
 };
 const categoriaPeca = (produto) => CATEGORIA_SINGULAR[produto.categoria] || produto.categoria;
 const rotuloRef = (produto) => `Ref. ${produto.ref.toUpperCase()}`;
@@ -178,8 +180,7 @@ function textoAcabamento(produto, acabamento, acabamentoParte2) {
     const mat = materialEfetivo(produto, id);
     return mat === produto.material ? rotuloAcabamento(id) : `${rotuloAcabamento(id)} (${mat})`;
   };
-  const [p1, p2] = produto.partes;
-  return `${p1.curto}: ${parte(acabamento)} / ${p2.curto}: ${parte(acabamentoParte2)}`;
+  return `Parte de Cima: ${parte(acabamento)} / Parte de Baixo: ${parte(acabamentoParte2)}`;
 }
 
 // Identificação da peça: "Ref. EF 661 - Enfeite (ABS)". Em peça única, o material já sai reclassificado pelo efeito.
@@ -200,6 +201,8 @@ function linhaPedido(produto, item) {
     textoPeca(produto, item.acabamento),
     textoAcabamento(produto, item.acabamento, item.acabamentoBaixo),
     textoAfra(produto, item),
+    item.elos ? `Elos: ${item.elos}` : null,
+    item.comPonteira === true ? "Com Ponteira" : item.comPonteira === false ? "Sem Ponteira" : null,
     `Qtd: ${formatarNumero(item.qtd)} un`,
   ]
     .filter(Boolean)
@@ -213,7 +216,13 @@ function textoMaterial(produto, acabamento, acabamentoParte2) {
   return `${p1.curto}: ${materialEfetivo(produto, acabamento)} · ${p2.curto}: ${materialEfetivo(produto, acabamentoParte2)}`;
 }
 
-const EMAIL_PEDIDOS = "pedidos@metaliza.com.br";
+const EMAIL_PEDIDOS = "pcp@metalizacromagem.com.br";
+
+// Cliente Supabase opcional (window.supabase). Sem ele, o app roda com o acesso de demonstração e o catálogo local.
+const obterSupabase = () => {
+  const sb = typeof window !== "undefined" ? window.supabase : null;
+  return sb && sb.auth && typeof sb.from === "function" ? sb : null;
+};
 
 /* ----------------------------- utilidades ----------------------------- */
 
@@ -361,6 +370,8 @@ const C = {
     "mz-focus mz-sheen inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-[color:var(--mz-accent)] px-5 text-[15px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(32,63,110,.7)] transition hover:bg-[color:var(--mz-accent-2)] active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
   btnGhost:
     "mz-focus inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-[color:var(--mz-line)] bg-white px-5 text-[15px] font-semibold text-[color:var(--mz-ink)] transition hover:border-[color:var(--mz-accent)] hover:text-[color:var(--mz-accent)] active:scale-[.98]",
+  btnOutline:
+    "mz-focus inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border-2 border-[color:var(--mz-accent)] bg-white px-5 text-[15px] font-semibold text-[color:var(--mz-accent)] transition hover:bg-[color:var(--mz-accent-soft,#EEF3FA)] active:scale-[.98]",
   input:
     "mz-focus min-h-[48px] w-full rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-soft)] px-4 text-base text-[color:var(--mz-ink)] placeholder:text-[color:var(--mz-muted)] focus:border-[color:var(--mz-accent)] focus:bg-white",
   fechar:
@@ -402,10 +413,35 @@ function AlcaSheet({ arrastar }) {
 // Foto original da peça, sempre inteira (object-contain) e sem qualquer alteração de cor.
 // O fundo neutro é o mesmo cinza das fotos, para a imagem se fundir ao quadro.
 const FUNDO_FOTO = "#DFDFDF";
-const fundoDaFoto = (produto) => FOTOS[produto.foto]?.fundo || FUNDO_FOTO;
+
+function resolverFoto(produto) {
+  if (!produto || !produto.foto) return null;
+
+  // 1. Se estiver no catálogo local antigo
+  if (typeof FOTOS !== "undefined" && FOTOS[produto.foto]) {
+    return FOTOS[produto.foto];
+  }
+
+  // 2. Se já for a URL completa (https://...)
+  if (typeof produto.foto === "string" && (produto.foto.startsWith("http://") || produto.foto.startsWith("https://"))) {
+    return { src: produto.foto, fundo: FUNDO_FOTO };
+  }
+
+  // 3. Se for o nome do arquivo enviado para o bucket "produtos" no Supabase Storage
+  if (obterSupabase()?.storage) {
+    const { data } = obterSupabase().storage.from("produtos").getPublicUrl(produto.foto);
+    if (data?.publicUrl) {
+      return { src: data.publicUrl, fundo: FUNDO_FOTO };
+    }
+  }
+
+  return null;
+}
+
+const fundoDaFoto = (produto) => resolverFoto(produto)?.fundo || FUNDO_FOTO;
 
 function ImagemPeca({ produto, alturaMax = 260, miniatura = false, className = "" }) {
-  const foto = FOTOS[produto.foto];
+  const foto = resolverFoto(produto);
   const alt = `Foto da peça ${rotuloRef(produto)}`;
   if (!foto) {
     return miniatura ? (
@@ -522,17 +558,59 @@ function TelaLogin({ onEntrar }) {
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
 
-  const enviar = (e) => {
+  const [carregando, setCarregando] = useState(false);
+
+  const enviar = async (e) => {
     e.preventDefault();
     if (!email.trim() || !senha) {
       setErro("Informe email e senha para entrar.");
       return;
     }
-    if (email.trim().toLowerCase() !== REPRESENTANTE_DEMO.email || senha !== REPRESENTANTE_DEMO.senha) {
-      setErro("Email ou senha não conferem. Use o acesso de demonstração abaixo.");
+
+    const supabase = obterSupabase();
+    if (!supabase) {
+      if (email.trim().toLowerCase() !== REPRESENTANTE_DEMO.email || senha !== REPRESENTANTE_DEMO.senha) {
+        setErro("Email ou senha não conferem. Use o acesso de demonstração abaixo.");
+        return;
+      }
+      onEntrar(REPRESENTANTE_DEMO);
       return;
     }
-    onEntrar(REPRESENTANTE_DEMO);
+
+    setCarregando(true);
+    setErro("");
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: senha,
+      });
+
+      if (error) {
+        setErro(
+          error.message === "Invalid login credentials"
+            ? "Email ou senha incorretos no Supabase."
+            : error.message
+        );
+        return;
+      }
+
+      // Monta o objeto do representante logado com dados reais da conta
+      const user = data.user;
+      const representanteReal = {
+        id: user.id,
+        nome: user.user_metadata?.nome || user.email?.split("@")[0] || "Representante",
+        email: user.email,
+        regiao: user.user_metadata?.regiao || "Região Polo Calçadista",
+        codigo: user.user_metadata?.codigo || "REP-001",
+      };
+
+      onEntrar(representanteReal);
+    } catch (err) {
+      setErro("Erro de conexão ao tentar autenticar.");
+    } finally {
+      setCarregando(false);
+    }
   };
 
   return (
@@ -1478,7 +1556,9 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
     setAviso("");
     definir(alvo);
   };
-
+const isCorrente = ehCorrente(produto);
+  const [elos, setElos] = useState(2); // Inicia no mínimo de 2 elos
+  const [comPonteira, setComPonteira] = useState(false);
   const aumentar = () => {
     setAviso("");
     definir(Math.min(qtd + regra.passo, 99999));
@@ -1501,7 +1581,8 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
   };
 
   const afraPendente = temAfra(produto) && comAfra && !afra;
-  const valido = Number(texto || 0) >= regra.min && !afraPendente;
+  const bipartidaPendente = produto.bipartida && !baixoId;
+  const valido = Number(texto || 0) >= regra.min && !afraPendente && !bipartidaPendente;
   const rascunho = { afra: comAfra ? afra : null };
   const detalhes = [descricaoAcabamento, textoAfra(produto, rascunho)].filter(Boolean).join(" · ");
   const noMinimo = qtd <= regra.min;
@@ -1553,8 +1634,8 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
           <div className="flex flex-col gap-6 p-4 pb-6 sm:p-5">
             {produto.bipartida ? (
               <div className="flex flex-col gap-5">
-                <SeletorAcabamento titulo={`Cor do ${produto.partes[0].curto}`} idBase="mz-cor-1" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
-                <SeletorAcabamento titulo={`Cor do ${produto.partes[1].curto}`} idBase="mz-cor-2" produto={produto} valor={baixoId} onChange={setBaixoId} />
+                <SeletorAcabamento titulo="Parte de Cima" idBase="mz-cor-1" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
+                <SeletorAcabamento titulo="Parte de Baixo" idBase="mz-cor-2" produto={produto} valor={baixoId} onChange={setBaixoId} />
               </div>
             ) : (
               <SeletorAcabamento titulo="Cor do Acabamento" idBase="mz-cor" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
@@ -1621,7 +1702,80 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
                 )}
               </fieldset>
             )}
+{/* Configurações exclusivas de Corrente (CR) */}
+            {isCorrente && (
+              <div className="flex flex-col gap-4 rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-sunken)] p-4">
+                {/* Quantidade de Elos (2 a 100) */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="mz-elos" className="mz-eyebrow">
+                      Quantidade de Elos
+                    </label>
+                    <span className="text-xs font-semibold text-[color:var(--mz-accent)]">
+                      (Mín. 2 / Máx. 100 elos)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setElos((e) => Math.max(2, e - 1))}
+                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-[color:var(--mz-line)] bg-white font-bold text-lg"
+                    >
+                      -
+                    </button>
+                    <input
+                      id="mz-elos"
+                      type="number"
+                      min={2}
+                      max={100}
+                      value={elos}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (isNaN(val)) setElos(2);
+                        else setElos(Math.min(100, Math.max(2, val)));
+                      }}
+                      className="h-10 w-24 rounded-lg border border-[color:var(--mz-line)] bg-white text-center font-bold mz-mono text-base"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setElos((e) => Math.min(100, e + 1))}
+                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-[color:var(--mz-line)] bg-white font-bold text-lg"
+                    >
+                      +
+                    </button>
+                    <span className="text-sm font-medium text-[color:var(--mz-muted)]">
+                      elos por corrente
+                    </span>
+                  </div>
+                </div>
 
+                {/* Opção de Ponteiras */}
+                <fieldset>
+                  <legend className="mz-eyebrow mb-2">Ponteiras</legend>
+                  <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Ponteiras">
+                    {[
+                      [false, "Sem Ponteira"],
+                      [true, "Com Ponteira"],
+                    ].map(([v, rotulo]) => (
+                      <button
+                        key={rotulo}
+                        type="button"
+                        role="radio"
+                        aria-checked={comPonteira === v}
+                        onClick={() => setComPonteira(v)}
+                        className={`min-h-[44px] rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                          comPonteira === v
+                            ? "border-[color:var(--mz-accent)] bg-white text-[color:var(--mz-accent)] shadow-sm"
+                            : "border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] text-[color:var(--mz-muted)]"
+                        }`}
+                      >
+                        {rotulo}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              </div>
+            )}
             <fieldset>
               <legend className="mz-eyebrow mb-3">Tipo de solicitação</legend>
               <div className="grid grid-cols-2 gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1" role="radiogroup">
@@ -1696,20 +1850,27 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
           </div>
           {semCliente && <p className={`w-full text-xs ${C.muted} sm:order-last`}>Modo Apresentação: ao adicionar, você escolhe o cliente e a peça entra no pedido dele.</p>}
           <button
-            type="button"
-            disabled={!valido}
-            onClick={() => onAdicionar({
-              ref: produto.ref,
-              acabamento: acabamentoId,
-              acabamentoBaixo: produto.bipartida ? baixoId : null,
-              afra: temAfra(produto) && comAfra ? afra : null,
-              tipo,
-              qtd: Number(texto),
-            })}
-            className={`${C.btnAccent} min-h-[52px] w-full text-base sm:w-auto`}
-          >
-            <Icone.sacola className="h-5 w-5" /> Adicionar ao pedido
-          </button>
+    type="button"
+    disabled={!valido}
+    onClick={() => onAdicionar({
+    ref: produto.ref,
+    acabamento: acabamentoId,
+    acabamentoBaixo: produto.bipartida ? baixoId : null,
+    afra: temAfra(produto) && comAfra ? afra : null,
+    elos: isCorrente ? elos : null,
+    comPonteira: isCorrente ? comPonteira : null,
+    tipo,
+    qtd: Number(texto),
+  })}
+    className={`${C.btnAccent} min-h-[52px] w-full text-base sm:w-auto`}
+  >
+    <Icone.sacola className="h-5 w-5" />
+    {bipartidaPendente
+      ? "Selecione a 2ª parte"
+      : afraPendente
+      ? "Selecione a furação/afra"
+      : "Adicionar ao pedido"}
+  </button>
         </div>
       </div>
     </div>
@@ -1932,14 +2093,22 @@ function useCopiar() {
 
 function TelaEnviado({ pedido, onNovoMesmoCliente, onTrocarCliente }) {
   const [copiado, copiar] = useCopiar();
-  const [emailEnviadoEm, setEmailEnviadoEm] = useState(null);
   const { email } = pedido;
-  const fone = somenteDigitos(pedido.cliente.whatsapp);
-  const linkWhats = `https://wa.me/55${fone}?text=${encodeURIComponent(pedido.mensagem)}`;
   const textoEmail = `Para: ${email.para}\nCc: ${email.cc}\nAssunto: ${email.assunto}\n\n${email.corpo}`;
 
+  // Detecta se está acessando de um iPhone/iPad
+  const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  // No iPhone, 'googlegmail:///co' chama diretamente o app nativo do Gmail
+  const linkAppGmail = `googlegmail:///co?to=${encodeURIComponent(email.para)}&cc=${encodeURIComponent(email.cc || "")}&subject=${encodeURIComponent(email.assunto)}&body=${encodeURIComponent(email.corpo)}`;
+
+  // No computador/desktop, abre a tela de composição do Gmail Web
+  const linkWebGmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email.para)}&cc=${encodeURIComponent(email.cc || "")}&su=${encodeURIComponent(email.assunto)}&body=${encodeURIComponent(email.corpo)}`;
+
+  const gmailUrl = isIOS ? linkAppGmail : linkWebGmail;
+
   return (
-    <main className="mz-gutter mx-auto max-w-5xl py-10">
+    <main className="mz-gutter mx-auto max-w-3xl py-10">
       <div className="mz-in flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-ok-soft)] text-[color:var(--mz-ok)]">
           <Icone.check className="h-6 w-6" />
@@ -1949,58 +2118,85 @@ function TelaEnviado({ pedido, onNovoMesmoCliente, onTrocarCliente }) {
           <h1 className="mz-display mz-mono text-2xl font-bold">{pedido.numero}</h1>
         </div>
       </div>
+
       <p className={`mt-3 text-sm ${C.muted}`}>
-        {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"} para <b className="text-[color:var(--mz-ink)]">{pedido.cliente.nome}</b>, registrados em {pedido.data}. Dispare o e-mail para a fábrica e envie o resumo ao cliente.
+        {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"} para <b className="text-[color:var(--mz-ink)]">{pedido.cliente.nome}</b>, registrados em {pedido.data}. Envie o pedido diretamente para o PCP da fábrica via Gmail.
       </p>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
-        {/* E-mail (simulação) */}
-        <section className="flex min-w-0 flex-col rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="mz-display text-lg font-bold">E-mail para a fábrica</h2>
-            <span className="rounded-full bg-[color:var(--mz-sunken)] px-2 py-0.5 text-[11px] font-bold">Simulação</span>
+      {/* Cartão exclusivo de E-mail via Gmail */}
+      <section className="mt-6 flex min-w-0 flex-col rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-2 border-b border-[color:var(--mz-line)] pb-4">
+          <div>
+            <h2 className="mz-display text-lg font-bold">Enviar Pedido ao PCP</h2>
+            <p className="text-xs text-[color:var(--mz-muted)]">Disparo direto pelo App do Gmail para digitação no sistema</p>
           </div>
-          <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-            <dt className={C.muted}>Para</dt><dd className="mz-mono min-w-0 break-all">{email.para}</dd>
-            <dt className={C.muted}>Cc</dt><dd className="mz-mono min-w-0 break-all">{email.cc}</dd>
-            <dt className={C.muted}>Assunto</dt><dd className="min-w-0 font-semibold">{email.assunto}</dd>
-          </dl>
-          <textarea id="mz-email" readOnly rows={12} value={email.corpo} aria-label="Corpo do e-mail" className={`${C.input} mz-mono mt-3 flex-1 text-xs leading-relaxed`} />
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" disabled={!!emailEnviadoEm} onClick={() => setEmailEnviadoEm(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }))} className={C.btnAccent}>
-              {emailEnviadoEm ? <><Icone.check className="h-4 w-4" /> E-mail enviado</> : "Simular envio do e-mail"}
-            </button>
-            <button type="button" onClick={() => copiar("mz-email", textoEmail)} className={C.btnGhost}>
-              {copiado === "mz-email" ? <><Icone.check className="h-4 w-4" /> Copiado</> : "Copiar e-mail"}
-            </button>
-          </div>
-          {emailEnviadoEm && (
-            <p role="status" className="mt-2 text-xs font-semibold text-[color:var(--mz-ok)]">
-              Envio simulado às {emailEnviadoEm} para {email.para} (cópia para {email.cc}).
-            </p>
-          )}
-        </section>
+          <span className="rounded-full bg-[color:var(--mz-accent-soft)] px-3 py-1 text-xs font-bold text-[color:var(--mz-accent)]">
+            PCP Metaliza
+          </span>
+        </div>
 
-        {/* WhatsApp */}
-        <section className="flex min-w-0 flex-col rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="mz-display text-lg font-bold">Resumo para WhatsApp</h2>
-            <span className="mz-mono text-xs font-semibold">{pedido.cliente.whatsapp}</span>
-          </div>
-          <p className={`mt-3 text-sm ${C.muted}`}>Destino: {pedido.cliente.contato}</p>
-          <textarea id="mz-msg" readOnly rows={12} value={pedido.mensagem} aria-label="Texto para WhatsApp" className={`${C.input} mz-mono mt-3 flex-1 text-xs leading-relaxed`} />
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={() => copiar("mz-msg", pedido.mensagem)} className={C.btnPrimary}>
-              {copiado === "mz-msg" ? <><Icone.check className="h-4 w-4" /> Copiado</> : "Copiar texto"}
-            </button>
-            <a href={linkWhats} target="_blank" rel="noreferrer" className={C.btnGhost}>Abrir no WhatsApp</a>
-          </div>
-        </section>
-      </div>
+        <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+          <dt className={C.muted}>Para:</dt>
+          <dd className="mz-mono min-w-0 font-medium break-all">{email.para}</dd>
 
-      <div className="mt-8 grid gap-2 border-t border-[color:var(--mz-line)] pt-5 sm:grid-cols-2">
-        <button type="button" onClick={onNovoMesmoCliente} className={C.btnGhost}>Nova solicitação para {pedido.cliente.nome}</button>
-        <button type="button" onClick={onTrocarCliente} className={C.btnGhost}>Atender outro cliente</button>
+          <dt className={C.muted}>Cc:</dt>
+          <dd className="mz-mono min-w-0 text-xs break-all">{email.cc}</dd>
+
+          <dt className={C.muted}>Assunto:</dt>
+          <dd className="min-w-0 font-semibold">{email.assunto}</dd>
+        </dl>
+
+        <textarea
+          id="mz-email"
+          readOnly
+          rows={10}
+          value={email.corpo}
+          aria-label="Corpo do e-mail"
+          className={`${C.input} mz-mono mt-4 flex-1 text-xs leading-relaxed`}
+        />
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <a
+            href={gmailUrl}
+            target={isIOS ? undefined : "_blank"}
+            rel="noreferrer"
+            className={`${C.btnAccent} inline-flex items-center gap-2 text-sm font-semibold`}
+          >
+            Abrir no App do Gmail
+          </a>
+
+          <button
+            type="button"
+            onClick={() => copiar("mz-email", textoEmail)}
+            className={C.btnGhost}
+          >
+            {copiado === "mz-email" ? (
+              <>
+                <Icone.check className="h-4 w-4" /> Copiado!
+              </>
+            ) : (
+              "Copiar texto do e-mail"
+            )}
+          </button>
+        </div>
+      </section>
+
+      {/* Ações pós-envio */}
+      <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-[color:var(--mz-line)] pt-6">
+        <button
+          type="button"
+          onClick={onNovoMesmoCliente}
+          className={C.btnOutline}
+        >
+          Novo pedido para {pedido.cliente.nome}
+        </button>
+        <button
+          type="button"
+          onClick={onTrocarCliente}
+          className={C.btnGhost}
+        >
+          Trocar de cliente
+        </button>
       </div>
     </main>
   );
@@ -2015,6 +2211,36 @@ export default function MetalizaApp() {
   const [tela, setTela] = useState("clientes"); // clientes | catalogo | revisao | enviado
   const [peca, setPeca] = useState(null);
   const [pedidoAberto, setPedidoAberto] = useState(false);
+  const [produtosCarregados, setProdutosCarregados] = useState(false);
+
+  useEffect(() => {
+    async function carregarProdutosDoBanco() {
+      const supabase = obterSupabase();
+      if (!supabase) return; // sem Supabase: mantém o catálogo local
+      try {
+        const { data, error } = await supabase
+          .from("produtos")
+          .select("*")
+          .eq("ativo", true);
+
+        if (error) {
+          console.error("Erro ao buscar produtos do Supabase:", error.message);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // Atualiza a lista com os dados reais do banco
+          PRODUTOS = data;
+          setProdutosCarregados(true);
+          console.log(`Carregadas ${data.length} peças reais do Supabase.`);
+        }
+      } catch (err) {
+        console.error("Falha ao comunicar com Supabase:", err);
+      }
+    }
+
+    carregarProdutosDoBanco();
+  }, []);
   const [itensPorCliente, setItensPorCliente] = useState({});
   const [historico, setHistorico] = useState([]);
   const [ultimoPedido, setUltimoPedido] = useState(null);
@@ -2023,6 +2249,7 @@ export default function MetalizaApp() {
   const [modo, setModo] = useState(null); // "atendimento" | "apresentacao"
   const [pendente, setPendente] = useState(null); // peça configurada no modo apresentação, aguardando o cliente
   const [escolhendoCliente, setEscolhendoCliente] = useState(false);
+  const [confirmandoTroca, setConfirmandoTroca] = useState(false);
   const [encerradas, setEncerradas] = useState([]);
   const ativas = useMemo(
     () => new Set(LANCAMENTOS.filter((l) => !encerradas.includes(l.nome) && diasRestantes(l) > 0).map((l) => l.nome)),
@@ -2086,7 +2313,13 @@ export default function MetalizaApp() {
     setToast(`${c.nome} cadastrado.`);
     selecionarCliente(c);
   };
-  const trocarCliente = () => {
+  const trocarCliente = (confirmado = false) => {
+    if (confirmado !== true && tela !== "enviado" && itens && itens.length > 0) {
+      setMenuAberto(false);
+      setConfirmandoTroca(true);
+      return;
+    }
+    setConfirmandoTroca(false);
     setPedidoAberto(false);
     setPeca(null);
     setMenuAberto(false);
@@ -2112,8 +2345,17 @@ export default function MetalizaApp() {
     window.scrollTo?.(0, 0);
   };
 
-  const adicionarPara = (clienteId, novo) => {
-    const chave = [novo.ref, novo.acabamento, novo.acabamentoBaixo || "-", novo.afra || "sem-afra", novo.tipo].join("|");
+const adicionarPara = (clienteId, novo) => {
+    const chave = [
+      novo.ref,
+      novo.acabamento,
+      novo.acabamentoBaixo || "-",
+      novo.afra || "sem-afra",
+      novo.elos ? `${novo.elos}elos` : "-",
+      novo.comPonteira ? "com-ponteira" : "sem-ponteira",
+      novo.tipo,
+    ].join("|");
+
     setItensPorCliente((m) => {
       const lista = m[clienteId] || [];
       const existente = lista.find((i) => i.chave === chave);
@@ -2123,6 +2365,8 @@ export default function MetalizaApp() {
       return { ...m, [clienteId]: nova };
     });
   };
+
+
 
   const adicionar = (novo) => {
     setPeca(null);
@@ -2260,6 +2504,31 @@ export default function MetalizaApp() {
               onCadastrar={cadastrarClienteDoModal}
               onFechar={cancelarEscolhaCliente}
             />
+          )}
+
+          {confirmandoTroca && cliente && (
+            <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setConfirmandoTroca(false)}>
+              <div
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="mz-troca-titulo"
+                className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-[max(20px,env(safe-area-inset-bottom,0px))] shadow-2xl sm:rounded-3xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 id="mz-troca-titulo" className="text-lg font-bold">Trocar de cliente?</h2>
+                <p className={`mt-2 text-sm ${C.muted}`}>
+                  O pedido de <strong className="text-[color:var(--mz-ink)]">{cliente.nome}</strong> possui {itens.length} {itens.length === 1 ? "item" : "itens"} em aberto. Ele fica guardado e volta quando você selecionar este cliente novamente.
+                </p>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <button type="button" onClick={() => setConfirmandoTroca(false)} className={C.btnGhost}>
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={() => trocarCliente(true)} className={C.btnPrimary}>
+                    Trocar
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {toast && (
