@@ -28,25 +28,61 @@ const CLIENTES_INICIAIS = [
   {
     id: "c1",
     nome: "Cal\xE7ados Bella Passo",
+    fantasia: "Cal\xE7ados Bella Passo",
+    razaoSocial: "Bella Passo Ind\xFAstria de Cal\xE7ados Ltda.",
+    cnpj: "12.847.365/0001-35",
+    ie: "124/0587312",
+    cep: "93510-120",
+    logradouro: "Rua Bento Gon\xE7alves",
+    numero: "1840",
+    complemento: "Pavilh\xE3o 2",
+    bairro: "Centro",
+    municipio: "Novo Hamburgo",
+    uf: "RS",
+    cidade: "Novo Hamburgo/RS",
     contato: "Juliana Prates (modelista)",
     whatsapp: "(51) 99812-4410",
-    cidade: "Novo Hamburgo/RS",
+    email: "compras@bellapasso.com.br",
     ultimoPedido: "12/09/2026"
   },
   {
     id: "c2",
     nome: "Studio Valentina Shoes",
+    fantasia: "Studio Valentina Shoes",
+    razaoSocial: "Valentina Cal\xE7ados Femininos Eireli",
+    cnpj: "34.192.687/0001-26",
+    ie: "310.442.718.115",
+    cep: "14401-322",
+    logradouro: "Avenida Brasil",
+    numero: "2215",
+    complemento: "",
+    bairro: "Vila Aparecida",
+    municipio: "Franca",
+    uf: "SP",
+    cidade: "Franca/SP",
     contato: "Marcos Lemos (desenvolvimento)",
     whatsapp: "(16) 99734-2208",
-    cidade: "Franca/SP",
+    email: "nfe@studiovalentina.com.br",
     ultimoPedido: "28/08/2026"
   },
   {
     id: "c3",
     nome: "Ateli\xEA Dona Flor Cal\xE7ados",
+    fantasia: "Ateli\xEA Dona Flor Cal\xE7ados",
+    razaoSocial: "Dona Flor Artefatos de Couro Ltda. ME",
+    cnpj: "56.731.824/0001-96",
+    ie: "ISENTO",
+    cep: "35520-005",
+    logradouro: "Rua Ant\xF4nio Martins",
+    numero: "312",
+    complemento: "Sala 4",
+    bairro: "Santa Rita",
+    municipio: "Nova Serrana",
+    uf: "MG",
+    cidade: "Nova Serrana/MG",
     contato: "Renata Souza (modelista)",
     whatsapp: "(37) 99155-7821",
-    cidade: "Nova Serrana/MG",
+    email: "financeiro@donaflor.com.br",
     ultimoPedido: null
   }
 ];
@@ -211,6 +247,45 @@ function mascaraWhatsapp(valor) {
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
+function mascaraCnpj(valor) {
+  const d = somenteDigitos(valor).slice(0, 14);
+  let s = d.slice(0, 2);
+  if (d.length > 2) s += `.${d.slice(2, 5)}`;
+  if (d.length > 5) s += `.${d.slice(5, 8)}`;
+  if (d.length > 8) s += `/${d.slice(8, 12)}`;
+  if (d.length > 12) s += `-${d.slice(12)}`;
+  return s;
+}
+function cnpjValido(valor) {
+  const d = somenteDigitos(valor);
+  if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false;
+  const digito = (n) => {
+    const pesos = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const resto = pesos.reduce((soma, peso, i) => soma + peso * Number(d[i]), 0) % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  return digito(12) === Number(d[12]) && digito(13) === Number(d[13]);
+}
+function mascaraCep(valor) {
+  const d = somenteDigitos(valor).slice(0, 8);
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}
+const emailValido = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
+const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
+function enderecoCliente(c) {
+  const rua = [c.logradouro, c.numero, c.complemento].filter(Boolean).join(", ");
+  return c.bairro ? `${rua} - ${c.bairro}` : rua;
+}
+function blocoFiscal(c) {
+  return [
+    "DADOS CADASTRAIS DO CLIENTE:",
+    `Raz\xE3o Social: ${c.razaoSocial || c.nome} (Fantasia: ${c.fantasia || c.nome})`,
+    `CNPJ: ${c.cnpj || "\u2014"} | IE: ${c.ie || "\u2014"}`,
+    `Endere\xE7o: ${enderecoCliente(c) || "\u2014"} \xB7 CEP: ${c.cep || "\u2014"} \xB7 ${c.municipio && c.uf ? `${c.municipio}/${c.uf}` : c.cidade}`,
+    `Comprador: ${c.contato} | Telefone/WhatsApp: ${c.whatsapp}`,
+    `E-mail: ${c.email || "\u2014"}`
+  ];
+}
 const formatarNumero = (n) => n.toLocaleString("pt-BR");
 function hojeFormatado() {
   return (/* @__PURE__ */ new Date()).toLocaleDateString("pt-BR");
@@ -244,8 +319,9 @@ function montarMensagem({ numero, rep, cliente, itens }) {
   return [
     `*Metaliza \xB7 Solicita\xE7\xE3o ${numero}*`,
     `Data: ${hojeFormatado()}`,
-    `Cliente: ${cliente.nome} (${cliente.cidade})`,
-    `Contato: ${cliente.contato}`,
+    "",
+    ...blocoFiscal(cliente),
+    "",
     `Representante: ${rep.nome} \xB7 ${rep.regiao}`,
     `Cole\xE7\xE3o: ${colecoesDoPedido(itens)}`,
     ...linhasItens(itens, true)
@@ -260,10 +336,8 @@ function montarEmail({ numero, rep, cliente, itens }) {
     corpo: [
       `Solicita\xE7\xE3o ${numero} registrada em ${hojeFormatado()}.`,
       "",
-      `Cliente: ${cliente.nome}`,
-      `Contato: ${cliente.contato}`,
-      `WhatsApp: ${cliente.whatsapp}`,
-      `Cidade: ${cliente.cidade}`,
+      ...blocoFiscal(cliente),
+      "",
       `Representante: ${rep.nome} (${rep.codigo}) \xB7 ${rep.regiao}`,
       `Cole\xE7\xE3o: ${colecoesDoPedido(itens)}`,
       ...linhasItens(itens, false)
@@ -675,7 +749,7 @@ function TelaModo({ rep, onAtendimento, onApresentacao }) {
       id: "atendimento",
       numero: "01",
       titulo: "Atendimento a Cliente",
-      texto: "Escolha a f\xE1brica (ou fa\xE7a o cadastro r\xE1pido) e siga para o cat\xE1logo com carrinho e pedidos liberados.",
+      texto: "Escolha a f\xE1brica (ou cadastre um novo cliente PJ) e siga para o cat\xE1logo com carrinho e pedidos liberados.",
       acao: "Escolher a f\xE1brica",
       onClick: onAtendimento,
       destaque: true
@@ -729,6 +803,174 @@ function ModalEscolherCliente({ pendente, clientes, historico, onSelecionar, onC
     }
   )));
 }
+const FORM_CLIENTE_VAZIO = {
+  cnpj: "",
+  ie: "",
+  ieIsento: false,
+  razaoSocial: "",
+  fantasia: "",
+  cep: "",
+  logradouro: "",
+  numero: "",
+  complemento: "",
+  bairro: "",
+  municipio: "",
+  uf: "",
+  contato: "",
+  whatsapp: "",
+  email: ""
+};
+const MASCARAS_CLIENTE = { cnpj: mascaraCnpj, cep: mascaraCep, whatsapp: mascaraWhatsapp };
+const ORDEM_CAMPOS_CLIENTE = ["cnpj", "ie", "razaoSocial", "fantasia", "cep", "logradouro", "numero", "complemento", "bairro", "municipio", "uf", "contato", "whatsapp", "email"];
+function validarCliente(form, clientes) {
+  const e = {};
+  if (!somenteDigitos(form.cnpj)) e.cnpj = "Informe o CNPJ.";
+  else if (!cnpjValido(form.cnpj)) e.cnpj = "CNPJ inv\xE1lido. Confira os 14 d\xEDgitos.";
+  else {
+    const dup = clientes.find((c) => c.cnpj && somenteDigitos(c.cnpj) === somenteDigitos(form.cnpj));
+    if (dup) e.cnpj = `CNPJ j\xE1 cadastrado para ${dup.nome}.`;
+  }
+  if (!form.ieIsento && !form.ie.trim()) e.ie = "Informe a IE ou marque Isento.";
+  if (!form.razaoSocial.trim()) e.razaoSocial = "Informe a raz\xE3o social.";
+  if (somenteDigitos(form.cep).length !== 8) e.cep = "CEP com 8 d\xEDgitos, ex.: 93510-120.";
+  if (!form.logradouro.trim()) e.logradouro = "Informe a rua / logradouro.";
+  if (!form.numero.trim()) e.numero = "Informe o n\xFAmero (ou S/N).";
+  if (!form.bairro.trim()) e.bairro = "Informe o bairro.";
+  if (!form.municipio.trim()) e.municipio = "Informe a cidade.";
+  if (!form.uf) e.uf = "Selecione a UF.";
+  if (!form.contato.trim()) e.contato = "Informe o comprador / contato.";
+  if (somenteDigitos(form.whatsapp).length < 10) e.whatsapp = "Telefone com DDD, ex.: (51) 99999-0000.";
+  if (!form.email.trim()) e.email = "Informe o e-mail de faturamento.";
+  else if (!emailValido(form.email)) e.email = "E-mail inv\xE1lido.";
+  return e;
+}
+function SecaoCadastro({ numero, titulo, children }) {
+  return /* @__PURE__ */ React.createElement("fieldset", { className: "rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4 sm:p-5" }, /* @__PURE__ */ React.createElement("legend", { className: "sr-only" }, titulo), /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow flex items-center gap-2", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("span", { className: "mz-mono text-[color:var(--mz-accent)]" }, numero), " ", titulo), /* @__PURE__ */ React.createElement("div", { className: "mt-4 grid grid-cols-6 gap-x-3 gap-y-4" }, children));
+}
+function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
+  const [form, setForm] = useState(FORM_CLIENTE_VAZIO);
+  const [erros, setErros] = useState({});
+  const primeiroRef = useRef(null);
+  useEffect(() => {
+    var _a;
+    (_a = primeiroRef.current) == null ? void 0 : _a.focus();
+    const esc = (e) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      onFechar();
+    };
+    window.addEventListener("keydown", esc, true);
+    return () => window.removeEventListener("keydown", esc, true);
+  }, [onFechar]);
+  const alterar = (chave, valor) => {
+    const mascara = MASCARAS_CLIENTE[chave];
+    setForm((f) => ({ ...f, [chave]: mascara ? mascara(valor) : valor }));
+    setErros((er) => ({ ...er, [chave]: void 0 }));
+  };
+  const salvar = (e) => {
+    var _a;
+    e.preventDefault();
+    const novos = validarCliente(form, clientes);
+    setErros(novos);
+    const primeiro = ORDEM_CAMPOS_CLIENTE.find((k) => novos[k]);
+    if (primeiro) {
+      (_a = document.getElementById(`mz-cli-${primeiro}`)) == null ? void 0 : _a.focus();
+      return;
+    }
+    const t = (k) => form[k].trim();
+    const municipio = t("municipio");
+    onSalvar({
+      id: `c${Date.now()}`,
+      nome: t("fantasia") || t("razaoSocial"),
+      fantasia: t("fantasia") || t("razaoSocial"),
+      razaoSocial: t("razaoSocial"),
+      cnpj: form.cnpj,
+      ie: form.ieIsento ? "ISENTO" : t("ie"),
+      cep: form.cep,
+      logradouro: t("logradouro"),
+      numero: t("numero"),
+      complemento: t("complemento"),
+      bairro: t("bairro"),
+      municipio,
+      uf: form.uf,
+      cidade: `${municipio}/${form.uf}`,
+      contato: t("contato"),
+      whatsapp: form.whatsapp,
+      email: t("email").toLowerCase(),
+      ultimoPedido: null,
+      novo: true
+    });
+  };
+  const qtdErros = Object.values(erros).filter(Boolean).length;
+  const classeInput = (chave) => `${C.input} ${erros[chave] ? "border-[color:var(--mz-warn)] bg-[color:var(--mz-warn-soft)]" : ""}`;
+  const Rotulo = ({ chave, texto, obrigatorio = true }) => /* @__PURE__ */ React.createElement("label", { htmlFor: `mz-cli-${chave}`, className: "text-sm font-semibold" }, texto, obrigatorio ? /* @__PURE__ */ React.createElement("span", { className: "text-[color:var(--mz-warn)]", "aria-hidden": "true" }, " *") : /* @__PURE__ */ React.createElement("span", { className: `font-normal ${C.muted}` }, " (opcional)"));
+  const Erro = ({ chave }) => erros[chave] ? /* @__PURE__ */ React.createElement("span", { id: `mz-cli-${chave}-erro`, className: "text-xs font-medium text-[color:var(--mz-warn)]" }, erros[chave]) : null;
+  const campo = (chave, texto, { col = "col-span-6", obrigatorio = true, ...extra } = {}) => /* @__PURE__ */ React.createElement("div", { className: `flex min-w-0 flex-col gap-1.5 ${col}` }, /* @__PURE__ */ React.createElement(Rotulo, { chave, texto, obrigatorio }), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      id: `mz-cli-${chave}`,
+      className: classeInput(chave),
+      value: form[chave],
+      onChange: (e) => alterar(chave, e.target.value),
+      "aria-required": obrigatorio,
+      "aria-invalid": !!erros[chave],
+      "aria-describedby": erros[chave] ? `mz-cli-${chave}-erro` : void 0,
+      ...extra
+    }
+  ), /* @__PURE__ */ React.createElement(Erro, { chave }));
+  return /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-6" }, /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-labelledby": "mz-cadastro-titulo",
+      className: "mz-sheet flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-[color:var(--mz-soft)] shadow-2xl sm:max-h-[90vh] sm:rounded-3xl"
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3 border-b border-[color:var(--mz-line)] bg-white px-5 pb-3 pt-4" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Cadastro de cliente \xB7 Pessoa Jur\xEDdica"), /* @__PURE__ */ React.createElement("h2", { id: "mz-cadastro-titulo", className: "mz-display text-lg font-bold" }, "Novo cliente"), /* @__PURE__ */ React.createElement("p", { className: `text-xs ${C.muted}` }, "Dados usados pela f\xE1brica para faturar o pedido. Campos com ", /* @__PURE__ */ React.createElement("span", { className: "text-[color:var(--mz-warn)]" }, "*"), " s\xE3o obrigat\xF3rios.")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: `${C.fechar} -mr-2`, "aria-label": "Fechar cadastro" }, /* @__PURE__ */ React.createElement(X, { className: "h-6 w-6", strokeWidth: 2 }))),
+    /* @__PURE__ */ React.createElement("form", { id: "mz-form-cliente", onSubmit: salvar, noValidate: true, className: "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5" }, /* @__PURE__ */ React.createElement(SecaoCadastro, { numero: "01", titulo: "Identifica\xE7\xE3o da empresa" }, campo("cnpj", "CNPJ", { col: "col-span-6 sm:col-span-3", placeholder: "00.000.000/0000-00", inputMode: "numeric", autoComplete: "off", ref: primeiroRef }), /* @__PURE__ */ React.createElement("div", { className: "col-span-6 flex min-w-0 flex-col gap-1.5 sm:col-span-3" }, /* @__PURE__ */ React.createElement(Rotulo, { chave: "ie", texto: "Inscri\xE7\xE3o Estadual" }), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        id: "mz-cli-ie",
+        className: `${classeInput("ie")} min-w-0 flex-1 disabled:opacity-60`,
+        value: form.ieIsento ? "ISENTO" : form.ie,
+        onChange: (e) => alterar("ie", e.target.value),
+        disabled: form.ieIsento,
+        placeholder: "N\xBA da IE",
+        autoComplete: "off",
+        "aria-required": !form.ieIsento,
+        "aria-invalid": !!erros.ie,
+        "aria-describedby": erros.ie ? "mz-cli-ie-erro" : void 0
+      }
+    ), /* @__PURE__ */ React.createElement("label", { className: "mz-focus flex min-h-[48px] shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-[color:var(--mz-line)] bg-white px-3 text-sm font-semibold" }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "checkbox",
+        className: "h-5 w-5 accent-[color:var(--mz-accent)]",
+        checked: form.ieIsento,
+        onChange: (e) => {
+          const v = e.target.checked;
+          setForm((f) => ({ ...f, ieIsento: v }));
+          setErros((er) => ({ ...er, ie: void 0 }));
+        }
+      }
+    ), "Isento")), /* @__PURE__ */ React.createElement(Erro, { chave: "ie" })), campo("razaoSocial", "Raz\xE3o Social", { placeholder: "Ex.: L\xEDrio Ind\xFAstria de Cal\xE7ados Ltda.", autoComplete: "organization" }), campo("fantasia", "Nome Fantasia", { obrigatorio: false, placeholder: "Ex.: Cal\xE7ados L\xEDrio" })), /* @__PURE__ */ React.createElement(SecaoCadastro, { numero: "02", titulo: "Endere\xE7o de faturamento / entrega" }, campo("cep", "CEP", { col: "col-span-6 sm:col-span-2", placeholder: "00000-000", inputMode: "numeric", autoComplete: "postal-code" }), campo("logradouro", "Logradouro / Rua", { col: "col-span-6 sm:col-span-4", placeholder: "Ex.: Rua Primeiro de Maio", autoComplete: "address-line1" }), campo("numero", "N\xFAmero", { col: "col-span-2", placeholder: "N\xBA", autoComplete: "off" }), campo("complemento", "Complemento", { col: "col-span-4", obrigatorio: false, placeholder: "Sala, pavilh\xE3o\u2026", autoComplete: "address-line2" }), campo("bairro", "Bairro", { placeholder: "Ex.: Centro" }), campo("municipio", "Cidade", { col: "col-span-4", placeholder: "Ex.: Sapiranga", autoComplete: "address-level2" }), /* @__PURE__ */ React.createElement("div", { className: "col-span-2 flex min-w-0 flex-col gap-1.5" }, /* @__PURE__ */ React.createElement(Rotulo, { chave: "uf", texto: "UF" }), /* @__PURE__ */ React.createElement(
+      "select",
+      {
+        id: "mz-cli-uf",
+        className: `${classeInput("uf")} px-2`,
+        value: form.uf,
+        onChange: (e) => alterar("uf", e.target.value),
+        autoComplete: "address-level1",
+        "aria-required": "true",
+        "aria-invalid": !!erros.uf,
+        "aria-describedby": erros.uf ? "mz-cli-uf-erro" : void 0
+      },
+      /* @__PURE__ */ React.createElement("option", { value: "" }, "UF"),
+      UFS.map((uf) => /* @__PURE__ */ React.createElement("option", { key: uf, value: uf }, uf))
+    ), /* @__PURE__ */ React.createElement(Erro, { chave: "uf" }))), /* @__PURE__ */ React.createElement(SecaoCadastro, { numero: "03", titulo: "Contato comercial e financeiro" }, campo("contato", "Comprador / Contato", { placeholder: "Ex.: Ana Paula (compras)", autoComplete: "name" }), campo("whatsapp", "Telefone / WhatsApp comercial", { col: "col-span-6 sm:col-span-3", placeholder: "(00) 00000-0000", inputMode: "tel", autoComplete: "tel" }), campo("email", "E-mail (faturamento / XML / pedido)", { col: "col-span-6 sm:col-span-3", placeholder: "nfe@empresa.com.br", type: "email", inputMode: "email", autoComplete: "email" }))),
+    /* @__PURE__ */ React.createElement("div", { className: "border-t border-[color:var(--mz-line)] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 sm:px-5" }, qtdErros > 0 && /* @__PURE__ */ React.createElement("p", { role: "alert", className: "mb-2 text-sm font-semibold text-[color:var(--mz-warn)]" }, "Preencha ", qtdErros === 1 ? "o campo destacado" : `os ${qtdErros} campos destacados`, " para salvar."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-[auto_1fr] gap-3" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: C.btnGhost }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "submit", form: "mz-form-cliente", className: C.btnAccent }, "Salvar e atender")))
+  ));
+}
 function TelaClientes({
   clientes,
   historico,
@@ -742,35 +984,17 @@ function TelaClientes({
   className = "mz-gutter mx-auto max-w-6xl py-8"
 }) {
   const [abrirCadastro, setAbrirCadastro] = useState(false);
-  const [form, setForm] = useState({ nome: "", contato: "", whatsapp: "", cidade: "" });
-  const [erros, setErros] = useState({});
-  const salvar = (e) => {
-    e.preventDefault();
-    const novos = {};
-    if (!form.nome.trim()) novos.nome = "Informe o nome fantasia.";
-    if (!form.contato.trim()) novos.contato = "Informe o contato ou modelista.";
-    if (somenteDigitos(form.whatsapp).length < 10) novos.whatsapp = "WhatsApp com DDD, ex.: (51) 99999-0000.";
-    if (!form.cidade.trim()) novos.cidade = "Informe a cidade.";
-    setErros(novos);
-    if (Object.keys(novos).length) return;
-    onCadastrar({ id: `c${Date.now()}`, ...form, nome: form.nome.trim(), contato: form.contato.trim(), cidade: form.cidade.trim(), ultimoPedido: null, novo: true });
-  };
-  const campo = (chave, rotulo, placeholder, extra = {}) => /* @__PURE__ */ React.createElement("label", { className: "flex flex-col gap-1.5 text-sm font-semibold", htmlFor: `mz-cli-${chave}` }, rotulo, /* @__PURE__ */ React.createElement(
-    "input",
+  return /* @__PURE__ */ React.createElement(Tag, { className }, topo, /* @__PURE__ */ React.createElement("div", { className: "mz-in flex flex-wrap items-end justify-between gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, eyebrow), /* @__PURE__ */ React.createElement("h1", { className: "mz-display mt-1 text-2xl font-bold sm:text-3xl" }, titulo), /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-sm ${C.muted}` }, subtitulo)), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro(true), className: `${C.btnGhost} w-full sm:w-auto`, "aria-haspopup": "dialog" }, /* @__PURE__ */ React.createElement(Icone.mais, { className: "h-4 w-4" }), " Cadastrar Novo Cliente (PJ)")), abrirCadastro && /* @__PURE__ */ React.createElement(
+    ModalCadastroCliente,
     {
-      id: `mz-cli-${chave}`,
-      className: `${C.input} ${erros[chave] ? "border-[color:var(--mz-warn)]" : ""}`,
-      placeholder,
-      value: form[chave],
-      onChange: (e) => {
-        const v = chave === "whatsapp" ? mascaraWhatsapp(e.target.value) : e.target.value;
-        setForm((f) => ({ ...f, [chave]: v }));
-        setErros((er) => ({ ...er, [chave]: void 0 }));
-      },
-      ...extra
+      clientes,
+      onFechar: () => setAbrirCadastro(false),
+      onSalvar: (c) => {
+        setAbrirCadastro(false);
+        onCadastrar(c);
+      }
     }
-  ), erros[chave] && /* @__PURE__ */ React.createElement("span", { className: "text-xs font-medium text-[color:var(--mz-warn)]" }, erros[chave]));
-  return /* @__PURE__ */ React.createElement(Tag, { className }, topo, /* @__PURE__ */ React.createElement("div", { className: "mz-in flex flex-wrap items-end justify-between gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, eyebrow), /* @__PURE__ */ React.createElement("h1", { className: "mz-display mt-1 text-2xl font-bold sm:text-3xl" }, titulo), /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-sm ${C.muted}` }, subtitulo)), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro((v) => !v), className: `${C.btnGhost} w-full sm:w-auto`, "aria-expanded": abrirCadastro }, /* @__PURE__ */ React.createElement(Icone.mais, { className: "h-4 w-4" }), " Cadastro R\xE1pido de Novo Cliente")), abrirCadastro && /* @__PURE__ */ React.createElement("form", { onSubmit: salvar, noValidate: true, className: "mz-in mt-5 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-soft)] p-4 sm:p-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-3" }, /* @__PURE__ */ React.createElement("h2", { className: "mz-display text-lg font-bold" }, "Novo cliente"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro(false), className: `mz-focus rounded p-1 ${C.muted}`, "aria-label": "Fechar cadastro" }, /* @__PURE__ */ React.createElement(Icone.fechar, { className: "h-5 w-5" }))), /* @__PURE__ */ React.createElement("div", { className: "mt-4 grid gap-4 sm:grid-cols-2" }, campo("nome", "Nome fantasia", "Ex.: Cal\xE7ados L\xEDrio"), campo("contato", "Contato / Modelista", "Ex.: Ana Paula (modelista)"), campo("whatsapp", "WhatsApp", "(00) 00000-0000", { inputMode: "tel" }), campo("cidade", "Cidade", "Ex.: Sapiranga/RS")), /* @__PURE__ */ React.createElement("div", { className: "mt-5 flex flex-wrap justify-end gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAbrirCadastro(false), className: C.btnGhost }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "submit", className: C.btnAccent }, "Salvar e atender este cliente"))), /* @__PURE__ */ React.createElement("ul", { className: "mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" }, clientes.map((c) => {
+  ), /* @__PURE__ */ React.createElement("ul", { className: "mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" }, clientes.map((c) => {
     const enviados = historico.filter((h) => h.clienteId === c.id).length;
     return /* @__PURE__ */ React.createElement("li", { key: c.id }, /* @__PURE__ */ React.createElement(
       "button",
@@ -780,7 +1004,7 @@ function TelaClientes({
         className: "mz-focus group flex h-full w-full flex-col gap-4 rounded-2xl border-2 border-[color:var(--mz-line)] bg-white p-4 text-left transition hover:border-[color:var(--mz-accent)] active:scale-[.99] sm:p-5"
       },
       /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "mz-display flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[color:var(--mz-sunken)] text-base font-bold" }, c.nome.split(" ").filter((p) => p.length > 2).map((p) => p[0]).join("").slice(0, 2).toUpperCase()), c.novo ? /* @__PURE__ */ React.createElement("span", { className: "rounded-full bg-[color:var(--mz-accent-soft)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--mz-accent)]" }, "Novo cadastro") : enviados > 0 && /* @__PURE__ */ React.createElement("span", { className: "rounded-full bg-[color:var(--mz-ok-soft)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--mz-ok)]" }, enviados, " enviado", enviados > 1 ? "s" : "", " hoje")),
-      /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "text-base font-bold" }, c.nome), /* @__PURE__ */ React.createElement("p", { className: `mt-0.5 text-sm ${C.muted}` }, c.contato)),
+      /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "text-base font-bold" }, c.nome), c.razaoSocial && c.razaoSocial !== c.nome && /* @__PURE__ */ React.createElement("p", { className: `truncate text-xs ${C.muted}` }, c.razaoSocial), c.cnpj && /* @__PURE__ */ React.createElement("p", { className: `mz-mono mt-0.5 text-xs ${C.muted}` }, "CNPJ ", c.cnpj), /* @__PURE__ */ React.createElement("p", { className: `mt-0.5 text-sm ${C.muted}` }, c.contato)),
       /* @__PURE__ */ React.createElement("dl", { className: "mt-auto grid grid-cols-2 gap-2 border-t border-[color:var(--mz-line)] pt-3 text-xs" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Cidade"), /* @__PURE__ */ React.createElement("dd", { className: "font-semibold" }, c.cidade)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "WhatsApp"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono font-semibold" }, c.whatsapp)), /* @__PURE__ */ React.createElement("div", { className: "col-span-2" }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "\xDAltimo pedido"), /* @__PURE__ */ React.createElement("dd", { className: "font-semibold" }, c.ultimoPedido || "Primeiro atendimento"))),
       /* @__PURE__ */ React.createElement("span", { className: "inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[color:var(--mz-accent-soft)] text-sm font-bold text-[color:var(--mz-accent)] transition group-hover:bg-[color:var(--mz-accent)] group-hover:text-white" }, "Atender este cliente \u2192")
     ));
@@ -1166,7 +1390,15 @@ function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar
   const total = itens.reduce((s, i) => s + i.qtd, 0);
   const totalAmostra = itens.filter((i) => i.tipo === "amostra").reduce((s, i) => s + i.qtd, 0);
   const totalProd = total - totalAmostra;
-  return /* @__PURE__ */ React.createElement("main", { className: "mz-gutter mx-auto max-w-5xl py-8" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onVoltar, className: `mz-focus inline-flex items-center gap-1 text-sm font-semibold ${C.muted} hover:text-[color:var(--mz-ink)]` }, /* @__PURE__ */ React.createElement(Icone.voltar, { className: "h-4 w-4" }), " Voltar ao cat\xE1logo"), /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow mt-4" }, "Passo 3 de 3 \xB7 Revis\xE3o"), /* @__PURE__ */ React.createElement("h1", { className: "mz-display mt-1 text-2xl font-bold sm:text-3xl" }, "Confira a solicita\xE7\xE3o antes de enviar"), /* @__PURE__ */ React.createElement("div", { className: "mt-6 grid gap-6 lg:grid-cols-[1.5fr_1fr]" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0 rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] px-5 py-3" }, itens.length === 0 ? /* @__PURE__ */ React.createElement("p", { className: `py-10 text-center text-sm ${C.muted}` }, "O pedido ficou vazio. Volte ao cat\xE1logo para adicionar pe\xE7as.") : ["amostra", "producao"].map((t) => /* @__PURE__ */ React.createElement(GrupoItens, { key: t, tipo: t, itens: itens.filter((i) => i.tipo === t) }, itens.filter((i) => i.tipo === t).map((i) => /* @__PURE__ */ React.createElement(LinhaItem, { key: i.chave, item: i, onQtd: (q) => onQtd(i.chave, q), onRemover: () => onRemover(i.chave) }))))), /* @__PURE__ */ React.createElement("aside", { className: "flex min-w-0 flex-col gap-4" }, /* @__PURE__ */ React.createElement("div", { className: "rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Cliente"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-bold" }, cliente.nome), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, cliente.contato), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, cliente.cidade, " \xB7 ", /* @__PURE__ */ React.createElement("span", { className: "mz-mono" }, cliente.whatsapp)), /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow mt-4" }, "Representante"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-sm font-semibold" }, rep.nome, " ", /* @__PURE__ */ React.createElement("span", { className: `mz-mono text-xs ${C.muted}` }, rep.codigo)), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, rep.regiao)), /* @__PURE__ */ React.createElement("div", { className: "rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5" }, /* @__PURE__ */ React.createElement("dl", { className: "grid gap-2 text-sm" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between" }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Amostras"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono font-semibold" }, formatarNumero(totalAmostra), " un")), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between" }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Produ\xE7\xE3o"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono font-semibold" }, formatarNumero(totalProd), " un")), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between border-t border-[color:var(--mz-line)] pt-2" }, /* @__PURE__ */ React.createElement("dt", { className: "font-bold" }, "Total"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono font-bold" }, formatarNumero(total), " un"))), !confirmando ? /* @__PURE__ */ React.createElement("button", { type: "button", disabled: !itens.length, onClick: () => setConfirmando(true), className: `${C.btnAccent} mt-4 w-full` }, "Enviar solicita\xE7\xE3o") : /* @__PURE__ */ React.createElement("div", { className: "mz-in mt-4 rounded-lg border border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)] p-3" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm font-semibold" }, "Enviar ", itens.length, " ", itens.length === 1 ? "item" : "itens", " (", formatarNumero(total), " un) para a f\xE1brica?"), /* @__PURE__ */ React.createElement("div", { className: "mt-3 flex gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setConfirmando(false), className: `${C.btnGhost} flex-1` }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onEnviar, className: `${C.btnPrimary} flex-1` }, "Confirmar envio")))))));
+  return /* @__PURE__ */ React.createElement("main", { className: "mz-gutter mx-auto max-w-5xl py-8" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onVoltar, className: `mz-focus inline-flex items-center gap-1 text-sm font-semibold ${C.muted} hover:text-[color:var(--mz-ink)]` }, /* @__PURE__ */ React.createElement(Icone.voltar, { className: "h-4 w-4" }), " Voltar ao cat\xE1logo"), /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow mt-4" }, "Passo 3 de 3 \xB7 Revis\xE3o"), /* @__PURE__ */ React.createElement("h1", { className: "mz-display mt-1 text-2xl font-bold sm:text-3xl" }, "Confira a solicita\xE7\xE3o antes de enviar"), /* @__PURE__ */ React.createElement("div", { className: "mt-6 grid gap-6 lg:grid-cols-[1.5fr_1fr]" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0 rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] px-5 py-3" }, itens.length === 0 ? /* @__PURE__ */ React.createElement("p", { className: `py-10 text-center text-sm ${C.muted}` }, "O pedido ficou vazio. Volte ao cat\xE1logo para adicionar pe\xE7as.") : ["amostra", "producao"].map((t) => /* @__PURE__ */ React.createElement(GrupoItens, { key: t, tipo: t, itens: itens.filter((i) => i.tipo === t) }, itens.filter((i) => i.tipo === t).map((i) => /* @__PURE__ */ React.createElement(LinhaItem, { key: i.chave, item: i, onQtd: (q) => onQtd(i.chave, q), onRemover: () => onRemover(i.chave) }))))), /* @__PURE__ */ React.createElement("aside", { className: "flex min-w-0 flex-col gap-4" }, /* @__PURE__ */ React.createElement("div", { className: "rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Cliente"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-bold" }, cliente.nome), /* @__PURE__ */ React.createElement("dl", { className: "mt-2 grid gap-1.5 text-sm" }, [
+    ["Raz\xE3o Social", cliente.razaoSocial],
+    ["CNPJ", cliente.cnpj, true],
+    ["IE", cliente.ie, true],
+    ["Endere\xE7o", cliente.logradouro ? `${enderecoCliente(cliente)} \xB7 CEP ${cliente.cep} \xB7 ${cliente.municipio}/${cliente.uf}` : cliente.cidade],
+    ["Comprador", cliente.contato],
+    ["Telefone", cliente.whatsapp, true],
+    ["E-mail", cliente.email]
+  ].filter(([, v]) => v).map(([rotulo, valor, mono]) => /* @__PURE__ */ React.createElement("div", { key: rotulo, className: "min-w-0" }, /* @__PURE__ */ React.createElement("dt", { className: `text-xs ${C.muted}` }, rotulo), /* @__PURE__ */ React.createElement("dd", { className: `break-words font-medium ${mono ? "mz-mono" : ""}` }, valor)))), /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow mt-4" }, "Representante"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-sm font-semibold" }, rep.nome, " ", /* @__PURE__ */ React.createElement("span", { className: `mz-mono text-xs ${C.muted}` }, rep.codigo)), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, rep.regiao)), /* @__PURE__ */ React.createElement("div", { className: "rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5" }, /* @__PURE__ */ React.createElement("dl", { className: "grid gap-2 text-sm" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between" }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Amostras"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono font-semibold" }, formatarNumero(totalAmostra), " un")), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between" }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Produ\xE7\xE3o"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono font-semibold" }, formatarNumero(totalProd), " un")), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between border-t border-[color:var(--mz-line)] pt-2" }, /* @__PURE__ */ React.createElement("dt", { className: "font-bold" }, "Total"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono font-bold" }, formatarNumero(total), " un"))), !confirmando ? /* @__PURE__ */ React.createElement("button", { type: "button", disabled: !itens.length, onClick: () => setConfirmando(true), className: `${C.btnAccent} mt-4 w-full` }, "Enviar solicita\xE7\xE3o") : /* @__PURE__ */ React.createElement("div", { className: "mz-in mt-4 rounded-lg border border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)] p-3" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm font-semibold" }, "Enviar ", itens.length, " ", itens.length === 1 ? "item" : "itens", " (", formatarNumero(total), " un) para a f\xE1brica?"), /* @__PURE__ */ React.createElement("div", { className: "mt-3 flex gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setConfirmando(false), className: `${C.btnGhost} flex-1` }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onEnviar, className: `${C.btnPrimary} flex-1` }, "Confirmar envio")))))));
 }
 function useCopiar() {
   const [copiado, setCopiado] = useState(null);
@@ -1350,10 +1582,10 @@ function MetalizaApp() {
     if (pendente) {
       adicionarPara(c.id, pendente);
       const prod = PRODUTOS.find((x) => x.ref === pendente.ref);
-      setToast(`Atendendo ${c.nome}. Adicionado: ${linhaPedido(prod, pendente)}`);
+      setToast(`Atendendo ${c.nome} \xB7 Adicionado: ${linhaPedido(prod, pendente)}`);
       setPendente(null);
     } else {
-      setToast(`Atendendo ${c.nome}. Pedido liberado.`);
+      setToast(`Atendendo ${c.nome} \xB7 Pedido liberado.`);
     }
   };
   const cadastrarClienteDoModal = (c) => {

@@ -23,29 +23,66 @@ const REPRESENTANTE_DEMO = {
   codigo: "REP-014",
 };
 
+// Clientes de demonstração já com o cadastro PJ completo (dados fictícios; CNPJs com dígitos verificadores válidos)
 const CLIENTES_INICIAIS = [
   {
     id: "c1",
     nome: "Calçados Bella Passo",
+    fantasia: "Calçados Bella Passo",
+    razaoSocial: "Bella Passo Indústria de Calçados Ltda.",
+    cnpj: "12.847.365/0001-35",
+    ie: "124/0587312",
+    cep: "93510-120",
+    logradouro: "Rua Bento Gonçalves",
+    numero: "1840",
+    complemento: "Pavilhão 2",
+    bairro: "Centro",
+    municipio: "Novo Hamburgo",
+    uf: "RS",
+    cidade: "Novo Hamburgo/RS",
     contato: "Juliana Prates (modelista)",
     whatsapp: "(51) 99812-4410",
-    cidade: "Novo Hamburgo/RS",
+    email: "compras@bellapasso.com.br",
     ultimoPedido: "12/09/2026",
   },
   {
     id: "c2",
     nome: "Studio Valentina Shoes",
+    fantasia: "Studio Valentina Shoes",
+    razaoSocial: "Valentina Calçados Femininos Eireli",
+    cnpj: "34.192.687/0001-26",
+    ie: "310.442.718.115",
+    cep: "14401-322",
+    logradouro: "Avenida Brasil",
+    numero: "2215",
+    complemento: "",
+    bairro: "Vila Aparecida",
+    municipio: "Franca",
+    uf: "SP",
+    cidade: "Franca/SP",
     contato: "Marcos Lemos (desenvolvimento)",
     whatsapp: "(16) 99734-2208",
-    cidade: "Franca/SP",
+    email: "nfe@studiovalentina.com.br",
     ultimoPedido: "28/08/2026",
   },
   {
     id: "c3",
     nome: "Ateliê Dona Flor Calçados",
+    fantasia: "Ateliê Dona Flor Calçados",
+    razaoSocial: "Dona Flor Artefatos de Couro Ltda. ME",
+    cnpj: "56.731.824/0001-96",
+    ie: "ISENTO",
+    cep: "35520-005",
+    logradouro: "Rua Antônio Martins",
+    numero: "312",
+    complemento: "Sala 4",
+    bairro: "Santa Rita",
+    municipio: "Nova Serrana",
+    uf: "MG",
+    cidade: "Nova Serrana/MG",
     contato: "Renata Souza (modelista)",
     whatsapp: "(37) 99155-7821",
-    cidade: "Nova Serrana/MG",
+    email: "financeiro@donaflor.com.br",
     ultimoPedido: null,
   },
 ];
@@ -236,6 +273,55 @@ function mascaraWhatsapp(valor) {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
+function mascaraCnpj(valor) {
+  const d = somenteDigitos(valor).slice(0, 14);
+  let s = d.slice(0, 2);
+  if (d.length > 2) s += `.${d.slice(2, 5)}`;
+  if (d.length > 5) s += `.${d.slice(5, 8)}`;
+  if (d.length > 8) s += `/${d.slice(8, 12)}`;
+  if (d.length > 12) s += `-${d.slice(12)}`;
+  return s;
+}
+
+// CNPJ válido: 14 dígitos, não repetidos, com os dois dígitos verificadores corretos
+function cnpjValido(valor) {
+  const d = somenteDigitos(valor);
+  if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false;
+  const digito = (n) => {
+    const pesos = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const resto = pesos.reduce((soma, peso, i) => soma + peso * Number(d[i]), 0) % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  return digito(12) === Number(d[12]) && digito(13) === Number(d[13]);
+}
+
+function mascaraCep(valor) {
+  const d = somenteDigitos(valor).slice(0, 8);
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}
+
+const emailValido = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
+
+const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
+
+// "Rua, Nº, Compl - Bairro"
+function enderecoCliente(c) {
+  const rua = [c.logradouro, c.numero, c.complemento].filter(Boolean).join(", ");
+  return c.bairro ? `${rua} - ${c.bairro}` : rua;
+}
+
+// Bloco fiscal enviado ao PCP para faturamento sem divergências
+function blocoFiscal(c) {
+  return [
+    "DADOS CADASTRAIS DO CLIENTE:",
+    `Razão Social: ${c.razaoSocial || c.nome} (Fantasia: ${c.fantasia || c.nome})`,
+    `CNPJ: ${c.cnpj || "—"} | IE: ${c.ie || "—"}`,
+    `Endereço: ${enderecoCliente(c) || "—"} · CEP: ${c.cep || "—"} · ${c.municipio && c.uf ? `${c.municipio}/${c.uf}` : c.cidade}`,
+    `Comprador: ${c.contato} | Telefone/WhatsApp: ${c.whatsapp}`,
+    `E-mail: ${c.email || "—"}`,
+  ];
+}
+
 const formatarNumero = (n) => n.toLocaleString("pt-BR");
 
 function hojeFormatado() {
@@ -274,8 +360,9 @@ function montarMensagem({ numero, rep, cliente, itens }) {
   return [
     `*Metaliza · Solicitação ${numero}*`,
     `Data: ${hojeFormatado()}`,
-    `Cliente: ${cliente.nome} (${cliente.cidade})`,
-    `Contato: ${cliente.contato}`,
+    "",
+    ...blocoFiscal(cliente),
+    "",
     `Representante: ${rep.nome} · ${rep.regiao}`,
     `Coleção: ${colecoesDoPedido(itens)}`,
     ...linhasItens(itens, true),
@@ -291,10 +378,8 @@ function montarEmail({ numero, rep, cliente, itens }) {
     corpo: [
       `Solicitação ${numero} registrada em ${hojeFormatado()}.`,
       "",
-      `Cliente: ${cliente.nome}`,
-      `Contato: ${cliente.contato}`,
-      `WhatsApp: ${cliente.whatsapp}`,
-      `Cidade: ${cliente.cidade}`,
+      ...blocoFiscal(cliente),
+      "",
       `Representante: ${rep.nome} (${rep.codigo}) · ${rep.regiao}`,
       `Coleção: ${colecoesDoPedido(itens)}`,
       ...linhasItens(itens, false),
@@ -1013,7 +1098,7 @@ function TelaModo({ rep, onAtendimento, onApresentacao }) {
       id: "atendimento",
       numero: "01",
       titulo: "Atendimento a Cliente",
-      texto: "Escolha a fábrica (ou faça o cadastro rápido) e siga para o catálogo com carrinho e pedidos liberados.",
+      texto: "Escolha a fábrica (ou cadastre um novo cliente PJ) e siga para o catálogo com carrinho e pedidos liberados.",
       acao: "Escolher a fábrica",
       onClick: onAtendimento,
       destaque: true,
@@ -1108,6 +1193,246 @@ function ModalEscolherCliente({ pendente, clientes, historico, onSelecionar, onC
   );
 }
 
+/* ----------------------------- cadastro completo de cliente PJ ----------------------------- */
+
+const FORM_CLIENTE_VAZIO = {
+  cnpj: "", ie: "", ieIsento: false, razaoSocial: "", fantasia: "",
+  cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", uf: "",
+  contato: "", whatsapp: "", email: "",
+};
+const MASCARAS_CLIENTE = { cnpj: mascaraCnpj, cep: mascaraCep, whatsapp: mascaraWhatsapp };
+// Ordem dos campos no formulário, para levar o foco ao primeiro com erro
+const ORDEM_CAMPOS_CLIENTE = ["cnpj", "ie", "razaoSocial", "fantasia", "cep", "logradouro", "numero", "complemento", "bairro", "municipio", "uf", "contato", "whatsapp", "email"];
+
+function validarCliente(form, clientes) {
+  const e = {};
+  if (!somenteDigitos(form.cnpj)) e.cnpj = "Informe o CNPJ.";
+  else if (!cnpjValido(form.cnpj)) e.cnpj = "CNPJ inválido. Confira os 14 dígitos.";
+  else {
+    const dup = clientes.find((c) => c.cnpj && somenteDigitos(c.cnpj) === somenteDigitos(form.cnpj));
+    if (dup) e.cnpj = `CNPJ já cadastrado para ${dup.nome}.`;
+  }
+  if (!form.ieIsento && !form.ie.trim()) e.ie = "Informe a IE ou marque Isento.";
+  if (!form.razaoSocial.trim()) e.razaoSocial = "Informe a razão social.";
+  if (somenteDigitos(form.cep).length !== 8) e.cep = "CEP com 8 dígitos, ex.: 93510-120.";
+  if (!form.logradouro.trim()) e.logradouro = "Informe a rua / logradouro.";
+  if (!form.numero.trim()) e.numero = "Informe o número (ou S/N).";
+  if (!form.bairro.trim()) e.bairro = "Informe o bairro.";
+  if (!form.municipio.trim()) e.municipio = "Informe a cidade.";
+  if (!form.uf) e.uf = "Selecione a UF.";
+  if (!form.contato.trim()) e.contato = "Informe o comprador / contato.";
+  if (somenteDigitos(form.whatsapp).length < 10) e.whatsapp = "Telefone com DDD, ex.: (51) 99999-0000.";
+  if (!form.email.trim()) e.email = "Informe o e-mail de faturamento.";
+  else if (!emailValido(form.email)) e.email = "E-mail inválido.";
+  return e;
+}
+
+function SecaoCadastro({ numero, titulo, children }) {
+  return (
+    <fieldset className="rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4 sm:p-5">
+      <legend className="sr-only">{titulo}</legend>
+      <p className="mz-eyebrow flex items-center gap-2" aria-hidden="true">
+        <span className="mz-mono text-[color:var(--mz-accent)]">{numero}</span> {titulo}
+      </p>
+      <div className="mt-4 grid grid-cols-6 gap-x-3 gap-y-4">{children}</div>
+    </fieldset>
+  );
+}
+
+function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
+  const [form, setForm] = useState(FORM_CLIENTE_VAZIO);
+  const [erros, setErros] = useState({});
+  const primeiroRef = useRef(null);
+
+  useEffect(() => {
+    primeiroRef.current?.focus();
+    // Captura o Esc antes do modal de seleção de cliente (quando o cadastro abre por cima dele)
+    const esc = (e) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      onFechar();
+    };
+    window.addEventListener("keydown", esc, true);
+    return () => window.removeEventListener("keydown", esc, true);
+  }, [onFechar]);
+
+  const alterar = (chave, valor) => {
+    const mascara = MASCARAS_CLIENTE[chave];
+    setForm((f) => ({ ...f, [chave]: mascara ? mascara(valor) : valor }));
+    setErros((er) => ({ ...er, [chave]: undefined }));
+  };
+
+  const salvar = (e) => {
+    e.preventDefault();
+    const novos = validarCliente(form, clientes);
+    setErros(novos);
+    const primeiro = ORDEM_CAMPOS_CLIENTE.find((k) => novos[k]);
+    if (primeiro) {
+      document.getElementById(`mz-cli-${primeiro}`)?.focus();
+      return;
+    }
+    const t = (k) => form[k].trim();
+    const municipio = t("municipio");
+    onSalvar({
+      id: `c${Date.now()}`,
+      nome: t("fantasia") || t("razaoSocial"),
+      fantasia: t("fantasia") || t("razaoSocial"),
+      razaoSocial: t("razaoSocial"),
+      cnpj: form.cnpj,
+      ie: form.ieIsento ? "ISENTO" : t("ie"),
+      cep: form.cep,
+      logradouro: t("logradouro"),
+      numero: t("numero"),
+      complemento: t("complemento"),
+      bairro: t("bairro"),
+      municipio,
+      uf: form.uf,
+      cidade: `${municipio}/${form.uf}`,
+      contato: t("contato"),
+      whatsapp: form.whatsapp,
+      email: t("email").toLowerCase(),
+      ultimoPedido: null,
+      novo: true,
+    });
+  };
+
+  const qtdErros = Object.values(erros).filter(Boolean).length;
+  const classeInput = (chave) => `${C.input} ${erros[chave] ? "border-[color:var(--mz-warn)] bg-[color:var(--mz-warn-soft)]" : ""}`;
+
+  const Rotulo = ({ chave, texto, obrigatorio = true }) => (
+    <label htmlFor={`mz-cli-${chave}`} className="text-sm font-semibold">
+      {texto}
+      {obrigatorio ? <span className="text-[color:var(--mz-warn)]" aria-hidden="true"> *</span> : <span className={`font-normal ${C.muted}`}> (opcional)</span>}
+    </label>
+  );
+  const Erro = ({ chave }) =>
+    erros[chave] ? <span id={`mz-cli-${chave}-erro`} className="text-xs font-medium text-[color:var(--mz-warn)]">{erros[chave]}</span> : null;
+
+  const campo = (chave, texto, { col = "col-span-6", obrigatorio = true, ...extra } = {}) => (
+    <div className={`flex min-w-0 flex-col gap-1.5 ${col}`}>
+      <Rotulo chave={chave} texto={texto} obrigatorio={obrigatorio} />
+      <input
+        id={`mz-cli-${chave}`}
+        className={classeInput(chave)}
+        value={form[chave]}
+        onChange={(e) => alterar(chave, e.target.value)}
+        aria-required={obrigatorio}
+        aria-invalid={!!erros[chave]}
+        aria-describedby={erros[chave] ? `mz-cli-${chave}-erro` : undefined}
+        {...extra}
+      />
+      <Erro chave={chave} />
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mz-cadastro-titulo"
+        className="mz-sheet flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-[color:var(--mz-soft)] shadow-2xl sm:max-h-[90vh] sm:rounded-3xl"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-[color:var(--mz-line)] bg-white px-5 pb-3 pt-4">
+          <div className="min-w-0">
+            <p className="mz-eyebrow">Cadastro de cliente · Pessoa Jurídica</p>
+            <h2 id="mz-cadastro-titulo" className="mz-display text-lg font-bold">Novo cliente</h2>
+            <p className={`text-xs ${C.muted}`}>Dados usados pela fábrica para faturar o pedido. Campos com <span className="text-[color:var(--mz-warn)]">*</span> são obrigatórios.</p>
+          </div>
+          <button type="button" onClick={onFechar} className={`${C.fechar} -mr-2`} aria-label="Fechar cadastro">
+            <X className="h-6 w-6" strokeWidth={2} />
+          </button>
+        </div>
+
+        <form id="mz-form-cliente" onSubmit={salvar} noValidate className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+          <SecaoCadastro numero="01" titulo="Identificação da empresa">
+            {campo("cnpj", "CNPJ", { col: "col-span-6 sm:col-span-3", placeholder: "00.000.000/0000-00", inputMode: "numeric", autoComplete: "off", ref: primeiroRef })}
+            <div className="col-span-6 flex min-w-0 flex-col gap-1.5 sm:col-span-3">
+              <Rotulo chave="ie" texto="Inscrição Estadual" />
+              <div className="flex gap-2">
+                <input
+                  id="mz-cli-ie"
+                  className={`${classeInput("ie")} min-w-0 flex-1 disabled:opacity-60`}
+                  value={form.ieIsento ? "ISENTO" : form.ie}
+                  onChange={(e) => alterar("ie", e.target.value)}
+                  disabled={form.ieIsento}
+                  placeholder="Nº da IE"
+                  autoComplete="off"
+                  aria-required={!form.ieIsento}
+                  aria-invalid={!!erros.ie}
+                  aria-describedby={erros.ie ? "mz-cli-ie-erro" : undefined}
+                />
+                <label className="mz-focus flex min-h-[48px] shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-[color:var(--mz-line)] bg-white px-3 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-[color:var(--mz-accent)]"
+                    checked={form.ieIsento}
+                    onChange={(e) => {
+                      const v = e.target.checked;
+                      setForm((f) => ({ ...f, ieIsento: v }));
+                      setErros((er) => ({ ...er, ie: undefined }));
+                    }}
+                  />
+                  Isento
+                </label>
+              </div>
+              <Erro chave="ie" />
+            </div>
+            {campo("razaoSocial", "Razão Social", { placeholder: "Ex.: Lírio Indústria de Calçados Ltda.", autoComplete: "organization" })}
+            {campo("fantasia", "Nome Fantasia", { obrigatorio: false, placeholder: "Ex.: Calçados Lírio" })}
+          </SecaoCadastro>
+
+          <SecaoCadastro numero="02" titulo="Endereço de faturamento / entrega">
+            {campo("cep", "CEP", { col: "col-span-6 sm:col-span-2", placeholder: "00000-000", inputMode: "numeric", autoComplete: "postal-code" })}
+            {campo("logradouro", "Logradouro / Rua", { col: "col-span-6 sm:col-span-4", placeholder: "Ex.: Rua Primeiro de Maio", autoComplete: "address-line1" })}
+            {campo("numero", "Número", { col: "col-span-2", placeholder: "Nº", autoComplete: "off" })}
+            {campo("complemento", "Complemento", { col: "col-span-4", obrigatorio: false, placeholder: "Sala, pavilhão…", autoComplete: "address-line2" })}
+            {campo("bairro", "Bairro", { placeholder: "Ex.: Centro" })}
+            {campo("municipio", "Cidade", { col: "col-span-4", placeholder: "Ex.: Sapiranga", autoComplete: "address-level2" })}
+            <div className="col-span-2 flex min-w-0 flex-col gap-1.5">
+              <Rotulo chave="uf" texto="UF" />
+              <select
+                id="mz-cli-uf"
+                className={`${classeInput("uf")} px-2`}
+                value={form.uf}
+                onChange={(e) => alterar("uf", e.target.value)}
+                autoComplete="address-level1"
+                aria-required="true"
+                aria-invalid={!!erros.uf}
+                aria-describedby={erros.uf ? "mz-cli-uf-erro" : undefined}
+              >
+                <option value="">UF</option>
+                {UFS.map((uf) => (
+                  <option key={uf} value={uf}>{uf}</option>
+                ))}
+              </select>
+              <Erro chave="uf" />
+            </div>
+          </SecaoCadastro>
+
+          <SecaoCadastro numero="03" titulo="Contato comercial e financeiro">
+            {campo("contato", "Comprador / Contato", { placeholder: "Ex.: Ana Paula (compras)", autoComplete: "name" })}
+            {campo("whatsapp", "Telefone / WhatsApp comercial", { col: "col-span-6 sm:col-span-3", placeholder: "(00) 00000-0000", inputMode: "tel", autoComplete: "tel" })}
+            {campo("email", "E-mail (faturamento / XML / pedido)", { col: "col-span-6 sm:col-span-3", placeholder: "nfe@empresa.com.br", type: "email", inputMode: "email", autoComplete: "email" })}
+          </SecaoCadastro>
+        </form>
+
+        <div className="border-t border-[color:var(--mz-line)] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 sm:px-5">
+          {qtdErros > 0 && (
+            <p role="alert" className="mb-2 text-sm font-semibold text-[color:var(--mz-warn)]">
+              Preencha {qtdErros === 1 ? "o campo destacado" : `os ${qtdErros} campos destacados`} para salvar.
+            </p>
+          )}
+          <div className="grid grid-cols-[auto_1fr] gap-3">
+            <button type="button" onClick={onFechar} className={C.btnGhost}>Cancelar</button>
+            <button type="submit" form="mz-form-cliente" className={C.btnAccent}>Salvar e atender</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ----------------------------- tela 2: clientes ----------------------------- */
 
 function TelaClientes({
@@ -1123,39 +1448,6 @@ function TelaClientes({
   className = "mz-gutter mx-auto max-w-6xl py-8",
 }) {
   const [abrirCadastro, setAbrirCadastro] = useState(false);
-  const [form, setForm] = useState({ nome: "", contato: "", whatsapp: "", cidade: "" });
-  const [erros, setErros] = useState({});
-
-  const salvar = (e) => {
-    e.preventDefault();
-    const novos = {};
-    if (!form.nome.trim()) novos.nome = "Informe o nome fantasia.";
-    if (!form.contato.trim()) novos.contato = "Informe o contato ou modelista.";
-    if (somenteDigitos(form.whatsapp).length < 10) novos.whatsapp = "WhatsApp com DDD, ex.: (51) 99999-0000.";
-    if (!form.cidade.trim()) novos.cidade = "Informe a cidade.";
-    setErros(novos);
-    if (Object.keys(novos).length) return;
-    onCadastrar({ id: `c${Date.now()}`, ...form, nome: form.nome.trim(), contato: form.contato.trim(), cidade: form.cidade.trim(), ultimoPedido: null, novo: true });
-  };
-
-  const campo = (chave, rotulo, placeholder, extra = {}) => (
-    <label className="flex flex-col gap-1.5 text-sm font-semibold" htmlFor={`mz-cli-${chave}`}>
-      {rotulo}
-      <input
-        id={`mz-cli-${chave}`}
-        className={`${C.input} ${erros[chave] ? "border-[color:var(--mz-warn)]" : ""}`}
-        placeholder={placeholder}
-        value={form[chave]}
-        onChange={(e) => {
-          const v = chave === "whatsapp" ? mascaraWhatsapp(e.target.value) : e.target.value;
-          setForm((f) => ({ ...f, [chave]: v }));
-          setErros((er) => ({ ...er, [chave]: undefined }));
-        }}
-        {...extra}
-      />
-      {erros[chave] && <span className="text-xs font-medium text-[color:var(--mz-warn)]">{erros[chave]}</span>}
-    </label>
-  );
 
   return (
     <Tag className={className}>
@@ -1166,30 +1458,20 @@ function TelaClientes({
           <h1 className="mz-display mt-1 text-2xl font-bold sm:text-3xl">{titulo}</h1>
           <p className={`mt-1 text-sm ${C.muted}`}>{subtitulo}</p>
         </div>
-        <button type="button" onClick={() => setAbrirCadastro((v) => !v)} className={`${C.btnGhost} w-full sm:w-auto`} aria-expanded={abrirCadastro}>
-          <Icone.mais className="h-4 w-4" /> Cadastro Rápido de Novo Cliente
+        <button type="button" onClick={() => setAbrirCadastro(true)} className={`${C.btnGhost} w-full sm:w-auto`} aria-haspopup="dialog">
+          <Icone.mais className="h-4 w-4" /> Cadastrar Novo Cliente (PJ)
         </button>
       </div>
 
       {abrirCadastro && (
-        <form onSubmit={salvar} noValidate className="mz-in mt-5 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-soft)] p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="mz-display text-lg font-bold">Novo cliente</h2>
-            <button type="button" onClick={() => setAbrirCadastro(false)} className={`mz-focus rounded p-1 ${C.muted}`} aria-label="Fechar cadastro">
-              <Icone.fechar className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {campo("nome", "Nome fantasia", "Ex.: Calçados Lírio")}
-            {campo("contato", "Contato / Modelista", "Ex.: Ana Paula (modelista)")}
-            {campo("whatsapp", "WhatsApp", "(00) 00000-0000", { inputMode: "tel" })}
-            {campo("cidade", "Cidade", "Ex.: Sapiranga/RS")}
-          </div>
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={() => setAbrirCadastro(false)} className={C.btnGhost}>Cancelar</button>
-            <button type="submit" className={C.btnAccent}>Salvar e atender este cliente</button>
-          </div>
-        </form>
+        <ModalCadastroCliente
+          clientes={clientes}
+          onFechar={() => setAbrirCadastro(false)}
+          onSalvar={(c) => {
+            setAbrirCadastro(false);
+            onCadastrar(c);
+          }}
+        />
       )}
 
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1214,6 +1496,8 @@ function TelaClientes({
                 </div>
                 <div className="min-w-0">
                   <p className="text-base font-bold">{c.nome}</p>
+                  {c.razaoSocial && c.razaoSocial !== c.nome && <p className={`truncate text-xs ${C.muted}`}>{c.razaoSocial}</p>}
+                  {c.cnpj && <p className={`mz-mono mt-0.5 text-xs ${C.muted}`}>CNPJ {c.cnpj}</p>}
                   <p className={`mt-0.5 text-sm ${C.muted}`}>{c.contato}</p>
                 </div>
                 <dl className="mt-auto grid grid-cols-2 gap-2 border-t border-[color:var(--mz-line)] pt-3 text-xs">
@@ -2042,8 +2326,24 @@ function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar
           <div className="rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-5">
             <p className="mz-eyebrow">Cliente</p>
             <p className="mt-1 font-bold">{cliente.nome}</p>
-            <p className={`text-sm ${C.muted}`}>{cliente.contato}</p>
-            <p className={`text-sm ${C.muted}`}>{cliente.cidade} · <span className="mz-mono">{cliente.whatsapp}</span></p>
+            <dl className="mt-2 grid gap-1.5 text-sm">
+              {[
+                ["Razão Social", cliente.razaoSocial],
+                ["CNPJ", cliente.cnpj, true],
+                ["IE", cliente.ie, true],
+                ["Endereço", cliente.logradouro ? `${enderecoCliente(cliente)} · CEP ${cliente.cep} · ${cliente.municipio}/${cliente.uf}` : cliente.cidade],
+                ["Comprador", cliente.contato],
+                ["Telefone", cliente.whatsapp, true],
+                ["E-mail", cliente.email],
+              ]
+                .filter(([, v]) => v)
+                .map(([rotulo, valor, mono]) => (
+                  <div key={rotulo} className="min-w-0">
+                    <dt className={`text-xs ${C.muted}`}>{rotulo}</dt>
+                    <dd className={`break-words font-medium ${mono ? "mz-mono" : ""}`}>{valor}</dd>
+                  </div>
+                ))}
+            </dl>
             <p className="mz-eyebrow mt-4">Representante</p>
             <p className="mt-1 text-sm font-semibold">{rep.nome} <span className={`mz-mono text-xs ${C.muted}`}>{rep.codigo}</span></p>
             <p className={`text-sm ${C.muted}`}>{rep.regiao}</p>
@@ -2293,10 +2593,10 @@ export default function MetalizaApp() {
     if (pendente) {
       adicionarPara(c.id, pendente);
       const prod = PRODUTOS.find((x) => x.ref === pendente.ref);
-      setToast(`Atendendo ${c.nome}. Adicionado: ${linhaPedido(prod, pendente)}`);
+      setToast(`Atendendo ${c.nome} · Adicionado: ${linhaPedido(prod, pendente)}`);
       setPendente(null);
     } else {
-      setToast(`Atendendo ${c.nome}. Pedido liberado.`);
+      setToast(`Atendendo ${c.nome} · Pedido liberado.`);
     }
   };
   const cadastrarClienteDoModal = (c) => {
