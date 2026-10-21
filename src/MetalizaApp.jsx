@@ -71,7 +71,7 @@ const CLIENTES_INICIAIS = [
     fantasia: "Ateliê Dona Flor Calçados",
     razaoSocial: "Dona Flor Artefatos de Couro Ltda. ME",
     cnpj: "56.731.824/0001-96",
-    ie: "ISENTO",
+    ie: "001.234567.00-89",
     cep: "35520-005",
     logradouro: "Rua Antônio Martins",
     numero: "312",
@@ -1196,7 +1196,7 @@ function ModalEscolherCliente({ pendente, clientes, historico, onSelecionar, onC
 /* ----------------------------- cadastro completo de cliente PJ ----------------------------- */
 
 const FORM_CLIENTE_VAZIO = {
-  cnpj: "", ie: "", ieIsento: false, razaoSocial: "", fantasia: "",
+  cnpj: "", ie: "", razaoSocial: "", fantasia: "",
   cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", uf: "",
   contato: "", whatsapp: "", email: "",
 };
@@ -1212,7 +1212,7 @@ function validarCliente(form, clientes) {
     const dup = clientes.find((c) => c.cnpj && somenteDigitos(c.cnpj) === somenteDigitos(form.cnpj));
     if (dup) e.cnpj = `CNPJ já cadastrado para ${dup.nome}.`;
   }
-  if (!form.ieIsento && !form.ie.trim()) e.ie = "Informe a IE ou marque Isento.";
+  if (!form.ie.trim()) e.ie = "Informe a Inscrição Estadual.";
   if (!form.razaoSocial.trim()) e.razaoSocial = "Informe a razão social.";
   if (somenteDigitos(form.cep).length !== 8) e.cep = "CEP com 8 dígitos, ex.: 93510-120.";
   if (!form.logradouro.trim()) e.logradouro = "Informe a rua / logradouro.";
@@ -1279,7 +1279,7 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
       fantasia: t("fantasia") || t("razaoSocial"),
       razaoSocial: t("razaoSocial"),
       cnpj: form.cnpj,
-      ie: form.ieIsento ? "ISENTO" : t("ie"),
+      ie: t("ie"),
       cep: form.cep,
       logradouro: t("logradouro"),
       numero: t("numero"),
@@ -1347,37 +1347,7 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
         <form id="mz-form-cliente" onSubmit={salvar} noValidate className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
           <SecaoCadastro numero="01" titulo="Identificação da empresa">
             {campo("cnpj", "CNPJ", { col: "col-span-6 sm:col-span-3", placeholder: "00.000.000/0000-00", inputMode: "numeric", autoComplete: "off", ref: primeiroRef })}
-            <div className="col-span-6 flex min-w-0 flex-col gap-1.5 sm:col-span-3">
-              <Rotulo chave="ie" texto="Inscrição Estadual" />
-              <div className="flex gap-2">
-                <input
-                  id="mz-cli-ie"
-                  className={`${classeInput("ie")} min-w-0 flex-1 disabled:opacity-60`}
-                  value={form.ieIsento ? "ISENTO" : form.ie}
-                  onChange={(e) => alterar("ie", e.target.value)}
-                  disabled={form.ieIsento}
-                  placeholder="Nº da IE"
-                  autoComplete="off"
-                  aria-required={!form.ieIsento}
-                  aria-invalid={!!erros.ie}
-                  aria-describedby={erros.ie ? "mz-cli-ie-erro" : undefined}
-                />
-                <label className="mz-focus flex min-h-[48px] shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-[color:var(--mz-line)] bg-white px-3 text-sm font-semibold">
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 accent-[color:var(--mz-accent)]"
-                    checked={form.ieIsento}
-                    onChange={(e) => {
-                      const v = e.target.checked;
-                      setForm((f) => ({ ...f, ieIsento: v }));
-                      setErros((er) => ({ ...er, ie: undefined }));
-                    }}
-                  />
-                  Isento
-                </label>
-              </div>
-              <Erro chave="ie" />
-            </div>
+            {campo("ie", "Inscrição Estadual", { col: "col-span-6 sm:col-span-3", placeholder: "Nº da IE", inputMode: "numeric", autoComplete: "off" })}
             {campo("razaoSocial", "Razão Social", { placeholder: "Ex.: Lírio Indústria de Calçados Ltda.", autoComplete: "organization" })}
             {campo("fantasia", "Nome Fantasia", { obrigatorio: false, placeholder: "Ex.: Calçados Lírio" })}
           </SecaoCadastro>

@@ -71,7 +71,7 @@ const CLIENTES_INICIAIS = [
     fantasia: "Ateli\xEA Dona Flor Cal\xE7ados",
     razaoSocial: "Dona Flor Artefatos de Couro Ltda. ME",
     cnpj: "56.731.824/0001-96",
-    ie: "ISENTO",
+    ie: "001.234567.00-89",
     cep: "35520-005",
     logradouro: "Rua Ant\xF4nio Martins",
     numero: "312",
@@ -806,7 +806,6 @@ function ModalEscolherCliente({ pendente, clientes, historico, onSelecionar, onC
 const FORM_CLIENTE_VAZIO = {
   cnpj: "",
   ie: "",
-  ieIsento: false,
   razaoSocial: "",
   fantasia: "",
   cep: "",
@@ -830,7 +829,7 @@ function validarCliente(form, clientes) {
     const dup = clientes.find((c) => c.cnpj && somenteDigitos(c.cnpj) === somenteDigitos(form.cnpj));
     if (dup) e.cnpj = `CNPJ j\xE1 cadastrado para ${dup.nome}.`;
   }
-  if (!form.ieIsento && !form.ie.trim()) e.ie = "Informe a IE ou marque Isento.";
+  if (!form.ie.trim()) e.ie = "Informe a Inscri\xE7\xE3o Estadual.";
   if (!form.razaoSocial.trim()) e.razaoSocial = "Informe a raz\xE3o social.";
   if (somenteDigitos(form.cep).length !== 8) e.cep = "CEP com 8 d\xEDgitos, ex.: 93510-120.";
   if (!form.logradouro.trim()) e.logradouro = "Informe a rua / logradouro.";
@@ -885,7 +884,7 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
       fantasia: t("fantasia") || t("razaoSocial"),
       razaoSocial: t("razaoSocial"),
       cnpj: form.cnpj,
-      ie: form.ieIsento ? "ISENTO" : t("ie"),
+      ie: t("ie"),
       cep: form.cep,
       logradouro: t("logradouro"),
       numero: t("numero"),
@@ -927,33 +926,7 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
       className: "mz-sheet flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-[color:var(--mz-soft)] shadow-2xl sm:max-h-[90vh] sm:rounded-3xl"
     },
     /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3 border-b border-[color:var(--mz-line)] bg-white px-5 pb-3 pt-4" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Cadastro de cliente \xB7 Pessoa Jur\xEDdica"), /* @__PURE__ */ React.createElement("h2", { id: "mz-cadastro-titulo", className: "mz-display text-lg font-bold" }, "Novo cliente"), /* @__PURE__ */ React.createElement("p", { className: `text-xs ${C.muted}` }, "Dados usados pela f\xE1brica para faturar o pedido. Campos com ", /* @__PURE__ */ React.createElement("span", { className: "text-[color:var(--mz-warn)]" }, "*"), " s\xE3o obrigat\xF3rios.")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: `${C.fechar} -mr-2`, "aria-label": "Fechar cadastro" }, /* @__PURE__ */ React.createElement(X, { className: "h-6 w-6", strokeWidth: 2 }))),
-    /* @__PURE__ */ React.createElement("form", { id: "mz-form-cliente", onSubmit: salvar, noValidate: true, className: "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5" }, /* @__PURE__ */ React.createElement(SecaoCadastro, { numero: "01", titulo: "Identifica\xE7\xE3o da empresa" }, campo("cnpj", "CNPJ", { col: "col-span-6 sm:col-span-3", placeholder: "00.000.000/0000-00", inputMode: "numeric", autoComplete: "off", ref: primeiroRef }), /* @__PURE__ */ React.createElement("div", { className: "col-span-6 flex min-w-0 flex-col gap-1.5 sm:col-span-3" }, /* @__PURE__ */ React.createElement(Rotulo, { chave: "ie", texto: "Inscri\xE7\xE3o Estadual" }), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "mz-cli-ie",
-        className: `${classeInput("ie")} min-w-0 flex-1 disabled:opacity-60`,
-        value: form.ieIsento ? "ISENTO" : form.ie,
-        onChange: (e) => alterar("ie", e.target.value),
-        disabled: form.ieIsento,
-        placeholder: "N\xBA da IE",
-        autoComplete: "off",
-        "aria-required": !form.ieIsento,
-        "aria-invalid": !!erros.ie,
-        "aria-describedby": erros.ie ? "mz-cli-ie-erro" : void 0
-      }
-    ), /* @__PURE__ */ React.createElement("label", { className: "mz-focus flex min-h-[48px] shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-[color:var(--mz-line)] bg-white px-3 text-sm font-semibold" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "checkbox",
-        className: "h-5 w-5 accent-[color:var(--mz-accent)]",
-        checked: form.ieIsento,
-        onChange: (e) => {
-          const v = e.target.checked;
-          setForm((f) => ({ ...f, ieIsento: v }));
-          setErros((er) => ({ ...er, ie: void 0 }));
-        }
-      }
-    ), "Isento")), /* @__PURE__ */ React.createElement(Erro, { chave: "ie" })), campo("razaoSocial", "Raz\xE3o Social", { placeholder: "Ex.: L\xEDrio Ind\xFAstria de Cal\xE7ados Ltda.", autoComplete: "organization" }), campo("fantasia", "Nome Fantasia", { obrigatorio: false, placeholder: "Ex.: Cal\xE7ados L\xEDrio" })), /* @__PURE__ */ React.createElement(SecaoCadastro, { numero: "02", titulo: "Endere\xE7o de faturamento / entrega" }, campo("cep", "CEP", { col: "col-span-6 sm:col-span-2", placeholder: "00000-000", inputMode: "numeric", autoComplete: "postal-code" }), campo("logradouro", "Logradouro / Rua", { col: "col-span-6 sm:col-span-4", placeholder: "Ex.: Rua Primeiro de Maio", autoComplete: "address-line1" }), campo("numero", "N\xFAmero", { col: "col-span-2", placeholder: "N\xBA", autoComplete: "off" }), campo("complemento", "Complemento", { col: "col-span-4", obrigatorio: false, placeholder: "Sala, pavilh\xE3o\u2026", autoComplete: "address-line2" }), campo("bairro", "Bairro", { placeholder: "Ex.: Centro" }), campo("municipio", "Cidade", { col: "col-span-4", placeholder: "Ex.: Sapiranga", autoComplete: "address-level2" }), /* @__PURE__ */ React.createElement("div", { className: "col-span-2 flex min-w-0 flex-col gap-1.5" }, /* @__PURE__ */ React.createElement(Rotulo, { chave: "uf", texto: "UF" }), /* @__PURE__ */ React.createElement(
+    /* @__PURE__ */ React.createElement("form", { id: "mz-form-cliente", onSubmit: salvar, noValidate: true, className: "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5" }, /* @__PURE__ */ React.createElement(SecaoCadastro, { numero: "01", titulo: "Identifica\xE7\xE3o da empresa" }, campo("cnpj", "CNPJ", { col: "col-span-6 sm:col-span-3", placeholder: "00.000.000/0000-00", inputMode: "numeric", autoComplete: "off", ref: primeiroRef }), campo("ie", "Inscri\xE7\xE3o Estadual", { col: "col-span-6 sm:col-span-3", placeholder: "N\xBA da IE", inputMode: "numeric", autoComplete: "off" }), campo("razaoSocial", "Raz\xE3o Social", { placeholder: "Ex.: L\xEDrio Ind\xFAstria de Cal\xE7ados Ltda.", autoComplete: "organization" }), campo("fantasia", "Nome Fantasia", { obrigatorio: false, placeholder: "Ex.: Cal\xE7ados L\xEDrio" })), /* @__PURE__ */ React.createElement(SecaoCadastro, { numero: "02", titulo: "Endere\xE7o de faturamento / entrega" }, campo("cep", "CEP", { col: "col-span-6 sm:col-span-2", placeholder: "00000-000", inputMode: "numeric", autoComplete: "postal-code" }), campo("logradouro", "Logradouro / Rua", { col: "col-span-6 sm:col-span-4", placeholder: "Ex.: Rua Primeiro de Maio", autoComplete: "address-line1" }), campo("numero", "N\xFAmero", { col: "col-span-2", placeholder: "N\xBA", autoComplete: "off" }), campo("complemento", "Complemento", { col: "col-span-4", obrigatorio: false, placeholder: "Sala, pavilh\xE3o\u2026", autoComplete: "address-line2" }), campo("bairro", "Bairro", { placeholder: "Ex.: Centro" }), campo("municipio", "Cidade", { col: "col-span-4", placeholder: "Ex.: Sapiranga", autoComplete: "address-level2" }), /* @__PURE__ */ React.createElement("div", { className: "col-span-2 flex min-w-0 flex-col gap-1.5" }, /* @__PURE__ */ React.createElement(Rotulo, { chave: "uf", texto: "UF" }), /* @__PURE__ */ React.createElement(
       "select",
       {
         id: "mz-cli-uf",
