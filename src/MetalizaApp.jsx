@@ -115,26 +115,20 @@ const CATEGORIAS = ["Todos", "Enfeites", "Fivelas", "Passadores", "Ponteiras", "
 
 let PRODUTOS = [
   // Lançamento Verão 2026 (exclusivas enquanto a coleção estiver ativa)
-  { ref: "CR 101", categoria: "Correntes", bipartida: false, foto: "cr101", colecao: "Linha" },
-  { ref: "EF 661", categoria: "Enfeites", bipartida: false, foto: "ef661", colecao: "Verão 2026" },
+  { ref: "CR 101", categoria: "Correntes", foto: "cr101", colecao: "Linha" },
+  { ref: "EF 661", categoria: "Enfeites", foto: "ef661", colecao: "Verão 2026" },
   {
     ref: "EF 1170",
     categoria: "Enfeites",
-   
-    bipartida: true,
-    partes: [
-      { curto: "Parte de Cima", nome: "Parte de Cima" },
-      { curto: "Parte de Baixo", nome: "Parte de Baixo" },
-    ],
     foto: "ef1170",
     colecao: "Verão 2026",
   },
-  { ref: "PS 1030", categoria: "Passadores", bipartida: false, foto: "ps1030", colecao: "Verão 2026" },
+  { ref: "PS 1030", categoria: "Passadores", foto: "ps1030", colecao: "Verão 2026" },
   // Linha permanente (Catálogo Geral)
-  { ref: "EF 1143", categoria: "Enfeites", bipartida: false, foto: "ef1143" },
-  { ref: "EF 1150", categoria: "Enfeites", bipartida: false, foto: "ef1150" },
-  { ref: "PS 1027", categoria: "Passadores", bipartida: false, foto: "ps1027" },
-  { ref: "PS 057", categoria: "Passadores", bipartida: false, foto: "ps057" },
+  { ref: "EF 1143", categoria: "Enfeites", foto: "ef1143" },
+  { ref: "EF 1150", categoria: "Enfeites", foto: "ef1150" },
+  { ref: "PS 1027", categoria: "Passadores", foto: "ps1027" },
+  { ref: "PS 057", categoria: "Passadores", foto: "ps057" },
 ];
 
 const ACABAMENTOS = [
@@ -146,9 +140,13 @@ const ACABAMENTOS = [
   { id: "marrom", codigo: "4", nome: "Marrom", grupo: "banho", cores: ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"] },
   // Cor oculta: não aparece na cartela; só pela busca de código (1554) ou nome
   { id: "ouro-queimado", codigo: "1554", nome: "Ouro Queimado", grupo: "banho", oculta: true, cores: ["#EBBE78", "#BC7A30", "#7E4614", "#452208"] },
+  // Bicolores prontos: atendem as peças de duas cores com um único código
+  { id: "ouro-light-preto", codigo: "50", nome: "Ouro Light / Preto", grupo: "bicolor", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"], cores2: ["#45484D", "#222428", "#0D0E10", "#000000"] },
+  { id: "dourado-branco", codigo: "51", nome: "Dourado / Branco", grupo: "bicolor", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"], cores2: ["#FFFFFF", "#F4F4F2", "#E4E4E0", "#C9C9C4"] },
 ];
 const GRUPOS_ACABAMENTO = [
   { id: "banho", titulo: "Banhos" },
+  { id: "bicolor", titulo: "Bicolores" },
 ];
 const ACABAMENTO_PADRAO = ACABAMENTOS[0];
 const acabamentoPorCodigo = (cod) => ACABAMENTOS.find((a) => a.codigo === String(cod).trim());
@@ -192,22 +190,16 @@ const categoriaPeca = (produto) => CATEGORIA_SINGULAR[produto.categoria] || prod
 const rotuloRef = (produto) => `Ref. ${produto.ref.toUpperCase()}`;
 const normalizarRef = (t) => t.toUpperCase().replace(/^REF\.?\s*/, "").replace(/\s+/g, "");
 
-const rotuloAcabamento = (acabamentoId) => {
+// Cor com o código do ERP para o PCP: "[Cód. 6] Ouro Light", "[Cód. 50] Ouro Light / Preto"
+const rotuloAcabamentoComCodigo = (acabamentoId) => {
   const a = acabamentoPorId(acabamentoId);
-  return a.rotulo || a.nome;
+  return `[Cód. ${a.codigo}] ${a.nome}`;
 };
+const textoAcabamento = (acabamentoId) => `Acabamento: ${rotuloAcabamentoComCodigo(acabamentoId)}`;
 
-// Acabamento no padrão do pedido. Peça única: "Acabamento: Ouro Light".
-// Bipartida: "Parte de Cima: Ouro Light / Parte de Baixo: Ônix".
-function textoAcabamento(produto, acabamento, acabamentoParte2) {
-  if (!produto.bipartida) return `Acabamento: ${rotuloAcabamento(acabamento)}`;
-  return `Parte de Cima: ${rotuloAcabamento(acabamento)} / Parte de Baixo: ${rotuloAcabamento(acabamentoParte2)}`;
-}
-
-// Identificação da peça: "Ref. EF 661 - Enfeite" ou "Ref. EF 1170 - Enfeite (Bipartida)".
-// O material de injeção não entra: quem define é o PCP, no ERP.
+// Identificação da peça: "Ref. EF 661 - Enfeite". O material de injeção não entra: quem define é o PCP, no ERP.
 function textoPeca(produto) {
-  return `${rotuloRef(produto)} - ${categoriaPeca(produto)}${produto.bipartida ? " (Bipartida)" : ""}`;
+  return `${rotuloRef(produto)} - ${categoriaPeca(produto)}`;
 }
 
 // Afra só aparece quando escolhida (Enfeites e Fivelas)
@@ -216,14 +208,14 @@ function textoAfra(produto, item) {
 }
 
 // Linha completa do item, ex.:
-// "Ref. EF 661 - Enfeite · Acabamento: Ouro Light · Qtd: 1.000 un"
-// "Ref. CR 101 - Corrente · 45 elos · Com Ponteira · Acabamento: Níquel · Qtd: 100 un"
+// "Ref. EF 1170 - Enfeite · Acabamento: [Cód. 50] Ouro Light / Preto · Qtd: 500 un"
+// "Ref. CR 101 - Corrente · 45 elos · Com Ponteira · Acabamento: [Cód. 6] Ouro Light · Qtd: 100 un"
 function linhaPedido(produto, item) {
   return [
     textoPeca(produto),
     item.elos ? `${item.elos} elos` : null,
     item.comPonteira === true ? "Com Ponteira" : item.comPonteira === false ? "Sem Ponteira" : null,
-    textoAcabamento(produto, item.acabamento, item.acabamentoBaixo),
+    textoAcabamento(item.acabamento),
     textoAfra(produto, item),
     `Qtd: ${formatarNumero(item.qtd)} un`,
   ]
@@ -544,22 +536,17 @@ function ImagemPeca({ produto, alturaMax = 260, miniatura = false, className = "
   );
 }
 
-function SwatchesItem({ produto, acabamento, acabamentoBaixo, size }) {
-  return (
-    <span className="inline-flex shrink-0 -space-x-1">
-      <Swatch acabamento={acabamentoPorId(acabamento)} size={size} />
-      {produto.bipartida && <Swatch acabamento={acabamentoPorId(acabamentoBaixo)} size={size} />}
-    </span>
-  );
-}
-
 function Swatch({ acabamento, size = "h-9 w-9" }) {
   const [c1, c2, c3, c4] = acabamento.cores;
+  // Bicolor: metade de cada cor, na diagonal
+  const fundo = acabamento.cores2
+    ? `linear-gradient(135deg, ${c1} 0%, ${c3} 50%, ${acabamento.cores2[1]} 50%, ${acabamento.cores2[3]} 100%)`
+    : `linear-gradient(135deg, ${c1} 0%, ${c2} 40%, ${c1} 55%, ${c3} 80%, ${c4} 100%)`;
   return (
     <span
       aria-hidden="true"
       className={`inline-block shrink-0 rounded-full ring-1 ring-black/15 ${size}`}
-      style={{ background: `linear-gradient(135deg, ${c1} 0%, ${c2} 40%, ${c1} 55%, ${c3} 80%, ${c4} 100%)` }}
+      style={{ background: fundo }}
     />
   );
 }
@@ -1607,7 +1594,7 @@ function CardProduto({ produto: p, ativas, noPedido, onAbrir }) {
         <div className="flex flex-1 flex-col gap-1.5 p-3">
           <p className="mz-ref text-[15px] leading-tight text-[color:var(--mz-ink)]">{rotuloRef(p)}</p>
           <p className={`text-xs ${C.muted}`}>
-            {categoriaPeca(p)}{p.bipartida ? " · Bipartida" : ""}
+            {categoriaPeca(p)}
           </p>
           <span
             className={`mt-auto self-start rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
@@ -1630,7 +1617,7 @@ function BotaoCor({ a, ativo, titulo, onClick, largo = false }) {
       type="button"
       onClick={onClick}
       aria-pressed={ativo}
-      aria-label={`${titulo}: [${a.codigo}] ${a.nome}`}
+      aria-label={`${titulo}: ${rotuloAcabamentoComCodigo(a.id)}`}
       className={`mz-focus flex min-h-[56px] min-w-0 items-center gap-2 rounded-xl border-2 p-2 transition active:scale-95 ${largo ? "text-left" : "flex-col text-center"} ${
         ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] hover:border-[color:var(--mz-ink)]"
       }`}
@@ -1728,9 +1715,9 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
           <p className={`mb-1.5 text-[11px] font-semibold ${C.muted}`}>
             {g.titulo}
           </p>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <div className={`grid gap-2 ${g.id === "bicolor" ? "grid-cols-2" : "grid-cols-3 sm:grid-cols-5"}`}>
             {ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => (
-              <BotaoCor key={a.id} a={a} ativo={a.id === valor} titulo={titulo} onClick={() => onChange(a.id)} />
+              <BotaoCor key={a.id} a={a} ativo={a.id === valor} titulo={titulo} largo={g.id === "bicolor"} onClick={() => onChange(a.id)} />
             ))}
           </div>
         </div>
@@ -1741,7 +1728,6 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
 
 function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
-  const [baixoId, setBaixoId] = useState(ACABAMENTO_PADRAO.id);
   const [comAfra, setComAfra] = useState(false);
   const [afra, setAfra] = useState(null);
   const [tipo, setTipo] = useState("amostra");
@@ -1752,7 +1738,7 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
 
   const regra = REGRAS[tipo];
   const arrastar = useArrastarParaFechar(onFechar);
-  const descricaoAcabamento = textoAcabamento(produto, acabamentoId, baixoId);
+  const descricaoAcabamento = textoAcabamento(acabamentoId);
 
   useEffect(() => {
     const esc = (e) => e.key === "Escape" && onFechar();
@@ -1807,8 +1793,7 @@ const isCorrente = ehCorrente(produto);
   };
 
   const afraPendente = temAfra(produto) && comAfra && !afra;
-  const bipartidaPendente = produto.bipartida && !baixoId;
-  const valido = Number(texto || 0) >= regra.min && !afraPendente && !bipartidaPendente;
+  const valido = Number(texto || 0) >= regra.min && !afraPendente;
   const rascunho = { afra: comAfra ? afra : null };
   const detalhes = [descricaoAcabamento, textoAfra(produto, rascunho)].filter(Boolean).join(" · ");
   const noMinimo = qtd <= regra.min;
@@ -1827,7 +1812,6 @@ const isCorrente = ehCorrente(produto);
             <h2 id="mz-modal-titulo" className="mz-ref text-[22px] leading-tight">{rotuloRef(produto)}</h2>
             <p className={`mt-0.5 text-sm ${C.muted}`}>
               Categoria: <b className="text-[color:var(--mz-ink)]">{categoriaPeca(produto)}</b>
-              {produto.bipartida && <>{" | "}<b className="text-[color:var(--mz-ink)]">Bipartida</b></>}
             </p>
           </div>
           <button type="button" onClick={onFechar} className={`${C.fechar} -mr-2 -mt-1`} aria-label="Fechar">
@@ -1847,8 +1831,8 @@ const isCorrente = ehCorrente(produto);
               </span>
             </p>
             <dl className="grid grid-cols-2 gap-2 text-xs">
-              {[["Categoria", categoriaPeca(produto)], ["Coleção", produto.colecao && produto.colecao !== "Linha" ? produto.colecao : "Linha permanente"], ...(produto.bipartida ? [["Partes", `${produto.partes[0].nome} + ${produto.partes[1].nome}`]] : [])].map(([k, v]) => (
-                <div key={k} className={`rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2 ${k === "Partes" ? "col-span-2" : ""}`}>
+              {[["Categoria", categoriaPeca(produto)], ["Coleção", produto.colecao && produto.colecao !== "Linha" ? produto.colecao : "Linha permanente"]].map(([k, v]) => (
+                <div key={k} className="rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2">
                   <dt className={C.muted}>{k}</dt>
                   <dd className="font-bold">{v}</dd>
                 </div>
@@ -1858,14 +1842,7 @@ const isCorrente = ehCorrente(produto);
 
           {/* Configuração */}
           <div className="flex flex-col gap-6 p-4 pb-6 sm:p-5">
-            {produto.bipartida ? (
-              <div className="flex flex-col gap-5">
-                <SeletorAcabamento titulo="Parte de Cima" idBase="mz-cor-1" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
-                <SeletorAcabamento titulo="Parte de Baixo" idBase="mz-cor-2" produto={produto} valor={baixoId} onChange={setBaixoId} />
-              </div>
-            ) : (
-              <SeletorAcabamento titulo="Cor do Acabamento" idBase="mz-cor" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
-            )}
+            <SeletorAcabamento titulo="Cor do Acabamento" idBase="mz-cor" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
             {temAfra(produto) && (
               <fieldset>
                 <legend className="mz-eyebrow mb-3">Afra</legend>
@@ -2059,7 +2036,7 @@ const isCorrente = ehCorrente(produto);
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[color:var(--mz-line)] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 shadow-[0_-8px_20px_-14px_rgba(15,23,42,.25)] sm:px-5 sm:py-4">
           <div className="flex min-w-0 items-center gap-2 text-sm">
-            <SwatchesItem produto={produto} acabamento={acabamentoId} acabamentoBaixo={baixoId} size="h-6 w-6" />
+            <Swatch acabamento={acabamentoPorId(acabamentoId)} size="h-6 w-6" />
             <span className="min-w-0 truncate">
               <b className="mz-mono">{valido ? formatarNumero(Number(texto)) : "—"}</b> un · {detalhes} · {TIPO_LABEL[tipo]}
             </span>
@@ -2071,7 +2048,6 @@ const isCorrente = ehCorrente(produto);
     onClick={() => onAdicionar({
     ref: produto.ref,
     acabamento: acabamentoId,
-    acabamentoBaixo: produto.bipartida ? baixoId : null,
     afra: temAfra(produto) && comAfra ? afra : null,
     elos: isCorrente ? elos : null,
     comPonteira: isCorrente ? comPonteira : null,
@@ -2081,9 +2057,7 @@ const isCorrente = ehCorrente(produto);
     className={`${C.btnAccent} min-h-[52px] w-full text-base sm:w-auto`}
   >
     <Icone.sacola className="h-5 w-5" />
-    {bipartidaPendente
-      ? "Selecione a 2ª parte"
-      : afraPendente
+    {afraPendente
       ? "Selecione a furação/afra"
       : "Adicionar ao pedido"}
   </button>
@@ -2114,8 +2088,8 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
             <p className="mz-mono text-sm font-bold">{rotuloRef(p)}</p>
             <p className={`text-xs ${C.muted}`}>{textoPeca(p).replace(`${rotuloRef(p)} - `, "")}</p>
             <p className={`flex flex-wrap items-center gap-x-1.5 text-xs ${C.muted}`}>
-              <SwatchesItem produto={p} acabamento={item.acabamento} acabamentoBaixo={item.acabamentoBaixo} size="h-3 w-3" />
-              <span className="font-semibold text-[color:var(--mz-ink)]">{textoAcabamento(p, item.acabamento, item.acabamentoBaixo)}</span>
+              <Swatch acabamento={acabamentoPorId(item.acabamento)} size="h-3 w-3" />
+              <span className="font-semibold text-[color:var(--mz-ink)]">{textoAcabamento(item.acabamento)}</span>
             </p>
             {(item.elos || item.comPonteira != null || textoAfra(p, item)) && (
               <p className="mt-0.5 flex flex-wrap gap-1">
@@ -2581,7 +2555,6 @@ const adicionarPara = (clienteId, novo) => {
     const chave = [
       novo.ref,
       novo.acabamento,
-      novo.acabamentoBaixo || "-",
       novo.afra || "sem-afra",
       novo.elos ? `${novo.elos}elos` : "-",
       novo.comPonteira ? "com-ponteira" : "sem-ponteira",

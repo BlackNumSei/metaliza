@@ -41,7 +41,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 
      | Grupo | Referências |
      |---|---|
-     | Lançamento Verão 2026 | EF 661 (Enfeites), EF 1170 (Enfeites, Aro + Centro), PS 1030 (Passadores) |
+     | Lançamento Verão 2026 | EF 661 (Enfeites), EF 1170 (Enfeites), PS 1030 (Passadores) |
      | Linha permanente | EF 1143 (Enfeites), EF 1150 (Enfeites), PS 1027 (Passadores), PS 057 (Passadores) |
 
    - **Categorias:** Enfeites, Fivelas, Passadores e Ponteiras.
@@ -62,7 +62,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
   - "Desfazer simulação" reativa a coleção e volta para ela.
 - **Espelho do pedido:** a linha `Coleção:` mostra o lançamento ativo ou "Linha permanente", calculado no momento do envio.
 
-4. **Configuração da peça:** foto de referência em Ouro Light. Peça única tem um seletor, "Cor do Acabamento". Peça com duas partes (`bipartida: true` + `partes`) tem dois seletores independentes, como "Cor do Aro" e "Cor do Centro" na Ref. EF 1170. Enfeites e Fivelas têm o módulo de Afra. Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
+4. **Configuração da peça:** foto de referência em Ouro Light. Todas as peças têm um único seletor, "Cor do Acabamento". Peças de duas cores usam um acabamento bicolor pronto da cartela. Enfeites e Fivelas têm o módulo de Afra. Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
 5. **Pedido:** painel lateral agrupado em Amostras e Produção, com ajuste de quantidade e remoção. O pedido é guardado separadamente para cada cliente.
 6. **Revisão e envio:** confirmação e número da solicitação. Depois vêm a simulação do e-mail para a fábrica (Para/Cc/Assunto/corpo) e o texto formatado para WhatsApp.
 
@@ -72,11 +72,11 @@ O representante não classifica o material de injeção (ABS, TPU, PVC etc.): o 
 
 - **Banhos:** Ouro Light (padrão), Ouro 24k, Níquel, Ônix e Marrom.
 
-Nas peças bipartidas, Parte de Cima e Parte de Baixo têm seletores independentes, cada um com a cartela completa.
+Não existe mais seleção separada de Parte de Cima / Parte de Baixo: peças de duas cores usam os bicolores prontos (50 Ouro Light / Preto, 51 Dourado / Branco).
 
 ## Regras técnicas do modal
 
-- **Cores da cartela:** 6 Ouro Light (padrão), 1 Ouro 24k, 2 Níquel, 3 Ônix, 4 Marrom. Não há efeitos especiais (Aura e Policarbonato foram retirados). Cada botão mostra o código junto da cor.
+- **Cores da cartela:** 6 Ouro Light (padrão), 1 Ouro 24k, 2 Níquel, 3 Ônix, 4 Marrom e os bicolores 50 Ouro Light / Preto e 51 Dourado / Branco. Não há efeitos especiais (Aura e Policarbonato foram retirados). Cada botão mostra o código junto da cor.
 - **Cor oculta:** 1554 Ouro Queimado não aparece na cartela.
   - Para selecionar, digite `1554` (ou "ouro queimado") no campo "Buscar cor por código ou nome".
   - A cor aparece como "Cor encontrada pelo código" e já fica selecionada.
@@ -84,22 +84,21 @@ Nas peças bipartidas, Parte de Cima e Parte de Baixo têm seletores independent
 - **Afra:**
   - Aparece só em Enfeites e Fivelas. Não existe para Passadores e Ponteiras.
   - Opções "Sem Afra" (padrão) ou "Com Afra", com os códigos da Linha 800 (800–807) e da Linha 900 (901–907).
-- **Peças bipartidas:** a Ref. EF 1170 tem seletores separados para Parte de Cima e Parte de Baixo.
 
 ## Identificação técnica
 
 As peças não têm nome fantasia: o identificador é a referência, sempre em caixa alta com o prefixo `Ref.`.
 
-- **Card:** mostra `Ref. EF 661` em destaque e, abaixo, `Enfeite` (ou `Enfeite · Bipartida`).
+- **Card:** mostra `Ref. EF 661` em destaque e, abaixo, `Enfeite`.
 - **Modal:** o título é `Ref. EF 661` e o subtítulo é `Categoria: Enfeite`.
 - **Busca:** só por referência, sem diferenciar espaço ou caixa (`ef1170` encontra `EF 1170`).
 
 O e-mail ao PCP traz os dados cadastrais do cliente, o Representante e a Coleção, e depois as linhas abaixo (a Afra só aparece quando escolhida):
 
 ```
-Ref. EF 661 - Enfeite · Acabamento: Ouro Light · Qtd: 1.000 un
-Ref. EF 1170 - Enfeite (Bipartida) · Parte de Cima: Ouro 24k / Parte de Baixo: Ônix · Qtd: 500 un
-Ref. CR 101 - Corrente · 45 elos · Com Ponteira · Acabamento: Níquel · Qtd: 100 un
+Ref. EF 661 - Enfeite · Acabamento: [Cód. 6] Ouro Light · Qtd: 1.000 un
+Ref. EF 1170 - Enfeite · Acabamento: [Cód. 50] Ouro Light / Preto · Qtd: 500 un
+Ref. CR 101 - Corrente · 45 elos · Com Ponteira · Acabamento: [Cód. 6] Ouro Light · Qtd: 100 un
 ```
 
 Não existe nenhum campo livre de observação, nota ou instrução. A solicitação é 100% técnica: referência, partes, cores, tipo e quantidade.
