@@ -68,16 +68,15 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 
 ## Acabamentos (sem material)
 
-O representante não classifica o material de injeção (ABS, TPU, PVC, Policarbonato, Aura): o PCP define o material do molde ao digitar o pedido no ERP. A foto é sempre a original e não muda com a cor selecionada. Todas as cores ficam liberadas para qualquer peça:
+O representante não classifica o material de injeção (ABS, TPU, PVC etc.): o PCP define o material do molde ao digitar o pedido no ERP. A foto é sempre a original e não muda com a cor selecionada. Todas as cores ficam liberadas para qualquer peça:
 
 - **Banhos:** Ouro Light (padrão), Ouro 24k, Níquel, Ônix e Marrom.
-- **Efeitos especiais:** Efeito Aura e Policarbonato (Cristal/Poli), tratados apenas como acabamento.
 
 Nas peças bipartidas, Parte de Cima e Parte de Baixo têm seletores independentes, cada um com a cartela completa.
 
 ## Regras técnicas do modal
 
-- **Cores da cartela:** 6 Ouro Light (padrão), 1 Ouro 24k, 2 Níquel, 3 Ônix, 4 Marrom, 8 Efeito Aura e 9 Policarbonato. Cada botão mostra o código junto da cor.
+- **Cores da cartela:** 6 Ouro Light (padrão), 1 Ouro 24k, 2 Níquel, 3 Ônix, 4 Marrom. Não há efeitos especiais (Aura e Policarbonato foram retirados). Cada botão mostra o código junto da cor.
 - **Cor oculta:** 1554 Ouro Queimado não aparece na cartela.
   - Para selecionar, digite `1554` (ou "ouro queimado") no campo "Buscar cor por código ou nome".
   - A cor aparece como "Cor encontrada pelo código" e já fica selecionada.

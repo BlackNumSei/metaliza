@@ -146,17 +146,9 @@ const ACABAMENTOS = [
   { id: "marrom", codigo: "4", nome: "Marrom", grupo: "banho", cores: ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"] },
   // Cor oculta: não aparece na cartela; só pela busca de código (1554) ou nome
   { id: "ouro-queimado", codigo: "1554", nome: "Ouro Queimado", grupo: "banho", oculta: true, cores: ["#EBBE78", "#BC7A30", "#7E4614", "#452208"] },
-  // Efeitos especiais (o material da peça é definido pelo PCP no ERP)
-  {
-    id: "aura", codigo: "8", nome: "Efeito Aura", rotulo: "Efeito Aura", grupo: "efeito", detalhe: "Furta-cor iridescente",
-
-    cores: ["#FBE3F3", "#B5D8F6", "#E5C3F0", "#9AE3CF"],
-  },
-  { id: "policarbonato", codigo: "9", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", detalhe: "Translúcido/Cristal", cores: ["#FFFFFF", "#E3EEF5", "#BFD3E0", "#90A9BA"] },
 ];
 const GRUPOS_ACABAMENTO = [
-  { id: "banho", titulo: "Banhos tradicionais" },
-  { id: "efeito", titulo: "Efeitos especiais" },
+  { id: "banho", titulo: "Banhos" },
 ];
 const ACABAMENTO_PADRAO = ACABAMENTOS[0];
 const acabamentoPorCodigo = (cod) => ACABAMENTOS.find((a) => a.codigo === String(cod).trim());
@@ -1736,9 +1728,9 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
           <p className={`mb-1.5 text-[11px] font-semibold ${C.muted}`}>
             {g.titulo}
           </p>
-          <div className={`grid gap-2 ${g.id === "banho" ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2"}`}>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => (
-              <BotaoCor key={a.id} a={a} ativo={a.id === valor} titulo={titulo} largo={a.grupo === "efeito"} onClick={() => onChange(a.id)} />
+              <BotaoCor key={a.id} a={a} ativo={a.id === valor} titulo={titulo} onClick={() => onChange(a.id)} />
             ))}
           </div>
         </div>

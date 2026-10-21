@@ -139,22 +139,10 @@ const ACABAMENTOS = [
   { id: "onix", codigo: "3", nome: "\xD4nix", grupo: "banho", cores: ["#7D8187", "#45484D", "#222428", "#0D0E10"] },
   { id: "marrom", codigo: "4", nome: "Marrom", grupo: "banho", cores: ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"] },
   // Cor oculta: não aparece na cartela; só pela busca de código (1554) ou nome
-  { id: "ouro-queimado", codigo: "1554", nome: "Ouro Queimado", grupo: "banho", oculta: true, cores: ["#EBBE78", "#BC7A30", "#7E4614", "#452208"] },
-  // Efeitos especiais (o material da peça é definido pelo PCP no ERP)
-  {
-    id: "aura",
-    codigo: "8",
-    nome: "Efeito Aura",
-    rotulo: "Efeito Aura",
-    grupo: "efeito",
-    detalhe: "Furta-cor iridescente",
-    cores: ["#FBE3F3", "#B5D8F6", "#E5C3F0", "#9AE3CF"]
-  },
-  { id: "policarbonato", codigo: "9", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", detalhe: "Transl\xFAcido/Cristal", cores: ["#FFFFFF", "#E3EEF5", "#BFD3E0", "#90A9BA"] }
+  { id: "ouro-queimado", codigo: "1554", nome: "Ouro Queimado", grupo: "banho", oculta: true, cores: ["#EBBE78", "#BC7A30", "#7E4614", "#452208"] }
 ];
 const GRUPOS_ACABAMENTO = [
-  { id: "banho", titulo: "Banhos tradicionais" },
-  { id: "efeito", titulo: "Efeitos especiais" }
+  { id: "banho", titulo: "Banhos" }
 ];
 const ACABAMENTO_PADRAO = ACABAMENTOS[0];
 const acabamentoPorCodigo = (cod) => ACABAMENTOS.find((a) => a.codigo === String(cod).trim());
@@ -1101,7 +1089,7 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
     },
     ajuda
   )), atual.oculta && /* @__PURE__ */ React.createElement("div", { className: "mz-in" }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, "Cor encontrada pelo c\xF3digo \xB7 fora da cartela padr\xE3o"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2" }, /* @__PURE__ */ React.createElement(BotaoCor, { a: atual, ativo: true, titulo, largo: true, onClick: () => {
-  } }))), GRUPOS_ACABAMENTO.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.id }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, g.titulo), /* @__PURE__ */ React.createElement("div", { className: `grid gap-2 ${g.id === "banho" ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2"}` }, ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => /* @__PURE__ */ React.createElement(BotaoCor, { key: a.id, a, ativo: a.id === valor, titulo, largo: a.grupo === "efeito", onClick: () => onChange(a.id) }))))));
+  } }))), GRUPOS_ACABAMENTO.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.id }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, g.titulo), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-2 sm:grid-cols-5" }, ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => /* @__PURE__ */ React.createElement(BotaoCor, { key: a.id, a, ativo: a.id === valor, titulo, onClick: () => onChange(a.id) }))))));
 }
 function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
