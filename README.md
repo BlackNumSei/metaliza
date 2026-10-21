@@ -37,7 +37,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 3. **Showroom:** é a vitrine do catálogo.
    - **Carrossel de destaques no topo:** só banners de coleção (Verão 2026 e Catálogo Geral / Linha Permanente), com setas e indicadores.
    - **Menu hambúrguer:** abre uma gaveta lateral com as visões do catálogo e os dados do representante e do cliente. Fecha no X, no Esc ou clicando fora.
-   - **Peças:** 7 referências reais em ABS. As fotos originais estão embutidas e aparecem inteiras (`object-contain`), sem cortes nem alteração de cor:
+   - **Peças:** 7 referências reais (mais a corrente CR 101). As fotos originais estão embutidas e aparecem inteiras (`object-contain`), sem cortes nem alteração de cor:
 
      | Grupo | Referências |
      |---|---|
@@ -45,7 +45,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
      | Linha permanente | EF 1143 (Enfeites), EF 1150 (Enfeites), PS 1027 (Passadores), PS 057 (Passadores) |
 
    - **Categorias:** Enfeites, Fivelas, Passadores e Ponteiras.
-   - **Filtros:** por categoria e por material-base, e busca por referência.
+   - **Filtros:** por categoria (Enfeites, Fivelas, Passadores, Ponteiras, Correntes) e busca por referência.
 
 ## Coleções e ciclo de 90 dias
 
@@ -66,16 +66,14 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 5. **Pedido:** painel lateral agrupado em Amostras e Produção, com ajuste de quantidade e remoção. O pedido é guardado separadamente para cada cliente.
 6. **Revisão e envio:** confirmação e número da solicitação. Depois vêm a simulação do e-mail para a fábrica (Para/Cc/Assunto/corpo) e o texto formatado para WhatsApp.
 
-## Material-base e acabamentos
+## Acabamentos (sem material)
 
-Todas as peças são ABS, um material fixo por referência. A foto é sempre a original e não muda com a cor selecionada. A cartela serve só para registrar a escolha técnica no pedido:
+O representante não classifica o material de injeção (ABS, TPU, PVC, Policarbonato, Aura): o PCP define o material do molde ao digitar o pedido no ERP. A foto é sempre a original e não muda com a cor selecionada. Todas as cores ficam liberadas para qualquer peça:
 
-- **Banhos:** Ouro Light (padrão), Ouro 24k, Níquel, Ônix e Marrom. O pedido mantém ABS.
-- **Efeitos especiais:**
-  - **Efeito Aura:** reclassifica o material para Aura (`Material: Aura | Acabamento: Efeito Aura`).
-  - **Policarbonato:** reclassifica o material para Policarbonato (`Material: Policarbonato | Acabamento: Cristal/Poli`).
+- **Banhos:** Ouro Light (padrão), Ouro 24k, Níquel, Ônix e Marrom.
+- **Efeitos especiais:** Efeito Aura e Policarbonato (Cristal/Poli), tratados apenas como acabamento.
 
-Na EF 1170, aro e centro (cabochão) têm seletores independentes. Exemplo: `Aro: Ônix (ABS) | Centro: Efeito Aura (Aura)`.
+Nas peças bipartidas, Parte de Cima e Parte de Baixo têm seletores independentes, cada um com a cartela completa.
 
 ## Regras técnicas do modal
 
@@ -87,25 +85,25 @@ Na EF 1170, aro e centro (cabochão) têm seletores independentes. Exemplo: `Aro
 - **Afra:**
   - Aparece só em Enfeites e Fivelas. Não existe para Passadores e Ponteiras.
   - Opções "Sem Afra" (padrão) ou "Com Afra", com os códigos da Linha 800 (800–807) e da Linha 900 (901–907).
-- **Peças com duas partes:** a Ref. EF 1170 tem seletores separados para Aro e Centro, sem nenhuma etiqueta extra.
+- **Peças bipartidas:** a Ref. EF 1170 tem seletores separados para Parte de Cima e Parte de Baixo.
 
 ## Identificação técnica
 
 As peças não têm nome fantasia: o identificador é a referência, sempre em caixa alta com o prefixo `Ref.`.
 
-- **Card:** mostra `Ref. EF 661` em destaque e, abaixo, `Enfeites • ABS`.
-- **Modal:** o título é `Ref. EF 661` e o subtítulo é `Categoria: Enfeite | Material: ABS`.
+- **Card:** mostra `Ref. EF 661` em destaque e, abaixo, `Enfeite` (ou `Enfeite · Bipartida`).
+- **Modal:** o título é `Ref. EF 661` e o subtítulo é `Categoria: Enfeite`.
 - **Busca:** só por referência, sem diferenciar espaço ou caixa (`ef1170` encontra `EF 1170`).
 
-O espelho do e-mail e do WhatsApp traz Representante, Cliente e Coleção, e depois as linhas abaixo, com cor e código:
+O e-mail ao PCP traz os dados cadastrais do cliente, o Representante e a Coleção, e depois as linhas abaixo (a Afra só aparece quando escolhida):
 
 ```
-Ref. EF 661 - Enfeite (ABS) | Acabamento: [1554] Ouro Queimado | Afra: 801 | Qtd: 10 un
-Ref. EF 1170 - Enfeite (ABS) | Aro: [3] Ônix / Centro: [8] Efeito Aura (Aura) | Sem Afra | Qtd: 10 un
-Ref. PS 1030 - Passador (ABS) | Acabamento: [6] Ouro Light | Qtd: 10 un
+Ref. EF 661 - Enfeite · Acabamento: Ouro Light · Qtd: 1.000 un
+Ref. EF 1170 - Enfeite (Bipartida) · Parte de Cima: Ouro 24k / Parte de Baixo: Ônix · Qtd: 500 un
+Ref. CR 101 - Corrente · 45 elos · Com Ponteira · Acabamento: Níquel · Qtd: 100 un
 ```
 
-Não existe nenhum campo livre de observação, nota ou instrução. A solicitação é 100% técnica: referência, material, partes, cores, tipo e quantidade.
+Não existe nenhum campo livre de observação, nota ou instrução. A solicitação é 100% técnica: referência, partes, cores, tipo e quantidade.
 
 ## Regras de quantidade
 

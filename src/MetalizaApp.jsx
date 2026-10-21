@@ -112,17 +112,15 @@ const pecasDaVisao = (visao, ativas) =>
 const rotuloColecao = (p, ativas) => (emLancamento(p, ativas) ? p.colecao : "Linha permanente");
 
 const CATEGORIAS = ["Todos", "Enfeites", "Fivelas", "Passadores", "Ponteiras", "Correntes"];
-// Material-base de injeção: fixo por referência. Aura e Policarbonato são efeitos de acabamento.
-const MATERIAIS = ["Todos", "ABS", "TPU", "PVC"];
 
 let PRODUTOS = [
   // Lançamento Verão 2026 (exclusivas enquanto a coleção estiver ativa)
-  { ref: "CR 101", categoria: "Correntes", material: "ABS", bipartida: false, foto: "cr101", colecao: "Linha" },
-  { ref: "EF 661", categoria: "Enfeites", material: "ABS", bipartida: false, foto: "ef661", colecao: "Verão 2026" },
+  { ref: "CR 101", categoria: "Correntes", bipartida: false, foto: "cr101", colecao: "Linha" },
+  { ref: "EF 661", categoria: "Enfeites", bipartida: false, foto: "ef661", colecao: "Verão 2026" },
   {
     ref: "EF 1170",
     categoria: "Enfeites",
-    material: "ABS",
+   
     bipartida: true,
     partes: [
       { curto: "Parte de Cima", nome: "Parte de Cima" },
@@ -131,16 +129,16 @@ let PRODUTOS = [
     foto: "ef1170",
     colecao: "Verão 2026",
   },
-  { ref: "PS 1030", categoria: "Passadores", material: "ABS", bipartida: false, foto: "ps1030", colecao: "Verão 2026" },
+  { ref: "PS 1030", categoria: "Passadores", bipartida: false, foto: "ps1030", colecao: "Verão 2026" },
   // Linha permanente (Catálogo Geral)
-  { ref: "EF 1143", categoria: "Enfeites", material: "ABS", bipartida: false, foto: "ef1143" },
-  { ref: "EF 1150", categoria: "Enfeites", material: "ABS", bipartida: false, foto: "ef1150" },
-  { ref: "PS 1027", categoria: "Passadores", material: "ABS", bipartida: false, foto: "ps1027" },
-  { ref: "PS 057", categoria: "Passadores", material: "ABS", bipartida: false, foto: "ps057" },
+  { ref: "EF 1143", categoria: "Enfeites", bipartida: false, foto: "ef1143" },
+  { ref: "EF 1150", categoria: "Enfeites", bipartida: false, foto: "ef1150" },
+  { ref: "PS 1027", categoria: "Passadores", bipartida: false, foto: "ps1027" },
+  { ref: "PS 057", categoria: "Passadores", bipartida: false, foto: "ps057" },
 ];
 
 const ACABAMENTOS = [
-  // Banhos tradicionais: mantêm o material-base da peça. Escolha só técnica: a foto não muda.
+  // Banhos tradicionais. Escolha só técnica: a foto não muda.
   { id: "ouro-light", codigo: "6", nome: "Ouro Light", grupo: "banho", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"] },
   { id: "ouro-24k", codigo: "1", nome: "Ouro 24k", grupo: "banho", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"] },
   { id: "niquel", codigo: "2", nome: "Níquel", grupo: "banho", cores: ["#FAFBFC", "#D2D7DC", "#929AA1", "#5A6066"] },
@@ -148,13 +146,13 @@ const ACABAMENTOS = [
   { id: "marrom", codigo: "4", nome: "Marrom", grupo: "banho", cores: ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"] },
   // Cor oculta: não aparece na cartela; só pela busca de código (1554) ou nome
   { id: "ouro-queimado", codigo: "1554", nome: "Ouro Queimado", grupo: "banho", oculta: true, cores: ["#EBBE78", "#BC7A30", "#7E4614", "#452208"] },
-  // Efeitos especiais: reclassificam o material da peça (ou da parte) no pedido
+  // Efeitos especiais (o material da peça é definido pelo PCP no ERP)
   {
-    id: "aura", codigo: "8", nome: "Efeito Aura", rotulo: "Efeito Aura", grupo: "efeito", material: "Aura", detalhe: "Furta-cor iridescente",
+    id: "aura", codigo: "8", nome: "Efeito Aura", rotulo: "Efeito Aura", grupo: "efeito", detalhe: "Furta-cor iridescente",
 
     cores: ["#FBE3F3", "#B5D8F6", "#E5C3F0", "#9AE3CF"],
   },
-  { id: "policarbonato", codigo: "9", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", material: "Policarbonato", detalhe: "Translúcido/Cristal", cores: ["#FFFFFF", "#E3EEF5", "#BFD3E0", "#90A9BA"] },
+  { id: "policarbonato", codigo: "9", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", detalhe: "Translúcido/Cristal", cores: ["#FFFFFF", "#E3EEF5", "#BFD3E0", "#90A9BA"] },
 ];
 const GRUPOS_ACABAMENTO = [
   { id: "banho", titulo: "Banhos tradicionais" },
@@ -190,7 +188,6 @@ const acabamentoPorId = (id) => ACABAMENTOS.find((a) => a.id === id) || ACABAMEN
 
 const TIPO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção" };
 const ehCorrente = (produto) => produto?.categoria === "Correntes" || produto?.ref?.startsWith("CR");
-// Material que vai para o pedido: efeito especial reclassifica; banho mantém o material-base
 // Categoria no singular para a identificação da peça (filtros usam o plural)
 const CATEGORIA_SINGULAR = {
   Enfeites: "Enfeite",
@@ -203,54 +200,43 @@ const categoriaPeca = (produto) => CATEGORIA_SINGULAR[produto.categoria] || prod
 const rotuloRef = (produto) => `Ref. ${produto.ref.toUpperCase()}`;
 const normalizarRef = (t) => t.toUpperCase().replace(/^REF\.?\s*/, "").replace(/\s+/g, "");
 
-const materialEfetivo = (produto, acabamentoId) => acabamentoPorId(acabamentoId).material || produto.material;
 const rotuloAcabamento = (acabamentoId) => {
   const a = acabamentoPorId(acabamentoId);
-  return `[${a.codigo}] ${a.rotulo || a.nome}`;
+  return a.rotulo || a.nome;
 };
 
 // Acabamento no padrão do pedido. Peça única: "Acabamento: Ouro Light".
-// Bipartida: "Aro: Ouro Light / Centro: Ônix". Efeito especial indica o material reclassificado entre parênteses.
+// Bipartida: "Parte de Cima: Ouro Light / Parte de Baixo: Ônix".
 function textoAcabamento(produto, acabamento, acabamentoParte2) {
   if (!produto.bipartida) return `Acabamento: ${rotuloAcabamento(acabamento)}`;
-  const parte = (id) => {
-    const mat = materialEfetivo(produto, id);
-    return mat === produto.material ? rotuloAcabamento(id) : `${rotuloAcabamento(id)} (${mat})`;
-  };
-  return `Parte de Cima: ${parte(acabamento)} / Parte de Baixo: ${parte(acabamentoParte2)}`;
+  return `Parte de Cima: ${rotuloAcabamento(acabamento)} / Parte de Baixo: ${rotuloAcabamento(acabamentoParte2)}`;
 }
 
-// Identificação da peça: "Ref. EF 661 - Enfeite (ABS)". Em peça única, o material já sai reclassificado pelo efeito.
-function textoPeca(produto, acabamento) {
-  const mat = produto.bipartida ? produto.material : materialEfetivo(produto, acabamento);
-  return `${rotuloRef(produto)} - ${categoriaPeca(produto)} (${mat})`;
+// Identificação da peça: "Ref. EF 661 - Enfeite" ou "Ref. EF 1170 - Enfeite (Bipartida)".
+// O material de injeção não entra: quem define é o PCP, no ERP.
+function textoPeca(produto) {
+  return `${rotuloRef(produto)} - ${categoriaPeca(produto)}${produto.bipartida ? " (Bipartida)" : ""}`;
 }
 
-// Detalhes técnicos opcionais do item, na ordem do pedido
+// Afra só aparece quando escolhida (Enfeites e Fivelas)
 function textoAfra(produto, item) {
-  if (!temAfra(produto)) return null;
-  return item.afra ? `Afra: ${item.afra}` : "Sem Afra";
+  return temAfra(produto) && item.afra ? `Afra: ${item.afra}` : null;
 }
 
-// Linha completa do item, ex.: "Ref. EF 661 - Enfeite (ABS) | Acabamento: [6] Ouro Light | Afra: 802 | Qtd: 10 un"
+// Linha completa do item, ex.:
+// "Ref. EF 661 - Enfeite · Acabamento: Ouro Light · Qtd: 1.000 un"
+// "Ref. CR 101 - Corrente · 45 elos · Com Ponteira · Acabamento: Níquel · Qtd: 100 un"
 function linhaPedido(produto, item) {
   return [
-    textoPeca(produto, item.acabamento),
+    textoPeca(produto),
+    item.elos ? `${item.elos} elos` : null,
+    item.comPonteira === true ? "Com Ponteira" : item.comPonteira === false ? "Sem Ponteira" : null,
     textoAcabamento(produto, item.acabamento, item.acabamentoBaixo),
     textoAfra(produto, item),
-    item.elos ? `Elos: ${item.elos}` : null,
-    item.comPonteira === true ? "Com Ponteira" : item.comPonteira === false ? "Sem Ponteira" : null,
     `Qtd: ${formatarNumero(item.qtd)} un`,
   ]
     .filter(Boolean)
-    .join(" | ");
-}
-
-// Resumo curto do material no pedido (para chips da interface)
-function textoMaterial(produto, acabamento, acabamentoParte2) {
-  if (!produto.bipartida) return materialEfetivo(produto, acabamento);
-  const [p1, p2] = produto.partes;
-  return `${p1.curto}: ${materialEfetivo(produto, acabamento)} · ${p2.curto}: ${materialEfetivo(produto, acabamentoParte2)}`;
+    .join(" · ");
 }
 
 const EMAIL_PEDIDOS = "pcp@metalizacromagem.com.br";
@@ -1528,7 +1514,6 @@ function Chips({ titulo, opcoes, valor, onChange, idBase, contar }) {
 
 function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbrirPeca }) {
   const [categoria, setCategoria] = useState("Todos");
-  const [material, setMaterial] = useState("Todos");
   const [busca, setBusca] = useState("");
   const vitrineRef = useRef(null);
 
@@ -1539,14 +1524,13 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbri
     return daColecao.filter(
       (p) =>
         (categoria === "Todos" || p.categoria === categoria) &&
-        (material === "Todos" || p.material === material) &&
         (!termo || normalizarRef(p.ref).includes(normalizarRef(termo)))
     );
-  }, [daColecao, categoria, material, busca]);
+  }, [daColecao, categoria, busca]);
 
   const refsNoPedido = useMemo(() => new Set(itensPedido.map((i) => i.ref)), [itensPedido]);
-  const limpar = () => { setCategoria("Todos"); setMaterial("Todos"); setBusca(""); };
-  const filtrosAtivos = categoria !== "Todos" || material !== "Todos" || busca;
+  const limpar = () => { setCategoria("Todos"); setBusca(""); };
+  const filtrosAtivos = categoria !== "Todos" || busca;
 
   const verColecao = (c) => {
     onColecao(c);
@@ -1584,9 +1568,8 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbri
           </label>
         </div>
 
-        <div className="grid gap-4 pb-4 lg:grid-cols-[1.6fr_1fr]">
+        <div className="pb-4">
           <Chips titulo="Categoria" opcoes={CATEGORIAS} valor={categoria} onChange={setCategoria} idBase="mz-cat" contar={(o) => daColecao.filter((p) => o === "Todos" || p.categoria === o).length} />
-          <Chips titulo="Material-base (injeção)" opcoes={MATERIAIS} valor={material} onChange={setMaterial} idBase="mz-mat" contar={(o) => daColecao.filter((p) => o === "Todos" || p.material === o).length} />
         </div>
 
         <div className={`flex min-h-[44px] items-center justify-between border-t border-[color:var(--mz-line)] pb-3 pt-1 text-sm ${C.muted}`}>
@@ -1632,7 +1615,7 @@ function CardProduto({ produto: p, ativas, noPedido, onAbrir }) {
         <div className="flex flex-1 flex-col gap-1.5 p-3">
           <p className="mz-ref text-[15px] leading-tight text-[color:var(--mz-ink)]">{rotuloRef(p)}</p>
           <p className={`text-xs ${C.muted}`}>
-            {p.categoria} <span aria-hidden="true">·</span> {p.material}
+            {categoriaPeca(p)}{p.bipartida ? " · Bipartida" : ""}
           </p>
           <span
             className={`mt-auto self-start rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
@@ -1752,7 +1735,6 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
         <div key={g.id}>
           <p className={`mb-1.5 text-[11px] font-semibold ${C.muted}`}>
             {g.titulo}
-            {g.id === "banho" ? ` · mantém ${produto.material}` : " · reclassificam o material"}
           </p>
           <div className={`grid gap-2 ${g.id === "banho" ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2"}`}>
             {ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => (
@@ -1778,8 +1760,6 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
 
   const regra = REGRAS[tipo];
   const arrastar = useArrastarParaFechar(onFechar);
-  const acabamento = acabamentoPorId(acabamentoId);
-  const acabamentoBaixo = produto.bipartida ? acabamentoPorId(baixoId) : null;
   const descricaoAcabamento = textoAcabamento(produto, acabamentoId, baixoId);
 
   useEffect(() => {
@@ -1855,7 +1835,7 @@ const isCorrente = ehCorrente(produto);
             <h2 id="mz-modal-titulo" className="mz-ref text-[22px] leading-tight">{rotuloRef(produto)}</h2>
             <p className={`mt-0.5 text-sm ${C.muted}`}>
               Categoria: <b className="text-[color:var(--mz-ink)]">{categoriaPeca(produto)}</b>
-              {" | "}Material: <b className="text-[color:var(--mz-ink)]">{produto.material}</b>
+              {produto.bipartida && <>{" | "}<b className="text-[color:var(--mz-ink)]">Bipartida</b></>}
             </p>
           </div>
           <button type="button" onClick={onFechar} className={`${C.fechar} -mr-2 -mt-1`} aria-label="Fechar">
@@ -1875,7 +1855,7 @@ const isCorrente = ehCorrente(produto);
               </span>
             </p>
             <dl className="grid grid-cols-2 gap-2 text-xs">
-              {[["Categoria", categoriaPeca(produto)], ["Material-base (fixo)", produto.material], ...(produto.bipartida ? [["Partes", `${produto.partes[0].nome} + ${produto.partes[1].nome}`]] : [])].map(([k, v]) => (
+              {[["Categoria", categoriaPeca(produto)], ["Coleção", produto.colecao && produto.colecao !== "Linha" ? produto.colecao : "Linha permanente"], ...(produto.bipartida ? [["Partes", `${produto.partes[0].nome} + ${produto.partes[1].nome}`]] : [])].map(([k, v]) => (
                 <div key={k} className={`rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2 ${k === "Partes" ? "col-span-2" : ""}`}>
                   <dt className={C.muted}>{k}</dt>
                   <dd className="font-bold">{v}</dd>
@@ -1894,16 +1874,6 @@ const isCorrente = ehCorrente(produto);
             ) : (
               <SeletorAcabamento titulo="Cor do Acabamento" idBase="mz-cor" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
             )}
-            <div className="-mt-2 flex flex-wrap items-center gap-2 rounded-md bg-[color:var(--mz-sunken)] px-3 py-2 text-xs">
-              <span className={C.muted}>Material no pedido:</span>
-              <b>{textoMaterial(produto, acabamentoId, baixoId)}</b>
-              {(acabamento.grupo === "efeito" || acabamentoBaixo?.grupo === "efeito") && (
-                <span className="rounded-full bg-[color:var(--mz-accent-soft)] px-2 py-0.5 font-bold text-[color:var(--mz-accent)]">
-                  Reclassificado pelo efeito especial
-                </span>
-              )}
-            </div>
-
             {temAfra(produto) && (
               <fieldset>
                 <legend className="mz-eyebrow mb-3">Afra</legend>
@@ -2150,14 +2120,14 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="mz-mono text-sm font-bold">{rotuloRef(p)}</p>
-            <p className={`text-xs ${C.muted}`}>{textoPeca(p, item.acabamento).replace(`${rotuloRef(p)} - `, "")}</p>
+            <p className={`text-xs ${C.muted}`}>{textoPeca(p).replace(`${rotuloRef(p)} - `, "")}</p>
             <p className={`flex flex-wrap items-center gap-x-1.5 text-xs ${C.muted}`}>
               <SwatchesItem produto={p} acabamento={item.acabamento} acabamentoBaixo={item.acabamentoBaixo} size="h-3 w-3" />
               <span className="font-semibold text-[color:var(--mz-ink)]">{textoAcabamento(p, item.acabamento, item.acabamentoBaixo)}</span>
             </p>
-            {temAfra(p) && (
+            {(item.elos || item.comPonteira != null || textoAfra(p, item)) && (
               <p className="mt-0.5 flex flex-wrap gap-1">
-                {[textoAfra(p, item)].map((t) => (
+                {[item.elos ? `${item.elos} elos` : null, item.comPonteira === true ? "Com Ponteira" : item.comPonteira === false ? "Sem Ponteira" : null, textoAfra(p, item)].filter(Boolean).map((t) => (
                   <span key={t} className="mz-mono rounded bg-[color:var(--mz-sunken)] px-1.5 py-0.5 text-[11px] font-semibold">{t}</span>
                 ))}
               </p>

@@ -109,15 +109,13 @@ const pecasDaVisao = (visao, ativas) => PRODUTOS.filter((p) => {
 });
 const rotuloColecao = (p, ativas) => emLancamento(p, ativas) ? p.colecao : "Linha permanente";
 const CATEGORIAS = ["Todos", "Enfeites", "Fivelas", "Passadores", "Ponteiras", "Correntes"];
-const MATERIAIS = ["Todos", "ABS", "TPU", "PVC"];
 let PRODUTOS = [
   // Lançamento Verão 2026 (exclusivas enquanto a coleção estiver ativa)
-  { ref: "CR 101", categoria: "Correntes", material: "ABS", bipartida: false, foto: "cr101", colecao: "Linha" },
-  { ref: "EF 661", categoria: "Enfeites", material: "ABS", bipartida: false, foto: "ef661", colecao: "Ver\xE3o 2026" },
+  { ref: "CR 101", categoria: "Correntes", bipartida: false, foto: "cr101", colecao: "Linha" },
+  { ref: "EF 661", categoria: "Enfeites", bipartida: false, foto: "ef661", colecao: "Ver\xE3o 2026" },
   {
     ref: "EF 1170",
     categoria: "Enfeites",
-    material: "ABS",
     bipartida: true,
     partes: [
       { curto: "Parte de Cima", nome: "Parte de Cima" },
@@ -126,15 +124,15 @@ let PRODUTOS = [
     foto: "ef1170",
     colecao: "Ver\xE3o 2026"
   },
-  { ref: "PS 1030", categoria: "Passadores", material: "ABS", bipartida: false, foto: "ps1030", colecao: "Ver\xE3o 2026" },
+  { ref: "PS 1030", categoria: "Passadores", bipartida: false, foto: "ps1030", colecao: "Ver\xE3o 2026" },
   // Linha permanente (Catálogo Geral)
-  { ref: "EF 1143", categoria: "Enfeites", material: "ABS", bipartida: false, foto: "ef1143" },
-  { ref: "EF 1150", categoria: "Enfeites", material: "ABS", bipartida: false, foto: "ef1150" },
-  { ref: "PS 1027", categoria: "Passadores", material: "ABS", bipartida: false, foto: "ps1027" },
-  { ref: "PS 057", categoria: "Passadores", material: "ABS", bipartida: false, foto: "ps057" }
+  { ref: "EF 1143", categoria: "Enfeites", bipartida: false, foto: "ef1143" },
+  { ref: "EF 1150", categoria: "Enfeites", bipartida: false, foto: "ef1150" },
+  { ref: "PS 1027", categoria: "Passadores", bipartida: false, foto: "ps1027" },
+  { ref: "PS 057", categoria: "Passadores", bipartida: false, foto: "ps057" }
 ];
 const ACABAMENTOS = [
-  // Banhos tradicionais: mantêm o material-base da peça. Escolha só técnica: a foto não muda.
+  // Banhos tradicionais. Escolha só técnica: a foto não muda.
   { id: "ouro-light", codigo: "6", nome: "Ouro Light", grupo: "banho", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"] },
   { id: "ouro-24k", codigo: "1", nome: "Ouro 24k", grupo: "banho", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"] },
   { id: "niquel", codigo: "2", nome: "N\xEDquel", grupo: "banho", cores: ["#FAFBFC", "#D2D7DC", "#929AA1", "#5A6066"] },
@@ -142,18 +140,17 @@ const ACABAMENTOS = [
   { id: "marrom", codigo: "4", nome: "Marrom", grupo: "banho", cores: ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"] },
   // Cor oculta: não aparece na cartela; só pela busca de código (1554) ou nome
   { id: "ouro-queimado", codigo: "1554", nome: "Ouro Queimado", grupo: "banho", oculta: true, cores: ["#EBBE78", "#BC7A30", "#7E4614", "#452208"] },
-  // Efeitos especiais: reclassificam o material da peça (ou da parte) no pedido
+  // Efeitos especiais (o material da peça é definido pelo PCP no ERP)
   {
     id: "aura",
     codigo: "8",
     nome: "Efeito Aura",
     rotulo: "Efeito Aura",
     grupo: "efeito",
-    material: "Aura",
     detalhe: "Furta-cor iridescente",
     cores: ["#FBE3F3", "#B5D8F6", "#E5C3F0", "#9AE3CF"]
   },
-  { id: "policarbonato", codigo: "9", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", material: "Policarbonato", detalhe: "Transl\xFAcido/Cristal", cores: ["#FFFFFF", "#E3EEF5", "#BFD3E0", "#90A9BA"] }
+  { id: "policarbonato", codigo: "9", nome: "Policarbonato", rotulo: "Cristal/Poli", grupo: "efeito", detalhe: "Transl\xFAcido/Cristal", cores: ["#FFFFFF", "#E3EEF5", "#BFD3E0", "#90A9BA"] }
 ];
 const GRUPOS_ACABAMENTO = [
   { id: "banho", titulo: "Banhos tradicionais" },
@@ -198,41 +195,29 @@ const CATEGORIA_SINGULAR = {
 const categoriaPeca = (produto) => CATEGORIA_SINGULAR[produto.categoria] || produto.categoria;
 const rotuloRef = (produto) => `Ref. ${produto.ref.toUpperCase()}`;
 const normalizarRef = (t) => t.toUpperCase().replace(/^REF\.?\s*/, "").replace(/\s+/g, "");
-const materialEfetivo = (produto, acabamentoId) => acabamentoPorId(acabamentoId).material || produto.material;
 const rotuloAcabamento = (acabamentoId) => {
   const a = acabamentoPorId(acabamentoId);
-  return `[${a.codigo}] ${a.rotulo || a.nome}`;
+  return a.rotulo || a.nome;
 };
 function textoAcabamento(produto, acabamento, acabamentoParte2) {
   if (!produto.bipartida) return `Acabamento: ${rotuloAcabamento(acabamento)}`;
-  const parte = (id) => {
-    const mat = materialEfetivo(produto, id);
-    return mat === produto.material ? rotuloAcabamento(id) : `${rotuloAcabamento(id)} (${mat})`;
-  };
-  return `Parte de Cima: ${parte(acabamento)} / Parte de Baixo: ${parte(acabamentoParte2)}`;
+  return `Parte de Cima: ${rotuloAcabamento(acabamento)} / Parte de Baixo: ${rotuloAcabamento(acabamentoParte2)}`;
 }
-function textoPeca(produto, acabamento) {
-  const mat = produto.bipartida ? produto.material : materialEfetivo(produto, acabamento);
-  return `${rotuloRef(produto)} - ${categoriaPeca(produto)} (${mat})`;
+function textoPeca(produto) {
+  return `${rotuloRef(produto)} - ${categoriaPeca(produto)}${produto.bipartida ? " (Bipartida)" : ""}`;
 }
 function textoAfra(produto, item) {
-  if (!temAfra(produto)) return null;
-  return item.afra ? `Afra: ${item.afra}` : "Sem Afra";
+  return temAfra(produto) && item.afra ? `Afra: ${item.afra}` : null;
 }
 function linhaPedido(produto, item) {
   return [
-    textoPeca(produto, item.acabamento),
+    textoPeca(produto),
+    item.elos ? `${item.elos} elos` : null,
+    item.comPonteira === true ? "Com Ponteira" : item.comPonteira === false ? "Sem Ponteira" : null,
     textoAcabamento(produto, item.acabamento, item.acabamentoBaixo),
     textoAfra(produto, item),
-    item.elos ? `Elos: ${item.elos}` : null,
-    item.comPonteira === true ? "Com Ponteira" : item.comPonteira === false ? "Sem Ponteira" : null,
     `Qtd: ${formatarNumero(item.qtd)} un`
-  ].filter(Boolean).join(" | ");
-}
-function textoMaterial(produto, acabamento, acabamentoParte2) {
-  if (!produto.bipartida) return materialEfetivo(produto, acabamento);
-  const [p1, p2] = produto.partes;
-  return `${p1.curto}: ${materialEfetivo(produto, acabamento)} \xB7 ${p2.curto}: ${materialEfetivo(produto, acabamentoParte2)}`;
+  ].filter(Boolean).join(" \xB7 ");
 }
 const EMAIL_PEDIDOS = "pcp@metalizacromagem.com.br";
 const obterSupabase = () => {
@@ -1003,7 +988,6 @@ function Chips({ titulo, opcoes, valor, onChange, idBase, contar }) {
 }
 function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbrirPeca }) {
   const [categoria, setCategoria] = useState("Todos");
-  const [material, setMaterial] = useState("Todos");
   const [busca, setBusca] = useState("");
   const vitrineRef = useRef(null);
   const daColecao = useMemo(() => pecasDaVisao(colecao, ativas), [colecao, ativas]);
@@ -1011,16 +995,15 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbri
   const filtrados = useMemo(() => {
     const termo = busca.trim();
     return daColecao.filter(
-      (p) => (categoria === "Todos" || p.categoria === categoria) && (material === "Todos" || p.material === material) && (!termo || normalizarRef(p.ref).includes(normalizarRef(termo)))
+      (p) => (categoria === "Todos" || p.categoria === categoria) && (!termo || normalizarRef(p.ref).includes(normalizarRef(termo)))
     );
-  }, [daColecao, categoria, material, busca]);
+  }, [daColecao, categoria, busca]);
   const refsNoPedido = useMemo(() => new Set(itensPedido.map((i) => i.ref)), [itensPedido]);
   const limpar = () => {
     setCategoria("Todos");
-    setMaterial("Todos");
     setBusca("");
   };
-  const filtrosAtivos = categoria !== "Todos" || material !== "Todos" || busca;
+  const filtrosAtivos = categoria !== "Todos" || busca;
   const verColecao = (c) => {
     var _a;
     onColecao(c);
@@ -1037,7 +1020,7 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbri
       value: busca,
       onChange: (e) => setBusca(e.target.value)
     }
-  ))), /* @__PURE__ */ React.createElement("div", { className: "grid gap-4 pb-4 lg:grid-cols-[1.6fr_1fr]" }, /* @__PURE__ */ React.createElement(Chips, { titulo: "Categoria", opcoes: CATEGORIAS, valor: categoria, onChange: setCategoria, idBase: "mz-cat", contar: (o) => daColecao.filter((p) => o === "Todos" || p.categoria === o).length }), /* @__PURE__ */ React.createElement(Chips, { titulo: "Material-base (inje\xE7\xE3o)", opcoes: MATERIAIS, valor: material, onChange: setMaterial, idBase: "mz-mat", contar: (o) => daColecao.filter((p) => o === "Todos" || p.material === o).length })), /* @__PURE__ */ React.createElement("div", { className: `flex min-h-[44px] items-center justify-between border-t border-[color:var(--mz-line)] pb-3 pt-1 text-sm ${C.muted}` }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("b", { className: "font-bold text-[color:var(--mz-ink)]" }, filtrados.length), " de ", daColecao.length, " refer\xEAncias"), filtrosAtivos && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: limpar, className: `mz-focus min-h-[44px] px-1 font-bold underline underline-offset-4 ${C.accentText}` }, "Limpar filtros")), filtrados.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl border border-dashed border-[color:var(--mz-line)] p-8 text-center" }, /* @__PURE__ */ React.createElement("p", { className: "mz-display text-xl" }, "Nenhuma pe\xE7a com esses filtros."), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-sm ${C.muted}` }, "Tente outra categoria, outra cole\xE7\xE3o no menu ou confira o c\xF3digo da refer\xEAncia."), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: limpar, className: `${C.btnGhost} mt-5` }, "Limpar filtros")) : /* @__PURE__ */ React.createElement("ul", { className: "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4" }, filtrados.map((p) => /* @__PURE__ */ React.createElement(CardProduto, { key: p.ref, produto: p, ativas, noPedido: refsNoPedido.has(p.ref), onAbrir: onAbrirPeca })))));
+  ))), /* @__PURE__ */ React.createElement("div", { className: "pb-4" }, /* @__PURE__ */ React.createElement(Chips, { titulo: "Categoria", opcoes: CATEGORIAS, valor: categoria, onChange: setCategoria, idBase: "mz-cat", contar: (o) => daColecao.filter((p) => o === "Todos" || p.categoria === o).length })), /* @__PURE__ */ React.createElement("div", { className: `flex min-h-[44px] items-center justify-between border-t border-[color:var(--mz-line)] pb-3 pt-1 text-sm ${C.muted}` }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("b", { className: "font-bold text-[color:var(--mz-ink)]" }, filtrados.length), " de ", daColecao.length, " refer\xEAncias"), filtrosAtivos && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: limpar, className: `mz-focus min-h-[44px] px-1 font-bold underline underline-offset-4 ${C.accentText}` }, "Limpar filtros")), filtrados.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl border border-dashed border-[color:var(--mz-line)] p-8 text-center" }, /* @__PURE__ */ React.createElement("p", { className: "mz-display text-xl" }, "Nenhuma pe\xE7a com esses filtros."), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-sm ${C.muted}` }, "Tente outra categoria, outra cole\xE7\xE3o no menu ou confira o c\xF3digo da refer\xEAncia."), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: limpar, className: `${C.btnGhost} mt-5` }, "Limpar filtros")) : /* @__PURE__ */ React.createElement("ul", { className: "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4" }, filtrados.map((p) => /* @__PURE__ */ React.createElement(CardProduto, { key: p.ref, produto: p, ativas, noPedido: refsNoPedido.has(p.ref), onAbrir: onAbrirPeca })))));
 }
 function CardProduto({ produto: p, ativas, noPedido, onAbrir }) {
   const lanc = emLancamento(p, ativas);
@@ -1049,7 +1032,7 @@ function CardProduto({ produto: p, ativas, noPedido, onAbrir }) {
       className: "mz-focus group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[color:var(--mz-line)] bg-white text-left transition hover:border-[color:var(--mz-accent)] hover:shadow-[var(--mz-shadow)] active:scale-[.98]"
     },
     /* @__PURE__ */ React.createElement("div", { className: "relative flex h-36 w-full items-center justify-center sm:h-52", style: { background: fundoDaFoto(p) } }, /* @__PURE__ */ React.createElement(ImagemPeca, { produto: p, alturaMax: "100%", className: "h-full" }), noPedido && /* @__PURE__ */ React.createElement("span", { className: "absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-[color:var(--mz-ok)] px-2 py-0.5 text-[10px] font-bold text-white" }, /* @__PURE__ */ React.createElement(Icone.check, { className: "h-3 w-3" }), " No pedido")),
-    /* @__PURE__ */ React.createElement("div", { className: "flex flex-1 flex-col gap-1.5 p-3" }, /* @__PURE__ */ React.createElement("p", { className: "mz-ref text-[15px] leading-tight text-[color:var(--mz-ink)]" }, rotuloRef(p)), /* @__PURE__ */ React.createElement("p", { className: `text-xs ${C.muted}` }, p.categoria, " ", /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true" }, "\xB7"), " ", p.material), /* @__PURE__ */ React.createElement(
+    /* @__PURE__ */ React.createElement("div", { className: "flex flex-1 flex-col gap-1.5 p-3" }, /* @__PURE__ */ React.createElement("p", { className: "mz-ref text-[15px] leading-tight text-[color:var(--mz-ink)]" }, rotuloRef(p)), /* @__PURE__ */ React.createElement("p", { className: `text-xs ${C.muted}` }, categoriaPeca(p), p.bipartida ? " \xB7 Bipartida" : ""), /* @__PURE__ */ React.createElement(
       "span",
       {
         className: `mt-auto self-start rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${lanc ? "bg-[color:var(--mz-accent-soft)] text-[color:var(--mz-accent)]" : "bg-[color:var(--mz-sunken)] text-[color:var(--mz-ink-2)]"}`
@@ -1118,7 +1101,7 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
     },
     ajuda
   )), atual.oculta && /* @__PURE__ */ React.createElement("div", { className: "mz-in" }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, "Cor encontrada pelo c\xF3digo \xB7 fora da cartela padr\xE3o"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2" }, /* @__PURE__ */ React.createElement(BotaoCor, { a: atual, ativo: true, titulo, largo: true, onClick: () => {
-  } }))), GRUPOS_ACABAMENTO.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.id }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, g.titulo, g.id === "banho" ? ` \xB7 mant\xE9m ${produto.material}` : " \xB7 reclassificam o material"), /* @__PURE__ */ React.createElement("div", { className: `grid gap-2 ${g.id === "banho" ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2"}` }, ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => /* @__PURE__ */ React.createElement(BotaoCor, { key: a.id, a, ativo: a.id === valor, titulo, largo: a.grupo === "efeito", onClick: () => onChange(a.id) }))))));
+  } }))), GRUPOS_ACABAMENTO.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.id }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, g.titulo), /* @__PURE__ */ React.createElement("div", { className: `grid gap-2 ${g.id === "banho" ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2"}` }, ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => /* @__PURE__ */ React.createElement(BotaoCor, { key: a.id, a, ativo: a.id === valor, titulo, largo: a.grupo === "efeito", onClick: () => onChange(a.id) }))))));
 }
 function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
@@ -1132,8 +1115,6 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
   const [tremer, setTremer] = useState(0);
   const regra = REGRAS[tipo];
   const arrastar = useArrastarParaFechar(onFechar);
-  const acabamento = acabamentoPorId(acabamentoId);
-  const acabamentoBaixo = produto.bipartida ? acabamentoPorId(baixoId) : null;
   const descricaoAcabamento = textoAcabamento(produto, acabamentoId, baixoId);
   useEffect(() => {
     const esc = (e) => e.key === "Escape" && onFechar();
@@ -1198,8 +1179,8 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
       className: "mz-sheet flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
     },
     /* @__PURE__ */ React.createElement(AlcaSheet, { arrastar }),
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3 border-b border-[color:var(--mz-line)] px-4 pb-3 pt-1 sm:px-5 sm:pt-4", ...arrastar }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("h2", { id: "mz-modal-titulo", className: "mz-ref text-[22px] leading-tight" }, rotuloRef(produto)), /* @__PURE__ */ React.createElement("p", { className: `mt-0.5 text-sm ${C.muted}` }, "Categoria: ", /* @__PURE__ */ React.createElement("b", { className: "text-[color:var(--mz-ink)]" }, categoriaPeca(produto)), " | ", "Material: ", /* @__PURE__ */ React.createElement("b", { className: "text-[color:var(--mz-ink)]" }, produto.material))), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: `${C.fechar} -mr-2 -mt-1`, "aria-label": "Fechar" }, /* @__PURE__ */ React.createElement(X, { className: "h-6 w-6", strokeWidth: 2 }))),
-    /* @__PURE__ */ React.createElement("div", { className: "grid flex-1 gap-0 overflow-y-auto overscroll-contain md:grid-cols-[1fr_1.1fr]" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-3 p-4 sm:p-5 md:border-r md:border-[color:var(--mz-line)]" }, /* @__PURE__ */ React.createElement(ImagemPeca, { produto, alturaMax: 300, className: "overflow-hidden rounded-2xl" }), /* @__PURE__ */ React.createElement("p", { className: "flex items-start gap-2 rounded-md bg-[color:var(--mz-accent-soft)] px-3 py-2 text-sm font-medium" }, /* @__PURE__ */ React.createElement(Swatch, { acabamento: ACABAMENTO_PADRAO, size: "mt-0.5 h-4 w-4" }), /* @__PURE__ */ React.createElement("span", null, "Foto de refer\xEAncia em Ouro Light. Selecione o acabamento desejado abaixo:", /* @__PURE__ */ React.createElement("span", { className: `mt-0.5 block text-xs font-normal ${C.muted}` }, "A foto permanece original. O acabamento escolhido fica registrado no pedido."))), /* @__PURE__ */ React.createElement("dl", { className: "grid grid-cols-2 gap-2 text-xs" }, [["Categoria", categoriaPeca(produto)], ["Material-base (fixo)", produto.material], ...produto.bipartida ? [["Partes", `${produto.partes[0].nome} + ${produto.partes[1].nome}`]] : []].map(([k, v]) => /* @__PURE__ */ React.createElement("div", { key: k, className: `rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2 ${k === "Partes" ? "col-span-2" : ""}` }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, k), /* @__PURE__ */ React.createElement("dd", { className: "font-bold" }, v))))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-6 p-4 pb-6 sm:p-5" }, produto.bipartida ? /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-5" }, /* @__PURE__ */ React.createElement(SeletorAcabamento, { titulo: "Parte de Cima", idBase: "mz-cor-1", produto, valor: acabamentoId, onChange: setAcabamentoId }), /* @__PURE__ */ React.createElement(SeletorAcabamento, { titulo: "Parte de Baixo", idBase: "mz-cor-2", produto, valor: baixoId, onChange: setBaixoId })) : /* @__PURE__ */ React.createElement(SeletorAcabamento, { titulo: "Cor do Acabamento", idBase: "mz-cor", produto, valor: acabamentoId, onChange: setAcabamentoId }), /* @__PURE__ */ React.createElement("div", { className: "-mt-2 flex flex-wrap items-center gap-2 rounded-md bg-[color:var(--mz-sunken)] px-3 py-2 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: C.muted }, "Material no pedido:"), /* @__PURE__ */ React.createElement("b", null, textoMaterial(produto, acabamentoId, baixoId)), (acabamento.grupo === "efeito" || (acabamentoBaixo == null ? void 0 : acabamentoBaixo.grupo) === "efeito") && /* @__PURE__ */ React.createElement("span", { className: "rounded-full bg-[color:var(--mz-accent-soft)] px-2 py-0.5 font-bold text-[color:var(--mz-accent)]" }, "Reclassificado pelo efeito especial")), temAfra(produto) && /* @__PURE__ */ React.createElement("fieldset", null, /* @__PURE__ */ React.createElement("legend", { className: "mz-eyebrow mb-3" }, "Afra"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1", role: "radiogroup", "aria-label": "Afra" }, [[false, "Sem Afra"], [true, "Com Afra"]].map(([v, rotulo]) => /* @__PURE__ */ React.createElement(
+    /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3 border-b border-[color:var(--mz-line)] px-4 pb-3 pt-1 sm:px-5 sm:pt-4", ...arrastar }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("h2", { id: "mz-modal-titulo", className: "mz-ref text-[22px] leading-tight" }, rotuloRef(produto)), /* @__PURE__ */ React.createElement("p", { className: `mt-0.5 text-sm ${C.muted}` }, "Categoria: ", /* @__PURE__ */ React.createElement("b", { className: "text-[color:var(--mz-ink)]" }, categoriaPeca(produto)), produto.bipartida && /* @__PURE__ */ React.createElement(React.Fragment, null, " | ", /* @__PURE__ */ React.createElement("b", { className: "text-[color:var(--mz-ink)]" }, "Bipartida")))), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: `${C.fechar} -mr-2 -mt-1`, "aria-label": "Fechar" }, /* @__PURE__ */ React.createElement(X, { className: "h-6 w-6", strokeWidth: 2 }))),
+    /* @__PURE__ */ React.createElement("div", { className: "grid flex-1 gap-0 overflow-y-auto overscroll-contain md:grid-cols-[1fr_1.1fr]" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-3 p-4 sm:p-5 md:border-r md:border-[color:var(--mz-line)]" }, /* @__PURE__ */ React.createElement(ImagemPeca, { produto, alturaMax: 300, className: "overflow-hidden rounded-2xl" }), /* @__PURE__ */ React.createElement("p", { className: "flex items-start gap-2 rounded-md bg-[color:var(--mz-accent-soft)] px-3 py-2 text-sm font-medium" }, /* @__PURE__ */ React.createElement(Swatch, { acabamento: ACABAMENTO_PADRAO, size: "mt-0.5 h-4 w-4" }), /* @__PURE__ */ React.createElement("span", null, "Foto de refer\xEAncia em Ouro Light. Selecione o acabamento desejado abaixo:", /* @__PURE__ */ React.createElement("span", { className: `mt-0.5 block text-xs font-normal ${C.muted}` }, "A foto permanece original. O acabamento escolhido fica registrado no pedido."))), /* @__PURE__ */ React.createElement("dl", { className: "grid grid-cols-2 gap-2 text-xs" }, [["Categoria", categoriaPeca(produto)], ["Cole\xE7\xE3o", produto.colecao && produto.colecao !== "Linha" ? produto.colecao : "Linha permanente"], ...produto.bipartida ? [["Partes", `${produto.partes[0].nome} + ${produto.partes[1].nome}`]] : []].map(([k, v]) => /* @__PURE__ */ React.createElement("div", { key: k, className: `rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2 ${k === "Partes" ? "col-span-2" : ""}` }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, k), /* @__PURE__ */ React.createElement("dd", { className: "font-bold" }, v))))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-6 p-4 pb-6 sm:p-5" }, produto.bipartida ? /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-5" }, /* @__PURE__ */ React.createElement(SeletorAcabamento, { titulo: "Parte de Cima", idBase: "mz-cor-1", produto, valor: acabamentoId, onChange: setAcabamentoId }), /* @__PURE__ */ React.createElement(SeletorAcabamento, { titulo: "Parte de Baixo", idBase: "mz-cor-2", produto, valor: baixoId, onChange: setBaixoId })) : /* @__PURE__ */ React.createElement(SeletorAcabamento, { titulo: "Cor do Acabamento", idBase: "mz-cor", produto, valor: acabamentoId, onChange: setAcabamentoId }), temAfra(produto) && /* @__PURE__ */ React.createElement("fieldset", null, /* @__PURE__ */ React.createElement("legend", { className: "mz-eyebrow mb-3" }, "Afra"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1", role: "radiogroup", "aria-label": "Afra" }, [[false, "Sem Afra"], [true, "Com Afra"]].map(([v, rotulo]) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: rotulo,
@@ -1341,7 +1322,7 @@ function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
     setAviso("");
     onQtd(item.qtd + regra.passo);
   };
-  return /* @__PURE__ */ React.createElement("li", { className: "flex gap-3 py-3" }, /* @__PURE__ */ React.createElement(ImagemPeca, { produto: p, miniatura: true }), /* @__PURE__ */ React.createElement("div", { className: "min-w-0 flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-mono text-sm font-bold" }, rotuloRef(p)), /* @__PURE__ */ React.createElement("p", { className: `text-xs ${C.muted}` }, textoPeca(p, item.acabamento).replace(`${rotuloRef(p)} - `, "")), /* @__PURE__ */ React.createElement("p", { className: `flex flex-wrap items-center gap-x-1.5 text-xs ${C.muted}` }, /* @__PURE__ */ React.createElement(SwatchesItem, { produto: p, acabamento: item.acabamento, acabamentoBaixo: item.acabamentoBaixo, size: "h-3 w-3" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-[color:var(--mz-ink)]" }, textoAcabamento(p, item.acabamento, item.acabamentoBaixo))), temAfra(p) && /* @__PURE__ */ React.createElement("p", { className: "mt-0.5 flex flex-wrap gap-1" }, [textoAfra(p, item)].map((t) => /* @__PURE__ */ React.createElement("span", { key: t, className: "mz-mono rounded bg-[color:var(--mz-sunken)] px-1.5 py-0.5 text-[11px] font-semibold" }, t)))), onRemover && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onRemover, className: `${C.fechar} -mr-2 -mt-2 hover:text-[color:var(--mz-warn)]`, "aria-label": `Remover ${rotuloRef(p)}` }, /* @__PURE__ */ React.createElement(Icone.lixeira, { className: "h-5 w-5" }))), compacto ? /* @__PURE__ */ React.createElement("p", { className: "mz-mono mt-1 text-sm font-semibold" }, formatarNumero(item.qtd), " un") : /* @__PURE__ */ React.createElement("div", { className: "mt-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: menos, "aria-label": "Diminuir", className: `mz-focus flex h-11 w-11 items-center justify-center rounded-xl border-2 border-[color:var(--mz-line)] ${item.qtd <= regra.min ? "opacity-40" : ""}` }, /* @__PURE__ */ React.createElement(Icone.menos, { className: "h-4 w-4" })), /* @__PURE__ */ React.createElement("span", { className: "mz-mono min-w-[3.5rem] text-center text-sm font-semibold" }, formatarNumero(item.qtd)), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: mais, "aria-label": "Aumentar", className: "mz-focus flex h-11 w-11 items-center justify-center rounded-xl border-2 border-[color:var(--mz-line)]" }, /* @__PURE__ */ React.createElement(Icone.mais, { className: "h-4 w-4" })), /* @__PURE__ */ React.createElement("span", { className: `text-xs ${C.muted}` }, "un")), aviso && /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-xs font-semibold text-[color:var(--mz-warn)]" }, aviso)));
+  return /* @__PURE__ */ React.createElement("li", { className: "flex gap-3 py-3" }, /* @__PURE__ */ React.createElement(ImagemPeca, { produto: p, miniatura: true }), /* @__PURE__ */ React.createElement("div", { className: "min-w-0 flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-mono text-sm font-bold" }, rotuloRef(p)), /* @__PURE__ */ React.createElement("p", { className: `text-xs ${C.muted}` }, textoPeca(p).replace(`${rotuloRef(p)} - `, "")), /* @__PURE__ */ React.createElement("p", { className: `flex flex-wrap items-center gap-x-1.5 text-xs ${C.muted}` }, /* @__PURE__ */ React.createElement(SwatchesItem, { produto: p, acabamento: item.acabamento, acabamentoBaixo: item.acabamentoBaixo, size: "h-3 w-3" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-[color:var(--mz-ink)]" }, textoAcabamento(p, item.acabamento, item.acabamentoBaixo))), (item.elos || item.comPonteira != null || textoAfra(p, item)) && /* @__PURE__ */ React.createElement("p", { className: "mt-0.5 flex flex-wrap gap-1" }, [item.elos ? `${item.elos} elos` : null, item.comPonteira === true ? "Com Ponteira" : item.comPonteira === false ? "Sem Ponteira" : null, textoAfra(p, item)].filter(Boolean).map((t) => /* @__PURE__ */ React.createElement("span", { key: t, className: "mz-mono rounded bg-[color:var(--mz-sunken)] px-1.5 py-0.5 text-[11px] font-semibold" }, t)))), onRemover && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onRemover, className: `${C.fechar} -mr-2 -mt-2 hover:text-[color:var(--mz-warn)]`, "aria-label": `Remover ${rotuloRef(p)}` }, /* @__PURE__ */ React.createElement(Icone.lixeira, { className: "h-5 w-5" }))), compacto ? /* @__PURE__ */ React.createElement("p", { className: "mz-mono mt-1 text-sm font-semibold" }, formatarNumero(item.qtd), " un") : /* @__PURE__ */ React.createElement("div", { className: "mt-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: menos, "aria-label": "Diminuir", className: `mz-focus flex h-11 w-11 items-center justify-center rounded-xl border-2 border-[color:var(--mz-line)] ${item.qtd <= regra.min ? "opacity-40" : ""}` }, /* @__PURE__ */ React.createElement(Icone.menos, { className: "h-4 w-4" })), /* @__PURE__ */ React.createElement("span", { className: "mz-mono min-w-[3.5rem] text-center text-sm font-semibold" }, formatarNumero(item.qtd)), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: mais, "aria-label": "Aumentar", className: "mz-focus flex h-11 w-11 items-center justify-center rounded-xl border-2 border-[color:var(--mz-line)]" }, /* @__PURE__ */ React.createElement(Icone.mais, { className: "h-4 w-4" })), /* @__PURE__ */ React.createElement("span", { className: `text-xs ${C.muted}` }, "un")), aviso && /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-xs font-semibold text-[color:var(--mz-warn)]" }, aviso)));
 }
 function GrupoItens({ tipo, itens, children }) {
   if (!itens.length) return null;
