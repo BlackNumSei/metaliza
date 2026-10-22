@@ -284,75 +284,50 @@ function enderecoCliente(c) {
   return c.bairro ? `${rua} - ${c.bairro}` : rua;
 }
 
-// Bloco fiscal enviado ao PCP para faturamento sem divergências
-function blocoFiscal(c) {
-  return [
-    "DADOS CADASTRAIS DO CLIENTE:",
-    `Razão Social: ${c.razaoSocial || c.nome} (Fantasia: ${c.fantasia || c.nome})`,
-    `CNPJ: ${c.cnpj || "—"} | IE: ${c.ie || "—"}`,
-    `Endereço: ${enderecoCliente(c) || "—"} · CEP: ${c.cep || "—"} · ${c.municipio && c.uf ? `${c.municipio}/${c.uf}` : c.cidade}`,
-    `Comprador: ${c.contato} | Telefone/WhatsApp: ${c.whatsapp}`,
-    `E-mail: ${c.email || "—"}`,
-  ];
-}
-
 const formatarNumero = (n) => n.toLocaleString("pt-BR");
 
 function hojeFormatado() {
   return new Date().toLocaleDateString("pt-BR");
 }
 
-function linhasItens(itens, negrito) {
-  const b = (t) => (negrito ? `*${t}*` : t);
-  const linhas = [];
-  ["amostra", "producao"].forEach((tipo) => {
-    const grupo = itens.filter((i) => i.tipo === tipo);
-    if (!grupo.length) return;
-    linhas.push("");
-    linhas.push(`${b(tipo === "amostra" ? "AMOSTRAS" : "PRODUÇÃO")} (prazo estimado ${PRAZO[tipo]})`);
-    grupo.forEach((i) => {
-      const p = PRODUTOS.find((x) => x.ref === i.ref);
-      linhas.push(`• ${linhaPedido(p, i)}`);
-    });
-  });
-  const total = itens.reduce((s, i) => s + i.qtd, 0);
-  linhas.push("");
-  linhas.push(`Total: ${formatarNumero(total)} un em ${itens.length} ${itens.length === 1 ? "item" : "itens"}`);
-  return linhas;
-}
+const totalPecas = (itens) => itens.reduce((s, i) => s + i.qtd, 0);
 
-function colecoesDoPedido(itens) {
-  return [...new Set(itens.map((i) => i.colecao).filter(Boolean))].join(", ") || "—";
-}
+// Cliente novo: ainda sem pedido enviado. Só ele leva os dados cadastrais no e-mail, para o cadastro no ERP.
+const clienteNovo = (c) => c.novo === true || !c.ultimoPedido;
+const TIPO_EMAIL = { amostra: "AMOSTRA", producao: "PEDIDO DE PRODUÇÃO", misto: "AMOSTRA E PRODUÇÃO" };
 
-function montarMensagem({ numero, rep, cliente, itens }) {
+function blocoCadastroClienteNovo(c) {
+  const numeroCompl = [c.numero, c.complemento].filter(Boolean).join(" ");
   return [
-    `*Metaliza · Solicitação ${numero}*`,
-    `Data: ${hojeFormatado()}`,
-    "",
-    ...blocoFiscal(cliente),
-    "",
-    `Representante: ${rep.nome} · ${rep.regiao}`,
-    `Coleção: ${colecoesDoPedido(itens)}`,
-    ...linhasItens(itens, true),
-  ].join("\n");
+    "DADOS CADASTRAIS (CLIENTE NOVO):",
+    `Razão Social: ${c.razaoSocial || c.nome} (Nome Fantasia: ${c.fantasia || c.nome})`,
+    `CNPJ: ${c.cnpj || "—"} | Inscrição Estadual: ${c.ie || "—"}`,
+    `Endereço: ${c.logradouro || "—"}, ${numeroCompl || "S/N"} - ${c.bairro || "—"}`,
+    `CEP: ${c.cep || "—"} · ${c.municipio || c.cidade || "—"} / ${c.uf || "—"}`,
+    `Comprador / Contato: ${c.contato}`,
+    `Telefone / WhatsApp: ${c.whatsapp}`,
+    `E-mail: ${c.email || "—"}`,
+  ];
 }
 
-function montarEmail({ numero, rep, cliente, itens, anexos = null }) {
-  const total = itens.reduce((s, i) => s + i.qtd, 0);
+// E-mail ao PCP: só identificação do pedido, do cliente e dos anexos.
+// As peças vão no espelho em PDF (e no TXT do SJSYS, para os representantes liberados).
+function montarEmail({ numero, rep, cliente, tipo, itens, anexos }) {
+  const anexoTxt = anexos.txt ? ` e o arquivo de importação do SJSYS (${anexos.txt})` : "";
   return {
     para: EMAIL_PEDIDOS,
     cc: rep.email,
-    assunto: `[Pedido ${numero}] ${cliente.nome} · ${itens.length} ${itens.length === 1 ? "item" : "itens"} · ${formatarNumero(total)} un`,
+    assunto: `[Pedido ${numero}] ${cliente.nome} · ${itens.length} ${itens.length === 1 ? "item" : "itens"} · ${formatarNumero(totalPecas(itens))} un`,
     corpo: [
-      `Pedido ${numero} registrado em ${hojeFormatado()}.`,
+      `SOLICITAÇÃO ${numero} — TIPO: ${TIPO_EMAIL[tipo]}`,
+      `Data: ${hojeFormatado()}`,
+      `Representante: ${rep.nome} (${rep.codigo})`,
       "",
-      ...blocoFiscal(cliente),
+      ...(clienteNovo(cliente)
+        ? blocoCadastroClienteNovo(cliente)
+        : [`Cliente: ${cliente.razaoSocial || cliente.nome} (CNPJ: ${cliente.cnpj || "—"})`]),
       "",
-      `Representante: ${rep.nome} (${rep.codigo}) · ${rep.regiao}`,
-      `Coleção: ${colecoesDoPedido(itens)}`,
-      ...linhasItens(itens, false),
-      ...(anexos ? ["", `Anexos: ${anexos.join(" e ")}`] : []),
+      `Segue em anexo o espelho do pedido em PDF (${anexos.pdf}) com a discriminação dos itens${anexoTxt}.`,
     ].join("\n"),
   };
 }
@@ -370,7 +345,6 @@ const tipoDoPedido = (itens) => {
   const tipos = new Set(itens.map((i) => i.tipo));
   return tipos.size > 1 ? "misto" : [...tipos][0];
 };
-const totalPecas = (itens) => itens.reduce((s, i) => s + i.qtd, 0);
 // Dias até a exclusão definitiva (política de retenção de 30 dias corridos)
 const diasParaExpirar = (criadoEm) =>
   Math.max(0, DIAS_RETENCAO - Math.floor((inicioDoDia().getTime() - inicioDoDia(new Date(criadoEm)).getTime()) / DIA_MS));
@@ -2682,35 +2656,37 @@ function TelaEnviado({ pedido, importacao = false, onBaixarTxt, onBaixarPdf, onN
       </div>
 
       <p className={`mt-3 text-sm ${C.muted}`}>
-        {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"} para <b className="text-[color:var(--mz-ink)]">{pedido.cliente.nome}</b>, registrados em {pedido.data}. Envie o pedido diretamente para o PCP da fábrica via Gmail.
+        {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"} para <b className="text-[color:var(--mz-ink)]">{pedido.cliente.nome}</b>, registrados em {pedido.data}. Envie ao PCP pelo Gmail com {importacao ? "os arquivos anexados" : "o espelho em PDF anexado"}: as peças vão no PDF, não no texto do e-mail.
       </p>
 
-      {importacao && (
-        <section className="mz-in mt-6 rounded-xl border-2 border-[color:var(--mz-ok)] bg-[color:var(--mz-ok-soft)] p-5" aria-labelledby="mz-arquivos-titulo">
-          <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-ok)] text-white">
-              <Icone.check className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <h2 id="mz-arquivos-titulo" className="mz-display text-lg font-bold">Arquivos do Pedido Gerados com Sucesso</h2>
-              <ul className="mz-mono mt-1 text-xs break-all text-[color:var(--mz-ink-2)]">
-                <li>{nomeArquivoTxt(pedido)}</li>
-                <li>{nomeArquivoPdf(pedido)}</li>
-              </ul>
-            </div>
+      <section className="mz-in mt-6 rounded-xl border-2 border-[color:var(--mz-ok)] bg-[color:var(--mz-ok-soft)] p-5" aria-labelledby="mz-arquivos-titulo">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-ok)] text-white">
+            <Icone.check className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 id="mz-arquivos-titulo" className="mz-display text-lg font-bold">
+              {importacao ? "Arquivos do Pedido Gerados com Sucesso" : "Espelho do Pedido Gerado com Sucesso"}
+            </h2>
+            <ul className="mz-mono mt-1 text-xs break-all text-[color:var(--mz-ink-2)]">
+              {importacao && <li>{nomeArquivoTxt(pedido)}</li>}
+              <li>{nomeArquivoPdf(pedido)}</li>
+            </ul>
           </div>
-          <p className="mt-4 rounded-lg border-l-4 border-[color:var(--mz-accent)] bg-white p-3 text-sm font-semibold">
-            O arquivo TXT de importação e o espelho em PDF foram baixados no seu aparelho. Anexe-os no Gmail ao enviar para a fábrica.
-          </p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <button type="button" onClick={() => onBaixarTxt(pedido)} className={C.btnGhost}>Baixar TXT (SJSYS)</button>
-            <button type="button" onClick={baixarPdf} disabled={gerandoPdf} className={C.btnGhost}>{gerandoPdf ? "Gerando PDF…" : "Baixar Espelho PDF"}</button>
-          </div>
-          <a href={gmailUrl} target={isIOS ? undefined : "_blank"} rel="noreferrer" className={`${C.btnAccent} mt-3 w-full`}>
-            Abrir no App do Gmail
-          </a>
-        </section>
-      )}
+        </div>
+        <p className="mt-4 rounded-lg border-l-4 border-[color:var(--mz-accent)] bg-white p-3 text-sm font-semibold">
+          {importacao
+            ? "O arquivo TXT de importação e o espelho em PDF foram baixados no seu aparelho. Anexe-os no Gmail ao enviar para a fábrica."
+            : "O espelho do pedido em PDF foi baixado no seu aparelho. Anexe-o no Gmail ao enviar para a fábrica."}
+        </p>
+        <div className={`mt-4 grid gap-2 ${importacao ? "sm:grid-cols-2" : ""}`}>
+          {importacao && <button type="button" onClick={() => onBaixarTxt(pedido)} className={C.btnGhost}>Baixar TXT (SJSYS)</button>}
+          <button type="button" onClick={baixarPdf} disabled={gerandoPdf} className={C.btnGhost}>{gerandoPdf ? "Gerando PDF…" : "Baixar Espelho PDF"}</button>
+        </div>
+        <a href={gmailUrl} target={isIOS ? undefined : "_blank"} rel="noreferrer" className={`${C.btnAccent} mt-3 w-full`}>
+          Abrir no App do Gmail
+        </a>
+      </section>
 
       {/* Cartão exclusivo de E-mail via Gmail */}
       <section className="mt-6 flex min-w-0 flex-col rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-6 shadow-sm">
@@ -2734,6 +2710,15 @@ function TelaEnviado({ pedido, importacao = false, onBaixarTxt, onBaixarPdf, onN
           <dt className={C.muted}>Assunto:</dt>
           <dd className="min-w-0 font-semibold">{email.assunto}</dd>
         </dl>
+        <p
+          className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${
+            pedido.clienteNovo ? "bg-[color:var(--mz-accent-soft)] text-[color:var(--mz-accent)]" : "bg-[color:var(--mz-sunken)] text-[color:var(--mz-ink-2)]"
+          }`}
+        >
+          {pedido.clienteNovo
+            ? "Cliente novo: o e-mail leva os dados cadastrais completos para o cadastro no ERP."
+            : "Cliente já cadastrado: o e-mail leva só a razão social e o CNPJ."}
+        </p>
 
         <textarea
           id="mz-email"
@@ -2745,16 +2730,6 @@ function TelaEnviado({ pedido, importacao = false, onBaixarTxt, onBaixarPdf, onN
         />
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          {!importacao && (
-            <a
-              href={gmailUrl}
-              target={isIOS ? undefined : "_blank"}
-              rel="noreferrer"
-              className={`${C.btnAccent} inline-flex items-center gap-2 text-sm font-semibold`}
-            >
-              Abrir no App do Gmail
-            </a>
-          )}
 
           <button
             type="button"
@@ -3170,9 +3145,15 @@ const adicionarPara = (clienteId, novo) => {
         rep: repResumo,
         itens: itensReg.map((i, k) => ({ ...i, codigoItem: codigos[k] })),
       };
-      const anexos = importacao ? [nomeArquivoTxt(pedido), nomeArquivoPdf(pedido)] : null;
-      pedido.mensagem = montarMensagem({ numero: rotuloNumero(numero), rep, cliente, itens: itensApp });
-      pedido.email = montarEmail({ numero: rotuloNumero(numero), rep, cliente, itens: itensApp, anexos });
+      pedido.clienteNovo = clienteNovo(cliente);
+      pedido.email = montarEmail({
+        numero: rotuloNumero(numero),
+        rep,
+        cliente,
+        tipo,
+        itens: itensApp,
+        anexos: { pdf: nomeArquivoPdf(pedido), txt: importacao ? nomeArquivoTxt(pedido) : null },
+      });
       pedido.txt = importacao ? gerarTxtSjsys(pedido) : null;
 
       if (sb && id) {
@@ -3183,15 +3164,17 @@ const adicionarPara = (clienteId, novo) => {
 
       setHistorico((h) => [...h, pedido]);
       setUltimoPedido(pedido);
-      setClientes((l) => l.map((c) => (c.id === cliente.id ? { ...c, ultimoPedido: pedido.data, novo: false } : c)));
+      // Depois do 1º pedido o cliente deixa de ser novo (na lista e no atendimento em curso)
+      const jaCadastrado = (c) => (c.id === cliente.id ? { ...c, ultimoPedido: pedido.data, novo: false } : c);
+      setClientes((l) => l.map(jaCadastrado));
+      setCliente(jaCadastrado);
       setItensPorCliente((m) => ({ ...m, [cliente.id]: [] }));
       setTela("enviado");
       window.scrollTo?.(0, 0);
 
-      if (importacao) {
-        baixarTxtPedido(pedido);
-        await baixarPdfPedido(pedido);
-      }
+      // O e-mail cita o PDF em anexo, então todos baixam o espelho; o TXT só os liberados
+      if (importacao) baixarTxtPedido(pedido);
+      await baixarPdfPedido(pedido);
     } catch (err) {
       setToast(`Não foi possível registrar o pedido: ${err.message || err}. Nada foi perdido; tente de novo.`);
     } finally {

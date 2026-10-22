@@ -252,68 +252,40 @@ function enderecoCliente(c) {
   const rua = [c.logradouro, c.numero, c.complemento].filter(Boolean).join(", ");
   return c.bairro ? `${rua} - ${c.bairro}` : rua;
 }
-function blocoFiscal(c) {
-  return [
-    "DADOS CADASTRAIS DO CLIENTE:",
-    `Raz\xE3o Social: ${c.razaoSocial || c.nome} (Fantasia: ${c.fantasia || c.nome})`,
-    `CNPJ: ${c.cnpj || "\u2014"} | IE: ${c.ie || "\u2014"}`,
-    `Endere\xE7o: ${enderecoCliente(c) || "\u2014"} \xB7 CEP: ${c.cep || "\u2014"} \xB7 ${c.municipio && c.uf ? `${c.municipio}/${c.uf}` : c.cidade}`,
-    `Comprador: ${c.contato} | Telefone/WhatsApp: ${c.whatsapp}`,
-    `E-mail: ${c.email || "\u2014"}`
-  ];
-}
 const formatarNumero = (n) => n.toLocaleString("pt-BR");
 function hojeFormatado() {
   return (/* @__PURE__ */ new Date()).toLocaleDateString("pt-BR");
 }
-function linhasItens(itens, negrito) {
-  const b = (t) => negrito ? `*${t}*` : t;
-  const linhas = [];
-  ["amostra", "producao"].forEach((tipo) => {
-    const grupo = itens.filter((i) => i.tipo === tipo);
-    if (!grupo.length) return;
-    linhas.push("");
-    linhas.push(`${b(tipo === "amostra" ? "AMOSTRAS" : "PRODU\xC7\xC3O")} (prazo estimado ${PRAZO[tipo]})`);
-    grupo.forEach((i) => {
-      const p = PRODUTOS.find((x) => x.ref === i.ref);
-      linhas.push(`\u2022 ${linhaPedido(p, i)}`);
-    });
-  });
-  const total = itens.reduce((s, i) => s + i.qtd, 0);
-  linhas.push("");
-  linhas.push(`Total: ${formatarNumero(total)} un em ${itens.length} ${itens.length === 1 ? "item" : "itens"}`);
-  return linhas;
-}
-function colecoesDoPedido(itens) {
-  return [...new Set(itens.map((i) => i.colecao).filter(Boolean))].join(", ") || "\u2014";
-}
-function montarMensagem({ numero, rep, cliente, itens }) {
+const totalPecas = (itens) => itens.reduce((s, i) => s + i.qtd, 0);
+const clienteNovo = (c) => c.novo === true || !c.ultimoPedido;
+const TIPO_EMAIL = { amostra: "AMOSTRA", producao: "PEDIDO DE PRODU\xC7\xC3O", misto: "AMOSTRA E PRODU\xC7\xC3O" };
+function blocoCadastroClienteNovo(c) {
+  const numeroCompl = [c.numero, c.complemento].filter(Boolean).join(" ");
   return [
-    `*Metaliza \xB7 Solicita\xE7\xE3o ${numero}*`,
-    `Data: ${hojeFormatado()}`,
-    "",
-    ...blocoFiscal(cliente),
-    "",
-    `Representante: ${rep.nome} \xB7 ${rep.regiao}`,
-    `Cole\xE7\xE3o: ${colecoesDoPedido(itens)}`,
-    ...linhasItens(itens, true)
-  ].join("\n");
+    "DADOS CADASTRAIS (CLIENTE NOVO):",
+    `Raz\xE3o Social: ${c.razaoSocial || c.nome} (Nome Fantasia: ${c.fantasia || c.nome})`,
+    `CNPJ: ${c.cnpj || "\u2014"} | Inscri\xE7\xE3o Estadual: ${c.ie || "\u2014"}`,
+    `Endere\xE7o: ${c.logradouro || "\u2014"}, ${numeroCompl || "S/N"} - ${c.bairro || "\u2014"}`,
+    `CEP: ${c.cep || "\u2014"} \xB7 ${c.municipio || c.cidade || "\u2014"} / ${c.uf || "\u2014"}`,
+    `Comprador / Contato: ${c.contato}`,
+    `Telefone / WhatsApp: ${c.whatsapp}`,
+    `E-mail: ${c.email || "\u2014"}`
+  ];
 }
-function montarEmail({ numero, rep, cliente, itens, anexos = null }) {
-  const total = itens.reduce((s, i) => s + i.qtd, 0);
+function montarEmail({ numero, rep, cliente, tipo, itens, anexos }) {
+  const anexoTxt = anexos.txt ? ` e o arquivo de importa\xE7\xE3o do SJSYS (${anexos.txt})` : "";
   return {
     para: EMAIL_PEDIDOS,
     cc: rep.email,
-    assunto: `[Pedido ${numero}] ${cliente.nome} \xB7 ${itens.length} ${itens.length === 1 ? "item" : "itens"} \xB7 ${formatarNumero(total)} un`,
+    assunto: `[Pedido ${numero}] ${cliente.nome} \xB7 ${itens.length} ${itens.length === 1 ? "item" : "itens"} \xB7 ${formatarNumero(totalPecas(itens))} un`,
     corpo: [
-      `Pedido ${numero} registrado em ${hojeFormatado()}.`,
+      `SOLICITA\xC7\xC3O ${numero} \u2014 TIPO: ${TIPO_EMAIL[tipo]}`,
+      `Data: ${hojeFormatado()}`,
+      `Representante: ${rep.nome} (${rep.codigo})`,
       "",
-      ...blocoFiscal(cliente),
+      ...clienteNovo(cliente) ? blocoCadastroClienteNovo(cliente) : [`Cliente: ${cliente.razaoSocial || cliente.nome} (CNPJ: ${cliente.cnpj || "\u2014"})`],
       "",
-      `Representante: ${rep.nome} (${rep.codigo}) \xB7 ${rep.regiao}`,
-      `Cole\xE7\xE3o: ${colecoesDoPedido(itens)}`,
-      ...linhasItens(itens, false),
-      ...anexos ? ["", `Anexos: ${anexos.join(" e ")}`] : []
+      `Segue em anexo o espelho do pedido em PDF (${anexos.pdf}) com a discrimina\xE7\xE3o dos itens${anexoTxt}.`
     ].join("\n")
   };
 }
@@ -328,7 +300,6 @@ const tipoDoPedido = (itens) => {
   const tipos = new Set(itens.map((i) => i.tipo));
   return tipos.size > 1 ? "misto" : [...tipos][0];
 };
-const totalPecas = (itens) => itens.reduce((s, i) => s + i.qtd, 0);
 const diasParaExpirar = (criadoEm) => Math.max(0, DIAS_RETENCAO - Math.floor((inicioDoDia().getTime() - inicioDoDia(new Date(criadoEm)).getTime()) / DIA_MS));
 const expirado = (criadoEm) => Date.now() - new Date(criadoEm).getTime() >= DIAS_RETENCAO * DIA_MS;
 function itemParaRegistro(i) {
@@ -1675,7 +1646,13 @@ ${email.corpo}`;
   const linkAppGmail = `googlegmail:///co?to=${encodeURIComponent(email.para)}&cc=${encodeURIComponent(email.cc || "")}&subject=${encodeURIComponent(email.assunto)}&body=${encodeURIComponent(email.corpo)}`;
   const linkWebGmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email.para)}&cc=${encodeURIComponent(email.cc || "")}&su=${encodeURIComponent(email.assunto)}&body=${encodeURIComponent(email.corpo)}`;
   const gmailUrl = isIOS ? linkAppGmail : linkWebGmail;
-  return /* @__PURE__ */ React.createElement("main", { className: "mz-gutter mx-auto max-w-3xl py-10" }, /* @__PURE__ */ React.createElement("div", { className: "mz-in flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-ok-soft)] text-[color:var(--mz-ok)]" }, /* @__PURE__ */ React.createElement(Icone.check, { className: "h-6 w-6" })), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Solicita\xE7\xE3o registrada"), /* @__PURE__ */ React.createElement("h1", { className: "mz-display mz-mono text-2xl font-bold" }, "Pedido ", rotuloNumero(pedido.numero)))), /* @__PURE__ */ React.createElement("p", { className: `mt-3 text-sm ${C.muted}` }, pedido.itens.length, " ", pedido.itens.length === 1 ? "item" : "itens", " para ", /* @__PURE__ */ React.createElement("b", { className: "text-[color:var(--mz-ink)]" }, pedido.cliente.nome), ", registrados em ", pedido.data, ". Envie o pedido diretamente para o PCP da f\xE1brica via Gmail."), importacao && /* @__PURE__ */ React.createElement("section", { className: "mz-in mt-6 rounded-xl border-2 border-[color:var(--mz-ok)] bg-[color:var(--mz-ok-soft)] p-5", "aria-labelledby": "mz-arquivos-titulo" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-ok)] text-white" }, /* @__PURE__ */ React.createElement(Icone.check, { className: "h-5 w-5" })), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("h2", { id: "mz-arquivos-titulo", className: "mz-display text-lg font-bold" }, "Arquivos do Pedido Gerados com Sucesso"), /* @__PURE__ */ React.createElement("ul", { className: "mz-mono mt-1 text-xs break-all text-[color:var(--mz-ink-2)]" }, /* @__PURE__ */ React.createElement("li", null, nomeArquivoTxt(pedido)), /* @__PURE__ */ React.createElement("li", null, nomeArquivoPdf(pedido))))), /* @__PURE__ */ React.createElement("p", { className: "mt-4 rounded-lg border-l-4 border-[color:var(--mz-accent)] bg-white p-3 text-sm font-semibold" }, "O arquivo TXT de importa\xE7\xE3o e o espelho em PDF foram baixados no seu aparelho. Anexe-os no Gmail ao enviar para a f\xE1brica."), /* @__PURE__ */ React.createElement("div", { className: "mt-4 grid gap-2 sm:grid-cols-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onBaixarTxt(pedido), className: C.btnGhost }, "Baixar TXT (SJSYS)"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: baixarPdf, disabled: gerandoPdf, className: C.btnGhost }, gerandoPdf ? "Gerando PDF\u2026" : "Baixar Espelho PDF")), /* @__PURE__ */ React.createElement("a", { href: gmailUrl, target: isIOS ? void 0 : "_blank", rel: "noreferrer", className: `${C.btnAccent} mt-3 w-full` }, "Abrir no App do Gmail")), /* @__PURE__ */ React.createElement("section", { className: "mt-6 flex min-w-0 flex-col rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-6 shadow-sm" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-2 border-b border-[color:var(--mz-line)] pb-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h2", { className: "mz-display text-lg font-bold" }, "Enviar Pedido ao PCP"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-[color:var(--mz-muted)]" }, "Disparo direto pelo App do Gmail para digita\xE7\xE3o no sistema")), /* @__PURE__ */ React.createElement("span", { className: "rounded-full bg-[color:var(--mz-accent-soft)] px-3 py-1 text-xs font-bold text-[color:var(--mz-accent)]" }, "PCP Metaliza")), /* @__PURE__ */ React.createElement("dl", { className: "mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm" }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Para:"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono min-w-0 font-medium break-all" }, email.para), /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Cc:"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono min-w-0 text-xs break-all" }, email.cc), /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Assunto:"), /* @__PURE__ */ React.createElement("dd", { className: "min-w-0 font-semibold" }, email.assunto)), /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("main", { className: "mz-gutter mx-auto max-w-3xl py-10" }, /* @__PURE__ */ React.createElement("div", { className: "mz-in flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-ok-soft)] text-[color:var(--mz-ok)]" }, /* @__PURE__ */ React.createElement(Icone.check, { className: "h-6 w-6" })), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Solicita\xE7\xE3o registrada"), /* @__PURE__ */ React.createElement("h1", { className: "mz-display mz-mono text-2xl font-bold" }, "Pedido ", rotuloNumero(pedido.numero)))), /* @__PURE__ */ React.createElement("p", { className: `mt-3 text-sm ${C.muted}` }, pedido.itens.length, " ", pedido.itens.length === 1 ? "item" : "itens", " para ", /* @__PURE__ */ React.createElement("b", { className: "text-[color:var(--mz-ink)]" }, pedido.cliente.nome), ", registrados em ", pedido.data, ". Envie ao PCP pelo Gmail com ", importacao ? "os arquivos anexados" : "o espelho em PDF anexado", ": as pe\xE7as v\xE3o no PDF, n\xE3o no texto do e-mail."), /* @__PURE__ */ React.createElement("section", { className: "mz-in mt-6 rounded-xl border-2 border-[color:var(--mz-ok)] bg-[color:var(--mz-ok-soft)] p-5", "aria-labelledby": "mz-arquivos-titulo" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-ok)] text-white" }, /* @__PURE__ */ React.createElement(Icone.check, { className: "h-5 w-5" })), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("h2", { id: "mz-arquivos-titulo", className: "mz-display text-lg font-bold" }, importacao ? "Arquivos do Pedido Gerados com Sucesso" : "Espelho do Pedido Gerado com Sucesso"), /* @__PURE__ */ React.createElement("ul", { className: "mz-mono mt-1 text-xs break-all text-[color:var(--mz-ink-2)]" }, importacao && /* @__PURE__ */ React.createElement("li", null, nomeArquivoTxt(pedido)), /* @__PURE__ */ React.createElement("li", null, nomeArquivoPdf(pedido))))), /* @__PURE__ */ React.createElement("p", { className: "mt-4 rounded-lg border-l-4 border-[color:var(--mz-accent)] bg-white p-3 text-sm font-semibold" }, importacao ? "O arquivo TXT de importa\xE7\xE3o e o espelho em PDF foram baixados no seu aparelho. Anexe-os no Gmail ao enviar para a f\xE1brica." : "O espelho do pedido em PDF foi baixado no seu aparelho. Anexe-o no Gmail ao enviar para a f\xE1brica."), /* @__PURE__ */ React.createElement("div", { className: `mt-4 grid gap-2 ${importacao ? "sm:grid-cols-2" : ""}` }, importacao && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onBaixarTxt(pedido), className: C.btnGhost }, "Baixar TXT (SJSYS)"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: baixarPdf, disabled: gerandoPdf, className: C.btnGhost }, gerandoPdf ? "Gerando PDF\u2026" : "Baixar Espelho PDF")), /* @__PURE__ */ React.createElement("a", { href: gmailUrl, target: isIOS ? void 0 : "_blank", rel: "noreferrer", className: `${C.btnAccent} mt-3 w-full` }, "Abrir no App do Gmail")), /* @__PURE__ */ React.createElement("section", { className: "mt-6 flex min-w-0 flex-col rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-6 shadow-sm" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-2 border-b border-[color:var(--mz-line)] pb-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h2", { className: "mz-display text-lg font-bold" }, "Enviar Pedido ao PCP"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-[color:var(--mz-muted)]" }, "Disparo direto pelo App do Gmail para digita\xE7\xE3o no sistema")), /* @__PURE__ */ React.createElement("span", { className: "rounded-full bg-[color:var(--mz-accent-soft)] px-3 py-1 text-xs font-bold text-[color:var(--mz-accent)]" }, "PCP Metaliza")), /* @__PURE__ */ React.createElement("dl", { className: "mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm" }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Para:"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono min-w-0 font-medium break-all" }, email.para), /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Cc:"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono min-w-0 text-xs break-all" }, email.cc), /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Assunto:"), /* @__PURE__ */ React.createElement("dd", { className: "min-w-0 font-semibold" }, email.assunto)), /* @__PURE__ */ React.createElement(
+    "p",
+    {
+      className: `mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${pedido.clienteNovo ? "bg-[color:var(--mz-accent-soft)] text-[color:var(--mz-accent)]" : "bg-[color:var(--mz-sunken)] text-[color:var(--mz-ink-2)]"}`
+    },
+    pedido.clienteNovo ? "Cliente novo: o e-mail leva os dados cadastrais completos para o cadastro no ERP." : "Cliente j\xE1 cadastrado: o e-mail leva s\xF3 a raz\xE3o social e o CNPJ."
+  ), /* @__PURE__ */ React.createElement(
     "textarea",
     {
       id: "mz-email",
@@ -1685,16 +1662,7 @@ ${email.corpo}`;
       "aria-label": "Corpo do e-mail",
       className: `${C.input} mz-mono mt-4 flex-1 text-xs leading-relaxed`
     }
-  ), /* @__PURE__ */ React.createElement("div", { className: "mt-5 flex flex-wrap items-center gap-3" }, !importacao && /* @__PURE__ */ React.createElement(
-    "a",
-    {
-      href: gmailUrl,
-      target: isIOS ? void 0 : "_blank",
-      rel: "noreferrer",
-      className: `${C.btnAccent} inline-flex items-center gap-2 text-sm font-semibold`
-    },
-    "Abrir no App do Gmail"
-  ), /* @__PURE__ */ React.createElement(
+  ), /* @__PURE__ */ React.createElement("div", { className: "mt-5 flex flex-wrap items-center gap-3" }, /* @__PURE__ */ React.createElement(
     "button",
     {
       type: "button",
@@ -2026,9 +1994,15 @@ function MetalizaApp() {
         rep: repResumo,
         itens: itensReg.map((i, k) => ({ ...i, codigoItem: codigos[k] }))
       };
-      const anexos = importacao ? [nomeArquivoTxt(pedido), nomeArquivoPdf(pedido)] : null;
-      pedido.mensagem = montarMensagem({ numero: rotuloNumero(numero), rep, cliente, itens: itensApp });
-      pedido.email = montarEmail({ numero: rotuloNumero(numero), rep, cliente, itens: itensApp, anexos });
+      pedido.clienteNovo = clienteNovo(cliente);
+      pedido.email = montarEmail({
+        numero: rotuloNumero(numero),
+        rep,
+        cliente,
+        tipo,
+        itens: itensApp,
+        anexos: { pdf: nomeArquivoPdf(pedido), txt: importacao ? nomeArquivoTxt(pedido) : null }
+      });
       pedido.txt = importacao ? gerarTxtSjsys(pedido) : null;
       if (sb && id) {
         const { error } = await sb.from("pedidos").update({ texto_txt: pedido.txt, email_corpo: pedido.email.corpo }).eq("id", id);
@@ -2036,14 +2010,14 @@ function MetalizaApp() {
       }
       setHistorico((h) => [...h, pedido]);
       setUltimoPedido(pedido);
-      setClientes((l) => l.map((c) => c.id === cliente.id ? { ...c, ultimoPedido: pedido.data, novo: false } : c));
+      const jaCadastrado = (c) => c.id === cliente.id ? { ...c, ultimoPedido: pedido.data, novo: false } : c;
+      setClientes((l) => l.map(jaCadastrado));
+      setCliente(jaCadastrado);
       setItensPorCliente((m) => ({ ...m, [cliente.id]: [] }));
       setTela("enviado");
       (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
-      if (importacao) {
-        baixarTxtPedido(pedido);
-        await baixarPdfPedido(pedido);
-      }
+      if (importacao) baixarTxtPedido(pedido);
+      await baixarPdfPedido(pedido);
     } catch (err) {
       setToast(`N\xE3o foi poss\xEDvel registrar o pedido: ${err.message || err}. Nada foi perdido; tente de novo.`);
     } finally {

@@ -26,7 +26,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 1. **Login:** email/senha (`carlos.mendes@metaliza.com.br` / `demo123`) ou o botão "Entrar como Representante Demonstração".
 2. **Modo de acesso**, logo após o login:
    - **Atendimento a Cliente:**
-     - Abre a seleção de cliente: 3 fábricas pré-cadastradas, seleção com 1 clique, e Cadastro Rápido (nome fantasia, contato/modelista, WhatsApp com máscara, cidade).
+     - Abre a seleção de cliente: 3 fábricas pré-cadastradas, seleção com 1 clique, e cadastro completo de cliente PJ (CNPJ, IE, razão social, endereço e contato).
      - Depois segue para o catálogo com carrinho e pedidos liberados.
    - **Apenas Mostrar Catálogo (Modo Apresentação):**
      - Vai direto para a vitrine, sem cliente. O cabeçalho mostra `Modo Apresentação • Sem cliente selecionado`.
@@ -64,7 +64,7 @@ Protótipo interativo (React + Tailwind CSS, só com estado local) do fluxo come
 
 4. **Configuração da peça:** foto de referência em Ouro Light. Todas as peças têm um único seletor, "Cor do Acabamento". Peças de duas cores usam um acabamento bicolor pronto da cartela. Enfeites e Fivelas têm o módulo de Afra. Depois vêm o tipo (Amostra ou Pedido de Produção) e a quantidade com mínimo.
 5. **Pedido:** painel lateral agrupado em Amostras e Produção, com ajuste de quantidade e remoção. O pedido é guardado separadamente para cada cliente.
-6. **Revisão e envio:** confirmação e número da solicitação. Depois vêm a simulação do e-mail para a fábrica (Para/Cc/Assunto/corpo) e o texto formatado para WhatsApp.
+6. **Revisão e envio:** confirmação e número da solicitação. Depois vêm os arquivos do pedido (PDF e, para os liberados, TXT) e o e-mail para a fábrica pelo Gmail.
 
 ## Acabamentos (sem material)
 
@@ -93,7 +93,7 @@ As peças não têm nome fantasia: o identificador é a referência, sempre em c
 - **Modal:** o título é `Ref. EF 661` e o subtítulo é `Categoria: Enfeite`.
 - **Busca:** só por referência, sem diferenciar espaço ou caixa (`ef1170` encontra `EF 1170`).
 
-O e-mail ao PCP traz os dados cadastrais do cliente, o Representante e a Coleção, e depois as linhas abaixo (a Afra só aparece quando escolhida):
+As linhas abaixo aparecem na sacola e na revisão (a Afra só aparece quando escolhida). As peças não vão no texto do e-mail: elas seguem no espelho em PDF.
 
 ```
 Ref. EF 661 - Enfeite · Acabamento: [Cód. 6] Ouro Light · Qtd: 1.000 un
@@ -141,7 +141,25 @@ Sem Supabase (ou no acesso de demonstração), a numeração e o de-para ficam g
   `OBS` sai `AMOSTRA`, vazio (produção) ou `AMOSTRA E PRODUCAO` (pedido misto).
 - `Pedido_[NUMERO]_[CLIENTE].pdf`: espelho A4 (jsPDF + autoTable) com cliente, representante, itens com o código SJSYS e totais.
 
-Os demais representantes seguem com o envio pelo Gmail, sem o TXT. O PDF fica disponível para todos em Meus Pedidos.
+Os demais representantes baixam só o PDF (sem o TXT). O PDF fica disponível para todos em Meus Pedidos.
+
+### E-mail ao PCP
+
+O corpo é enxuto, sem a lista de peças:
+
+```
+SOLICITAÇÃO #0002 — TIPO: AMOSTRA
+Data: 22/10/2026
+Representante: Carlos Mendes (REP-014)
+
+Cliente: Bella Passo Indústria de Calçados Ltda. (CNPJ: 12.847.365/0001-35)
+
+Segue em anexo o espelho do pedido em PDF (Pedido_2_Calcados_Bella_Passo.pdf) com a discriminação dos itens e o arquivo de importação do SJSYS (PedC2_12847365000135.txt).
+```
+
+- **Tipo:** `AMOSTRA`, `PEDIDO DE PRODUÇÃO` ou `AMOSTRA E PRODUÇÃO`.
+- **Cliente novo** (sem pedido anterior): no lugar da linha `Cliente:`, vai o bloco `DADOS CADASTRAIS (CLIENTE NOVO)` com razão social, fantasia, CNPJ, IE, endereço, CEP, cidade/UF, contato, telefone e e-mail. Depois do primeiro pedido, o cliente passa a sair só com razão social e CNPJ.
+- **Anexos:** a última linha cita o PDF e, só para os representantes liberados, o TXT.
 
 ### Meus Pedidos
 
