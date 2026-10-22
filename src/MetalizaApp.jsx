@@ -372,11 +372,29 @@ function itemParaRegistro(i) {
   };
 }
 
-// Chave do de-para por cliente: REF|COR|AFRA[|ELOS|PONTEIRA]. O tipo (amostra/produção) não entra:
-// no SJSYS a peça física é a mesma. Ex.: "EF 661|OURO LIGHT|sem-afra", "CR 101|NIQUEL|sem-afra|45elos|com-ponteira"
-function chaveItemErp(i) {
-  const partes = [i.ref.toUpperCase(), semAcento(i.acabamentoNome).toUpperCase(), i.afra || "sem-afra"];
-  if (i.elos) partes.push(`${i.elos}elos`, i.comPonteira ? "com-ponteira" : "sem-ponteira");
+// Maiúsculas, sem acento e sem espaços extras (inclusive em volta da "/" dos bicolores)
+function normalizarTexto(str) {
+  return String(str ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s*\/\s*/g, "/")
+    .trim()
+    .toUpperCase();
+}
+
+// Chave do de-para por cliente (permanente no Supabase). O tipo (amostra/produção) NÃO entra:
+// no ERP a peça física é a mesma. Exemplos:
+//   "EF 661|OURO LIGHT|901"   "EF 661|OURO 24K|sem-afra"   "EF 1170|OURO LIGHT/PRETO|sem-afra"
+//   "CR 101|NIQUEL|sem-afra|45elos|com-ponteira"
+// A cor é o nome do acabamento (nunca o rótulo com código). Bicolor ("Ouro Light / Preto") vira COR_CIMA/COR_BAIXO.
+function montarChaveItem(item) {
+  const ref = normalizarTexto(item.ref);
+  const cor = normalizarTexto(item.acabamentoNome);
+  const afra = item.afra ? String(item.afra).trim() : "sem-afra";
+  const partes = [ref, cor, afra];
+  const corrente = item.elos != null || item.categoria === "Corrente" || ehCorrente(item) || ref.startsWith("CR");
+  if (corrente) partes.push(`${item.elos || 0}elos`, item.comPonteira ? "com-ponteira" : "sem-ponteira");
   return partes.join("|");
 }
 
@@ -3220,7 +3238,7 @@ export default function MetalizaApp() {
     try {
       // A coleção de cada peça é registrada no momento do envio (lançamento ativo ou linha permanente)
       const itensApp = itensAtuais.map((i) => ({ ...i, colecao: rotuloColecao(PRODUTOS.find((x) => x.ref === i.ref), ativas) }));
-      const itensReg = itensApp.map(itemParaRegistro).map((i) => ({ ...i, chaveItem: chaveItemErp(i), descricao: descricaoErp(i) }));
+      const itensReg = itensApp.map(itemParaRegistro).map((i) => ({ ...i, chaveItem: montarChaveItem(i), descricao: descricaoErp(i) }));
       const tipo = tipoDoPedido(itensApp);
       const { id: _idLocal, novo: _novo, ultimoPedido: _ultimo, ...dadosCliente } = cliente;
       const repResumo = { nome: rep.nome, codigo: rep.codigo, email: rep.email, regiao: rep.regiao };

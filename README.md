@@ -127,7 +127,17 @@ Rode no SQL Editor, nesta ordem (os dois scripts podem ser executados de novo se
 
 Com login real, a lista de clientes vem da tabela `clientes` e o cadastro grava direto nela (CNPJ só com dígitos, único). Se o banco falhar no cadastro, o cliente fica no aparelho e entra na tabela no 1º pedido. Cliente novo é quem ainda não tem `ultimo_pedido_em`: só ele leva os dados cadastrais no e-mail.
 
-O de-para usa o CNPJ (só dígitos) e a chave `REF|COR|AFRA[|ELOS|PONTEIRA]`, sem o tipo: a mesma peça como amostra ou produção tem o mesmo código. Os códigos não são apagados pela purga.
+5. `supabase/migrations/20261023180000_chave_item_normalizada.sql`: o banco normaliza a chave (espaços extras e em volta da `/`) e converte as chaves já gravadas, mantendo os códigos.
+
+O de-para usa o CNPJ (só dígitos) e a chave `REF|COR|AFRA`, ou `REF|COR|AFRA|ELOS|PONTEIRA` nas correntes:
+
+- **REF:** maiúsculas, sem espaços extras.
+- **COR:** nome do acabamento em maiúsculas e sem acento; bicolor no padrão `COR_CIMA/COR_BAIXO`.
+- **AFRA:** o número, ou `sem-afra`.
+- **Corrente:** `45elos` e `com-ponteira`/`sem-ponteira`.
+- **Tipo:** não entra; amostra e produção da mesma peça têm o mesmo código.
+
+Exemplos: `EF 661|OURO LIGHT|901`, `EF 1170|OURO LIGHT/PRETO|sem-afra`, `CR 101|NIQUEL|sem-afra|45elos|com-ponteira`. Os códigos não são apagados pela purga.
 
 Sem Supabase (ou no acesso de demonstração), a numeração e o de-para ficam guardados no próprio aparelho.
 

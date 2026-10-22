@@ -323,9 +323,16 @@ function itemParaRegistro(i) {
     qtd: i.qtd
   };
 }
-function chaveItemErp(i) {
-  const partes = [i.ref.toUpperCase(), semAcento(i.acabamentoNome).toUpperCase(), i.afra || "sem-afra"];
-  if (i.elos) partes.push(`${i.elos}elos`, i.comPonteira ? "com-ponteira" : "sem-ponteira");
+function normalizarTexto(str) {
+  return String(str != null ? str : "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").replace(/\s*\/\s*/g, "/").trim().toUpperCase();
+}
+function montarChaveItem(item) {
+  const ref = normalizarTexto(item.ref);
+  const cor = normalizarTexto(item.acabamentoNome);
+  const afra = item.afra ? String(item.afra).trim() : "sem-afra";
+  const partes = [ref, cor, afra];
+  const corrente = item.elos != null || item.categoria === "Corrente" || ehCorrente(item) || ref.startsWith("CR");
+  if (corrente) partes.push(`${item.elos || 0}elos`, item.comPonteira ? "com-ponteira" : "sem-ponteira");
   return partes.join("|");
 }
 function descricaoErp(i) {
@@ -2048,7 +2055,7 @@ function MetalizaApp() {
     setEnviando(true);
     try {
       const itensApp = itensAtuais.map((i) => ({ ...i, colecao: rotuloColecao(PRODUTOS.find((x) => x.ref === i.ref), ativas) }));
-      const itensReg = itensApp.map(itemParaRegistro).map((i) => ({ ...i, chaveItem: chaveItemErp(i), descricao: descricaoErp(i) }));
+      const itensReg = itensApp.map(itemParaRegistro).map((i) => ({ ...i, chaveItem: montarChaveItem(i), descricao: descricaoErp(i) }));
       const tipo = tipoDoPedido(itensApp);
       const { id: _idLocal, novo: _novo, ultimoPedido: _ultimo, ...dadosCliente } = cliente;
       const repResumo = { nome: rep.nome, codigo: rep.codigo, email: rep.email, regiao: rep.regiao };
