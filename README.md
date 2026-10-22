@@ -121,6 +121,10 @@ Rode no SQL Editor, nesta ordem (os dois scripts podem ser executados de novo se
 1. `supabase/migrations/20261022120000_pedidos_erp_retencao.sql`: tabelas `codigos_itens_cliente`, `pedidos` e `itens_pedido` (com `ON DELETE CASCADE`), RLS por representante, função `obter_ou_criar_codigo_item` e a purga diária de pedidos com mais de 30 dias via `pg_cron`.
 2. `supabase/migrations/20261022150000_registrar_pedido_sjsys.sql`: número sequencial do pedido (`numero_seq`) e a função `registrar_pedido`, que grava cabeçalho e itens numa transação e amarra o código de cada item.
 
+3. `supabase/migrations/20261023120000_clientes.sql`: tabela permanente `clientes` (fora da purga de 30 dias), compartilhada entre os representantes, e nova versão de `registrar_pedido`, que devolve `cliente_novo` e marca `ultimo_pedido_em`.
+
+Com login real, a lista de clientes vem da tabela `clientes` e o cadastro grava direto nela (CNPJ só com dígitos, único). Se o banco falhar no cadastro, o cliente fica no aparelho e entra na tabela no 1º pedido. Cliente novo é quem ainda não tem `ultimo_pedido_em`: só ele leva os dados cadastrais no e-mail.
+
 O de-para usa o CNPJ (só dígitos) e a chave `REF|COR|AFRA[|ELOS|PONTEIRA]`, sem o tipo: a mesma peça como amostra ou produção tem o mesmo código. Os códigos não são apagados pela purga.
 
 Sem Supabase (ou no acesso de demonstração), a numeração e o de-para ficam guardados no próprio aparelho.

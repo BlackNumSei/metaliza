@@ -272,7 +272,7 @@ function blocoCadastroClienteNovo(c) {
     `E-mail: ${c.email || "\u2014"}`
   ];
 }
-function montarEmail({ numero, rep, cliente, tipo, itens, anexos }) {
+function montarEmail({ numero, rep, cliente, novo, tipo, itens, anexos }) {
   const anexoTxt = anexos.txt ? ` e o arquivo de importa\xE7\xE3o do SJSYS (${anexos.txt})` : "";
   return {
     para: EMAIL_PEDIDOS,
@@ -283,7 +283,7 @@ function montarEmail({ numero, rep, cliente, tipo, itens, anexos }) {
       `Data: ${hojeFormatado()}`,
       `Representante: ${rep.nome} (${rep.codigo})`,
       "",
-      ...clienteNovo(cliente) ? blocoCadastroClienteNovo(cliente) : [`Cliente: ${cliente.razaoSocial || cliente.nome} (CNPJ: ${cliente.cnpj || "\u2014"})`],
+      ...novo ? blocoCadastroClienteNovo(cliente) : [`Cliente: ${cliente.razaoSocial || cliente.nome} (CNPJ: ${cliente.cnpj || "\u2014"})`],
       "",
       `Segue em anexo o espelho do pedido em PDF (${anexos.pdf}) com a discrimina\xE7\xE3o dos itens${anexoTxt}.`
     ].join("\n")
@@ -559,6 +559,46 @@ function codigoItemLocal(cnpj, chave) {
   }
   return doCliente[chave];
 }
+const clienteDoBanco = (r) => {
+  const fantasia = r.nome_fantasia || r.razao_social;
+  return {
+    id: r.id,
+    nome: fantasia,
+    fantasia,
+    razaoSocial: r.razao_social,
+    cnpj: mascaraCnpj(r.cnpj),
+    ie: r.inscricao_estadual || "",
+    cep: r.cep || "",
+    logradouro: r.endereco || "",
+    numero: r.numero || "",
+    complemento: r.complemento || "",
+    bairro: r.bairro || "",
+    municipio: r.cidade,
+    uf: r.uf,
+    cidade: `${r.cidade}/${r.uf}`,
+    contato: r.contato || "",
+    whatsapp: r.whatsapp || "",
+    email: r.email || "",
+    ultimoPedido: r.ultimo_pedido_em ? dataBR(new Date(r.ultimo_pedido_em)) : null,
+    novo: false
+  };
+};
+const clienteParaBanco = (c) => ({
+  cnpj: somenteDigitos(c.cnpj),
+  razao_social: c.razaoSocial,
+  nome_fantasia: c.fantasia && c.fantasia !== c.razaoSocial ? c.fantasia : null,
+  inscricao_estadual: c.ie || null,
+  cep: c.cep || null,
+  endereco: c.logradouro || null,
+  numero: c.numero || null,
+  complemento: c.complemento || null,
+  bairro: c.bairro || null,
+  cidade: c.municipio,
+  uf: c.uf,
+  contato: c.contato || null,
+  whatsapp: c.whatsapp || null,
+  email: c.email || null
+});
 const pedidoDoBanco = (r) => ({
   id: r.id,
   numero: r.numero_seq,
@@ -1093,6 +1133,7 @@ function SecaoCadastro({ numero, titulo, children }) {
 function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
   const [form, setForm] = useState(FORM_CLIENTE_VAZIO);
   const [erros, setErros] = useState({});
+  const [salvando, setSalvando] = useState(false);
   const primeiroRef = useRef(null);
   useEffect(() => {
     var _a;
@@ -1110,9 +1151,10 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
     setForm((f) => ({ ...f, [chave]: mascara ? mascara(valor) : valor }));
     setErros((er) => ({ ...er, [chave]: void 0 }));
   };
-  const salvar = (e) => {
-    var _a;
+  const salvar = async (e) => {
+    var _a, _b;
     e.preventDefault();
+    if (salvando) return;
     const novos = validarCliente(form, clientes);
     setErros(novos);
     const primeiro = ORDEM_CAMPOS_CLIENTE.find((k) => novos[k]);
@@ -1122,7 +1164,8 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
     }
     const t = (k) => form[k].trim();
     const municipio = t("municipio");
-    onSalvar({
+    setSalvando(true);
+    const erro = await onSalvar({
       id: `c${Date.now()}`,
       nome: t("fantasia") || t("razaoSocial"),
       fantasia: t("fantasia") || t("razaoSocial"),
@@ -1143,6 +1186,11 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
       ultimoPedido: null,
       novo: true
     });
+    if (erro) {
+      setSalvando(false);
+      setErros({ cnpj: erro });
+      (_b = document.getElementById("mz-cli-cnpj")) == null ? void 0 : _b.focus();
+    }
   };
   const qtdErros = Object.values(erros).filter(Boolean).length;
   const classeInput = (chave) => `${C.input} ${erros[chave] ? "border-[color:var(--mz-warn)] bg-[color:var(--mz-warn-soft)]" : ""}`;
@@ -1185,7 +1233,7 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
       /* @__PURE__ */ React.createElement("option", { value: "" }, "UF"),
       UFS.map((uf) => /* @__PURE__ */ React.createElement("option", { key: uf, value: uf }, uf))
     ), /* @__PURE__ */ React.createElement(Erro, { chave: "uf" }))), /* @__PURE__ */ React.createElement(SecaoCadastro, { numero: "03", titulo: "Contato comercial e financeiro" }, campo("contato", "Comprador / Contato", { placeholder: "Ex.: Ana Paula (compras)", autoComplete: "name" }), campo("whatsapp", "Telefone / WhatsApp comercial", { col: "col-span-6 sm:col-span-3", placeholder: "(00) 00000-0000", inputMode: "tel", autoComplete: "tel" }), campo("email", "E-mail (faturamento / XML / pedido)", { col: "col-span-6 sm:col-span-3", placeholder: "nfe@empresa.com.br", type: "email", inputMode: "email", autoComplete: "email" }))),
-    /* @__PURE__ */ React.createElement("div", { className: "border-t border-[color:var(--mz-line)] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 sm:px-5" }, qtdErros > 0 && /* @__PURE__ */ React.createElement("p", { role: "alert", className: "mb-2 text-sm font-semibold text-[color:var(--mz-warn)]" }, "Preencha ", qtdErros === 1 ? "o campo destacado" : `os ${qtdErros} campos destacados`, " para salvar."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-[auto_1fr] gap-3" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: C.btnGhost }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "submit", form: "mz-form-cliente", className: C.btnAccent }, "Salvar e atender")))
+    /* @__PURE__ */ React.createElement("div", { className: "border-t border-[color:var(--mz-line)] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 sm:px-5" }, qtdErros > 0 && /* @__PURE__ */ React.createElement("p", { role: "alert", className: "mb-2 text-sm font-semibold text-[color:var(--mz-warn)]" }, "Preencha ", qtdErros === 1 ? "o campo destacado" : `os ${qtdErros} campos destacados`, " para salvar."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-[auto_1fr] gap-3" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: C.btnGhost }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "submit", form: "mz-form-cliente", disabled: salvando, className: C.btnAccent }, salvando ? "Salvando\u2026" : "Salvar e atender")))
   ));
 }
 function TelaClientes({
@@ -1206,12 +1254,13 @@ function TelaClientes({
     {
       clientes,
       onFechar: () => setAbrirCadastro(false),
-      onSalvar: (c) => {
-        setAbrirCadastro(false);
-        onCadastrar(c);
+      onSalvar: async (c) => {
+        const erro = await onCadastrar(c);
+        if (!erro) setAbrirCadastro(false);
+        return erro;
       }
     }
-  ), /* @__PURE__ */ React.createElement("ul", { className: "mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" }, clientes.map((c) => {
+  ), clientes.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-6 rounded-2xl border border-dashed border-[color:var(--mz-line)] p-8 text-center" }, /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "Nenhum cliente cadastrado ainda."), /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-sm ${C.muted}` }, "Use \u201CCadastrar Novo Cliente (PJ)\u201D para come\xE7ar.")), /* @__PURE__ */ React.createElement("ul", { className: "mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" }, clientes.map((c) => {
     const enviados = historico.filter((h) => h.clienteId === c.id).length;
     return /* @__PURE__ */ React.createElement("li", { key: c.id }, /* @__PURE__ */ React.createElement(
       "button",
@@ -1787,6 +1836,34 @@ function MetalizaApp() {
     setRep(r);
     setTela("modo");
   };
+  useEffect(() => {
+    const sb = obterSupabase();
+    if (!sb || !(rep == null ? void 0 : rep.id)) return void 0;
+    let ativo = true;
+    const avisarOffline = (msg) => ativo && setToast(`Clientes indispon\xEDveis no banco (${msg}). Usando a lista deste aparelho.`);
+    sb.from("clientes").select("*").order("razao_social", { ascending: true }).then(({ data, error }) => {
+      if (!ativo) return;
+      if (error) avisarOffline(error.message);
+      else setClientes((data || []).map(clienteDoBanco));
+    }).catch((err) => avisarOffline(err.message || "falha de conex\xE3o"));
+    return () => {
+      ativo = false;
+    };
+  }, [rep]);
+  const salvarCliente = async (c) => {
+    const sb = obterSupabase();
+    if (!sb || !(rep == null ? void 0 : rep.id)) return { cliente: c };
+    try {
+      const { data, error } = await sb.from("clientes").insert(clienteParaBanco(c)).select().single();
+      if (error) {
+        if (error.code === "23505") return { erro: "Este CNPJ j\xE1 est\xE1 cadastrado no sistema. Recarregue o app para v\xEA-lo na lista de clientes." };
+        throw error;
+      }
+      return { cliente: { ...clienteDoBanco(data), novo: true } };
+    } catch (err) {
+      return { cliente: c, aviso: `Sem conex\xE3o com o banco (${err.message || err}): ${c.nome} ficou salvo neste aparelho e entra no sistema no 1\xBA pedido.` };
+    }
+  };
   const sair = () => {
     setRep(null);
     setCliente(null);
@@ -1842,19 +1919,26 @@ function MetalizaApp() {
       setToast(`Atendendo ${c.nome} \xB7 Pedido liberado.`);
     }
   };
-  const cadastrarClienteDoModal = (c) => {
-    setClientes((l) => [c, ...l]);
-    vincularClienteDoModal(c);
+  const cadastrarClienteDoModal = async (c) => {
+    const { cliente: salvo, erro, aviso } = await salvarCliente(c);
+    if (erro) return erro;
+    setClientes((l) => [salvo, ...l]);
+    vincularClienteDoModal(salvo);
+    if (aviso) setToast(aviso);
+    return null;
   };
   const cancelarEscolhaCliente = () => {
     setEscolhendoCliente(false);
     if (pendente) setToast("Pe\xE7a n\xE3o adicionada: nenhum cliente selecionado.");
     setPendente(null);
   };
-  const cadastrarCliente = (c) => {
-    setClientes((l) => [c, ...l]);
-    setToast(`${c.nome} cadastrado.`);
-    selecionarCliente(c);
+  const cadastrarCliente = async (c) => {
+    const { cliente: salvo, erro, aviso } = await salvarCliente(c);
+    if (erro) return erro;
+    setClientes((l) => [salvo, ...l]);
+    setToast(aviso || `${salvo.nome} cadastrado.`);
+    selecionarCliente(salvo);
+    return null;
   };
   const trocarCliente = (confirmado = false) => {
     if (confirmado !== true && tela !== "enviado" && itens && itens.length > 0) {
@@ -1959,6 +2043,7 @@ function MetalizaApp() {
       let numero;
       let criadoEm = (/* @__PURE__ */ new Date()).toISOString();
       let codigos;
+      let novo = clienteNovo(cliente);
       if (sb && rep.id) {
         const { data, error } = await sb.rpc("registrar_pedido", {
           p_pedido: { tipo, cliente: dadosCliente, rep: repResumo },
@@ -1978,6 +2063,7 @@ function MetalizaApp() {
         });
         if (error) throw error;
         ({ id, numero, codigos } = data);
+        if (typeof data.cliente_novo === "boolean") novo = data.cliente_novo;
         criadoEm = data.criado_em || criadoEm;
       } else {
         numero = proximoNumeroLocal();
@@ -1994,11 +2080,12 @@ function MetalizaApp() {
         rep: repResumo,
         itens: itensReg.map((i, k) => ({ ...i, codigoItem: codigos[k] }))
       };
-      pedido.clienteNovo = clienteNovo(cliente);
+      pedido.clienteNovo = novo;
       pedido.email = montarEmail({
         numero: rotuloNumero(numero),
         rep,
         cliente,
+        novo,
         tipo,
         itens: itensApp,
         anexos: { pdf: nomeArquivoPdf(pedido), txt: importacao ? nomeArquivoTxt(pedido) : null }

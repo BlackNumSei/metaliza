@@ -312,7 +312,7 @@ function blocoCadastroClienteNovo(c) {
 
 // E-mail ao PCP: só identificação do pedido, do cliente e dos anexos.
 // As peças vão no espelho em PDF (e no TXT do SJSYS, para os representantes liberados).
-function montarEmail({ numero, rep, cliente, tipo, itens, anexos }) {
+function montarEmail({ numero, rep, cliente, novo, tipo, itens, anexos }) {
   const anexoTxt = anexos.txt ? ` e o arquivo de importação do SJSYS (${anexos.txt})` : "";
   return {
     para: EMAIL_PEDIDOS,
@@ -323,7 +323,7 @@ function montarEmail({ numero, rep, cliente, tipo, itens, anexos }) {
       `Data: ${hojeFormatado()}`,
       `Representante: ${rep.nome} (${rep.codigo})`,
       "",
-      ...(clienteNovo(cliente)
+      ...(novo
         ? blocoCadastroClienteNovo(cliente)
         : [`Cliente: ${cliente.razaoSocial || cliente.nome} (CNPJ: ${cliente.cnpj || "—"})`]),
       "",
@@ -642,6 +642,48 @@ function codigoItemLocal(cnpj, chave) {
   }
   return doCliente[chave];
 }
+
+// Tabela clientes (CNPJ só com dígitos) <-> formato usado no app
+const clienteDoBanco = (r) => {
+  const fantasia = r.nome_fantasia || r.razao_social;
+  return {
+    id: r.id,
+    nome: fantasia,
+    fantasia,
+    razaoSocial: r.razao_social,
+    cnpj: mascaraCnpj(r.cnpj),
+    ie: r.inscricao_estadual || "",
+    cep: r.cep || "",
+    logradouro: r.endereco || "",
+    numero: r.numero || "",
+    complemento: r.complemento || "",
+    bairro: r.bairro || "",
+    municipio: r.cidade,
+    uf: r.uf,
+    cidade: `${r.cidade}/${r.uf}`,
+    contato: r.contato || "",
+    whatsapp: r.whatsapp || "",
+    email: r.email || "",
+    ultimoPedido: r.ultimo_pedido_em ? dataBR(new Date(r.ultimo_pedido_em)) : null,
+    novo: false,
+  };
+};
+const clienteParaBanco = (c) => ({
+  cnpj: somenteDigitos(c.cnpj),
+  razao_social: c.razaoSocial,
+  nome_fantasia: c.fantasia && c.fantasia !== c.razaoSocial ? c.fantasia : null,
+  inscricao_estadual: c.ie || null,
+  cep: c.cep || null,
+  endereco: c.logradouro || null,
+  numero: c.numero || null,
+  complemento: c.complemento || null,
+  bairro: c.bairro || null,
+  cidade: c.municipio,
+  uf: c.uf,
+  contato: c.contato || null,
+  whatsapp: c.whatsapp || null,
+  email: c.email || null,
+});
 
 // Linha de pedidos (+ itens) do Supabase para o formato usado no app
 const pedidoDoBanco = (r) => ({
@@ -1531,6 +1573,7 @@ function SecaoCadastro({ numero, titulo, children }) {
 function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
   const [form, setForm] = useState(FORM_CLIENTE_VAZIO);
   const [erros, setErros] = useState({});
+  const [salvando, setSalvando] = useState(false);
   const primeiroRef = useRef(null);
 
   useEffect(() => {
@@ -1551,8 +1594,9 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
     setErros((er) => ({ ...er, [chave]: undefined }));
   };
 
-  const salvar = (e) => {
+  const salvar = async (e) => {
     e.preventDefault();
+    if (salvando) return;
     const novos = validarCliente(form, clientes);
     setErros(novos);
     const primeiro = ORDEM_CAMPOS_CLIENTE.find((k) => novos[k]);
@@ -1562,7 +1606,8 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
     }
     const t = (k) => form[k].trim();
     const municipio = t("municipio");
-    onSalvar({
+    setSalvando(true);
+    const erro = await onSalvar({
       id: `c${Date.now()}`,
       nome: t("fantasia") || t("razaoSocial"),
       fantasia: t("fantasia") || t("razaoSocial"),
@@ -1583,6 +1628,11 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
       ultimoPedido: null,
       novo: true,
     });
+    if (erro) {
+      setSalvando(false);
+      setErros({ cnpj: erro });
+      document.getElementById("mz-cli-cnpj")?.focus();
+    }
   };
 
   const qtdErros = Object.values(erros).filter(Boolean).length;
@@ -1684,7 +1734,7 @@ function ModalCadastroCliente({ clientes, onSalvar, onFechar }) {
           )}
           <div className="grid grid-cols-[auto_1fr] gap-3">
             <button type="button" onClick={onFechar} className={C.btnGhost}>Cancelar</button>
-            <button type="submit" form="mz-form-cliente" className={C.btnAccent}>Salvar e atender</button>
+            <button type="submit" form="mz-form-cliente" disabled={salvando} className={C.btnAccent}>{salvando ? "Salvando…" : "Salvar e atender"}</button>
           </div>
         </div>
       </div>
@@ -1726,11 +1776,19 @@ function TelaClientes({
         <ModalCadastroCliente
           clientes={clientes}
           onFechar={() => setAbrirCadastro(false)}
-          onSalvar={(c) => {
-            setAbrirCadastro(false);
-            onCadastrar(c);
+          onSalvar={async (c) => {
+            const erro = await onCadastrar(c);
+            if (!erro) setAbrirCadastro(false);
+            return erro;
           }}
         />
+      )}
+
+      {clientes.length === 0 && (
+        <div className="mt-6 rounded-2xl border border-dashed border-[color:var(--mz-line)] p-8 text-center">
+          <p className="font-semibold">Nenhum cliente cadastrado ainda.</p>
+          <p className={`mt-1 text-sm ${C.muted}`}>Use “Cadastrar Novo Cliente (PJ)” para começar.</p>
+        </div>
       )}
 
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -2956,6 +3014,43 @@ export default function MetalizaApp() {
   }, [toast]);
 
   const entrar = (r) => { setRep(r); setTela("modo"); };
+
+  // Login real no Supabase: a lista de clientes vem da tabela permanente (compartilhada entre os representantes)
+  useEffect(() => {
+    const sb = obterSupabase();
+    if (!sb || !rep?.id) return undefined;
+    let ativo = true;
+    const avisarOffline = (msg) => ativo && setToast(`Clientes indisponíveis no banco (${msg}). Usando a lista deste aparelho.`);
+    sb.from("clientes")
+      .select("*")
+      .order("razao_social", { ascending: true })
+      .then(({ data, error }) => {
+        if (!ativo) return;
+        if (error) avisarOffline(error.message);
+        else setClientes((data || []).map(clienteDoBanco));
+      })
+      .catch((err) => avisarOffline(err.message || "falha de conexão"));
+    return () => {
+      ativo = false;
+    };
+  }, [rep]);
+
+  // Grava o cliente novo no Supabase. Sem Supabase, ou se ele falhar, o cliente fica neste aparelho
+  // e entra na tabela no 1º pedido (registrar_pedido cadastra quem ainda não existe).
+  const salvarCliente = async (c) => {
+    const sb = obterSupabase();
+    if (!sb || !rep?.id) return { cliente: c };
+    try {
+      const { data, error } = await sb.from("clientes").insert(clienteParaBanco(c)).select().single();
+      if (error) {
+        if (error.code === "23505") return { erro: "Este CNPJ já está cadastrado no sistema. Recarregue o app para vê-lo na lista de clientes." };
+        throw error;
+      }
+      return { cliente: { ...clienteDoBanco(data), novo: true } };
+    } catch (err) {
+      return { cliente: c, aviso: `Sem conexão com o banco (${err.message || err}): ${c.nome} ficou salvo neste aparelho e entra no sistema no 1º pedido.` };
+    }
+  };
   const sair = () => {
     setRep(null); setCliente(null); setModo(null); setPendente(null); setEscolhendoCliente(false);
     setPeca(null); setPedidoAberto(false); setMenuAberto(false); setTela("modo");
@@ -2986,19 +3081,26 @@ export default function MetalizaApp() {
       setToast(`Atendendo ${c.nome} · Pedido liberado.`);
     }
   };
-  const cadastrarClienteDoModal = (c) => {
-    setClientes((l) => [c, ...l]);
-    vincularClienteDoModal(c);
+  const cadastrarClienteDoModal = async (c) => {
+    const { cliente: salvo, erro, aviso } = await salvarCliente(c);
+    if (erro) return erro;
+    setClientes((l) => [salvo, ...l]);
+    vincularClienteDoModal(salvo);
+    if (aviso) setToast(aviso);
+    return null;
   };
   const cancelarEscolhaCliente = () => {
     setEscolhendoCliente(false);
     if (pendente) setToast("Peça não adicionada: nenhum cliente selecionado.");
     setPendente(null);
   };
-  const cadastrarCliente = (c) => {
-    setClientes((l) => [c, ...l]);
-    setToast(`${c.nome} cadastrado.`);
-    selecionarCliente(c);
+  const cadastrarCliente = async (c) => {
+    const { cliente: salvo, erro, aviso } = await salvarCliente(c);
+    if (erro) return erro;
+    setClientes((l) => [salvo, ...l]);
+    setToast(aviso || `${salvo.nome} cadastrado.`);
+    selecionarCliente(salvo);
+    return null;
   };
   const trocarCliente = (confirmado = false) => {
     if (confirmado !== true && tela !== "enviado" && itens && itens.length > 0) {
@@ -3109,6 +3211,7 @@ const adicionarPara = (clienteId, novo) => {
       let numero;
       let criadoEm = new Date().toISOString();
       let codigos;
+      let novo = clienteNovo(cliente);
       if (sb && rep.id) {
         const { data, error } = await sb.rpc("registrar_pedido", {
           p_pedido: { tipo, cliente: dadosCliente, rep: repResumo },
@@ -3128,6 +3231,7 @@ const adicionarPara = (clienteId, novo) => {
         });
         if (error) throw error;
         ({ id, numero, codigos } = data);
+        if (typeof data.cliente_novo === "boolean") novo = data.cliente_novo;
         criadoEm = data.criado_em || criadoEm;
       } else {
         numero = proximoNumeroLocal();
@@ -3145,11 +3249,12 @@ const adicionarPara = (clienteId, novo) => {
         rep: repResumo,
         itens: itensReg.map((i, k) => ({ ...i, codigoItem: codigos[k] })),
       };
-      pedido.clienteNovo = clienteNovo(cliente);
+      pedido.clienteNovo = novo;
       pedido.email = montarEmail({
         numero: rotuloNumero(numero),
         rep,
         cliente,
+        novo,
         tipo,
         itens: itensApp,
         anexos: { pdf: nomeArquivoPdf(pedido), txt: importacao ? nomeArquivoTxt(pedido) : null },
