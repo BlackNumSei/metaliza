@@ -79,7 +79,7 @@ Não existe mais seleção separada de Parte de Cima / Parte de Baixo: peças de
 Com Supabase, o app carrega as cores ativas ao abrir e de novo após o login (`select("*").eq("ativo", true).order("nome")`). Como a API devolve no máximo 1.000 linhas por consulta, a leitura é paginada com `.range()` em lotes de 1.000 até o fim da tabela (as 2.920 cores entram inteiras). Colunas usadas: `nome` e `codigos` (`TEXT[]`: um código na cor solo, dois nos bicolores; ex.: `nome = "002 CORAL/ 293 OURO LIGHT"`, `codigos = {002,293}`). Sem Supabase, com erro ou com a tabela vazia, vale a cartela de demonstração.
 
 - **Seleção:** no modal da peça, o campo "Cor do Acabamento" mostra a cor escolhida; "Trocar" abre a tela cheia **Selecionar Acabamento** (cabeçalho fixo com busca, botão de limpar e contador; lista vertical rolável, uma cor por linha, com bolinha, códigos em pílulas e nome completo). Tocar na cor seleciona, fecha a tela e volta ao modal.
-- **Busca, sem limite de resultados:** texto procura no nome; número procura no início de cada código de `codigos` (zeros à esquerda opcionais). `293` traz a cor solo e todos os bicolores com 293 (nunca o 1293); `002 293` traz só os que têm os dois. Todas as cores solo vêm no topo (código exato à frente); depois, os bicolores em ordem alfabética.
+- **Busca, sem limite de resultados:** texto procura no nome; número procura no início de cada código de `codigos` (zeros à esquerda opcionais). `293` traz a cor solo e todos os bicolores com 293 (nunca o 1293); `002 293` traz só os que têm os dois. Partição estrita em dois baldes: primeiro as cores **solo** (sem a flag `bicolor` da tabela e sem `/` no nome; as que começam com o termo à frente), depois as **bicolores** em ordem alfabética. Bate = nome contém o termo ou algum código começa com ele. Sem termo, a lista mostra as 50 primeiras e o contador informa o total.
 - **Cor exata:** código e nome da cor escolhida são gravados no item ao adicionar e vão assim para o TXT e para o PDF (ex.: `[002/293] 002 CORAL/ 293 OURO LIGHT`).
 - **Padrão:** Ouro Light solo, se existir na tabela.
 
@@ -189,3 +189,14 @@ Cliente: Bella Passo Indústria de Calçados Ltda. (CNPJ: 12.847.365/0001-35)
 
 - **Tipo:** `AMOSTRA` ou `PEDIDO DE PRODUÇÃO`, também no assunto: `[Pedido #0002 · AMOSTRA] Calçados Bella Passo · 1 item · 10 un`.
 - **Cliente novo** (sem pedido anterior): no lugar da linha `Cliente:`, vai o bloco `DADOS CADASTRAIS (CLIENTE NOVO)` com razão social, fantasia, CNPJ, IE, endereço, CEP, cidade/UF, contato, telefone e e-mail.
+
+## Painel de Cadastro (Admin)
+
+No menu lateral, **Painel de Cadastro (Admin)** aparece para quem tem `app_metadata.role = "admin"` no Supabase Auth e, nesta fase de testes, para o usuário Demo (`carlos.mendes@metaliza.com.br`).
+
+- **Nova Cor / Acabamento:** nome completo (ex.: `293 OURO LIGHT / 228 PRETO`). O app identifica sozinho os códigos e se é Solo ou Bicolor, recusa nome sem código e cor já existente (mesmo nome ou mesmos códigos) e grava em `cores` (`nome`, `codigos`, `bicolor`, `ativo`).
+- **Nova Peça:** referência, categoria, coleção (Linha permanente ou lançamento) e foto opcional (JPG/PNG/WEBP até 5 MB, enviada ao bucket `produtos`). Recusa referência repetida. A peça aparece no catálogo na hora.
+
+**Segurança:** rode `supabase/migrations/20261024120000_painel_admin.sql`. Ele cria `eh_admin()` e as políticas que só deixam administradores gravarem em `cores`, `produtos` e no bucket `produtos`; a leitura continua liberada. O script também marca o usuário Demo como admin (crie-o antes em Authentication > Users). Esconder o botão no app não é a proteção: quem decide é o banco.
+
+Sem login real no Supabase (botão de demonstração), o painel funciona só na sessão, sem gravar no banco.

@@ -1,5 +1,5 @@
 import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, Settings, X } from "lucide-react";
 
 /* ------------------------------------------------------------------
    Metaliza · App do Representante
@@ -26,6 +26,11 @@ const REPRESENTANTE_DEMO = {
 // Representantes de alto volume liberados para gerar o arquivo de importação do ERP (SJSYS)
 const REPS_IMPORTACAO = ["carlos@metaliza.com.br", "carlos.mendes@metaliza.com.br", "marcos@metaliza.com.br", "rep3@metaliza.com.br"];
 const podeGerarImportacao = (rep) => REPS_IMPORTACAO.includes(rep?.email?.trim().toLowerCase());
+
+// Painel de Cadastro (Admin): quem tem app_metadata.role = "admin" no Supabase Auth e, nesta fase de testes,
+// o usuário Demo. A gravação no banco é protegida pelo RLS (só role admin grava), não por esta checagem.
+const ADMINS_PROVISORIOS = [REPRESENTANTE_DEMO.email];
+const podeAcessarAdmin = (rep) => rep?.role === "admin" || ADMINS_PROVISORIOS.includes(rep?.email?.trim().toLowerCase());
 
 // Clientes de demonstração já com o cadastro PJ completo (dados fictícios; CNPJs com dígitos verificadores válidos)
 const CLIENTES_INICIAIS = [
@@ -146,8 +151,8 @@ const ACABAMENTOS_DEMO = [
   // Cor oculta: não aparece na lista inicial; só pela busca de código (1554) ou nome
   { id: "ouro-queimado", codigo: "1554", codigos: ["1554"], nome: "Ouro Queimado", grupo: "banho", oculta: true, cores: ["#EBBE78", "#BC7A30", "#7E4614", "#452208"] },
   // Bicolores prontos: atendem as peças de duas cores com uma única escolha
-  { id: "ouro-light-preto", codigo: "50", codigos: ["50"], nome: "Ouro Light / Preto", grupo: "bicolor", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"], cores2: ["#45484D", "#222428", "#0D0E10", "#000000"] },
-  { id: "dourado-branco", codigo: "51", codigos: ["51"], nome: "Dourado / Branco", grupo: "bicolor", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"], cores2: ["#FFFFFF", "#F4F4F2", "#E4E4E0", "#C9C9C4"] },
+  { id: "ouro-light-preto", codigo: "50", codigos: ["50"], nome: "Ouro Light / Preto", grupo: "bicolor", bicolor: true, cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"], cores2: ["#45484D", "#222428", "#0D0E10", "#000000"] },
+  { id: "dourado-branco", codigo: "51", codigos: ["51"], nome: "Dourado / Branco", grupo: "bicolor", bicolor: true, cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"], cores2: ["#FFFFFF", "#F4F4F2", "#E4E4E0", "#C9C9C4"] },
 ];
 const semAcento = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
@@ -177,13 +182,15 @@ function corDoBanco(r) {
   const codigos = brutos.map((c) => String(c).trim()).filter(Boolean);
   const nome = String(r.nome || "").trim();
   const partes = nome.split("/").map((t) => t.trim()).filter(Boolean);
-  const bicolor = codigos.length > 1 || partes.length > 1;
+  // Coluna "bicolor" da tabela manda; sem ela, bicolor = nome com "/" ou dois códigos
+  const bicolor = r.bicolor === true || nome.includes("/") || (r.bicolor == null && codigos.length > 1);
   return {
     id: `cor-${r.id ?? codigos.join("-")}`,
     codigo: codigos.join("/") || "—",
     codigos,
     nome,
     grupo: bicolor ? "bicolor" : "banho",
+    bicolor,
     oculta: !!r.oculta,
     cores: paletaPorNome(partes[0] || nome),
     ...(bicolor ? { cores2: paletaPorNome(partes[1] || "") } : {}),
@@ -202,34 +209,32 @@ function registrarAcabamentos(lista) {
 }
 registrarAcabamentos(ACABAMENTOS_DEMO);
 
-// Busca de cores, sem limite de resultados:
-// - texto ("ouro", "coral"): o nome do acabamento contém o termo (sem diferenciar acento/maiúscula);
-// - número ("293", "29", "2"): algum código de "codigos" é igual ou começa com o número
-//   (zeros à esquerda opcionais: "2" encontra "002"). Só o início do código conta: "293" nunca traz o 1293.
-// Vários termos ("002 293") precisam bater todos.
-// Ordem: TODAS as cores solo primeiro (código exato à frente), depois os bicolores em ordem alfabética.
-const semZerosEsquerda = (c) => c.replace(/^0+(?=\d)/, "");
-const nomeDeBusca = (a) => (a._busca ??= semAcento(a.nome));
-const codigoComeca = (c, p) => c.startsWith(p) || (!p.startsWith("0") && semZerosEsquerda(c).startsWith(p));
-const codigoIgual = (c, p) => c === p || semZerosEsquerda(c) === semZerosEsquerda(p);
-function filtrarAcabamentos(lista, termo) {
-  const palavras = semAcento(termo).split(/\s+/).filter(Boolean);
-  if (!palavras.length) return lista.filter((a) => !a.oculta);
-  const numeros = palavras.filter((p) => /^\d+$/.test(p));
-  const casa = (a, p) => {
-    if (/^\d+$/.test(p)) {
-      if (a.codigos.length) return a.codigos.some((c) => codigoComeca(c, p));
-      return nomeDeBusca(a).split(/[^0-9]+/).some((c) => codigoComeca(c, p));
-    }
-    return nomeDeBusca(a).includes(p);
-  };
-  const exato = (a) => numeros.length > 0 && numeros.every((p) => a.codigos.some((c) => codigoIgual(c, p)));
-  const bicolor = (a) => (a.grupo === "bicolor" || a.codigos.length > 1 || a.nome.includes("/") ? 1 : 0);
-  return lista
-    .filter((a) => palavras.every((p) => casa(a, p)))
-    .map((a) => [a, bicolor(a), bicolor(a) ? 0 : exato(a) ? 0 : 1])
-    .sort((x, y) => x[1] - y[1] || x[2] - y[2] || x[0].nome.localeCompare(y[0].nome, "pt-BR"))
-    .map(([a]) => a);
+// Busca de cores em dois baldes, sem limite de resultados quando há termo:
+//   Balde A = cores SOLO (sem flag bicolor e sem "/" no nome) que batem com o termo,
+//             as que começam com o termo primeiro, depois em ordem alfabética;
+//   Balde B = cores BICOLORES/compostas que batem com o termo, em ordem alfabética.
+// Nenhuma bicolor fica acima de uma solo. Bate = nome contém o termo OU algum código começa com ele.
+// Sem termo, a lista mostra as primeiras LIMITE_SEM_BUSCA cores (o contador avisa o total).
+const LIMITE_SEM_BUSCA = 50;
+const normalizarBusca = (t) => normalizarTexto(t).replace(/\s+/g, " ");
+const nomeDeBusca = (a) => (a._busca ??= normalizarBusca(a.nome));
+const ehSolo = (a) => !a.bicolor && !a.nome.includes("/");
+function filtrarAcabamentos(lista, busca) {
+  const termo = normalizarBusca(busca);
+  if (!termo) return lista.filter((a) => !a.oculta).slice(0, LIMITE_SEM_BUSCA);
+  const bate = (c, t) => nomeDeBusca(c).includes(t) || c.codigos.some((cod) => cod.toUpperCase().startsWith(t) || cod === t);
+  // Vários termos ("002 293"): vale o texto inteiro ou cada termo separadamente
+  const palavras = termo.split(" ");
+  const correspondencias = lista.filter((c) => bate(c, termo) || (palavras.length > 1 && palavras.every((p) => bate(c, p))));
+  const alfabetica = (a, b) => a.nome.localeCompare(b.nome, "pt-BR");
+  const baldeSolo = correspondencias.filter(ehSolo).sort((a, b) => {
+    const aComeca = nomeDeBusca(a).startsWith(termo) || a.codigos.includes(termo);
+    const bComeca = nomeDeBusca(b).startsWith(termo) || b.codigos.includes(termo);
+    if (aComeca !== bComeca) return aComeca ? -1 : 1;
+    return alfabetica(a, b);
+  });
+  const baldeBicolor = correspondencias.filter((c) => !ehSolo(c)).sort(alfabetica);
+  return [...baldeSolo, ...baldeBicolor];
 }
 
 // Lê a tabela "cores" inteira em lotes de 1.000 (o Supabase devolve no máximo 1.000 linhas por consulta)
@@ -936,7 +941,7 @@ function resolverFoto(produto) {
   }
 
   // 2. Se já for a URL completa (https://...)
-  if (typeof produto.foto === "string" && (produto.foto.startsWith("http://") || produto.foto.startsWith("https://"))) {
+  if (typeof produto.foto === "string" && /^(https?:|data:|blob:)/.test(produto.foto)) {
     return { src: produto.foto, fundo: FUNDO_FOTO };
   }
 
@@ -1111,6 +1116,7 @@ function TelaLogin({ onEntrar }) {
         email: user.email,
         regiao: user.user_metadata?.regiao || "Região Polo Calçadista",
         codigo: user.user_metadata?.codigo || "REP-001",
+        role: user.app_metadata?.role || null,
       };
 
       onEntrar(representanteReal);
@@ -1243,7 +1249,7 @@ function Cabecalho({ cliente, apresentacao, qtdItens, onAbrirMenu, onTrocarClien
   );
 }
 
-function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, onEscolherColecao, onSimularExpiracao, onDesfazerExpiracao, onTrocarCliente, onTrocarModo, onMeusPedidos, onSair, onFechar }) {
+function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, onEscolherColecao, onSimularExpiracao, onDesfazerExpiracao, onTrocarCliente, onTrocarModo, onMeusPedidos, onPainelAdmin, onSair, onFechar }) {
   const fecharRef = useRef(null);
   useEffect(() => {
     fecharRef.current?.focus();
@@ -1277,6 +1283,19 @@ function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, o
             </span>
             <ChevronRight className="h-5 w-5 shrink-0 text-[color:var(--mz-accent)]" />
           </button>
+          {podeAcessarAdmin(rep) && (
+            <button
+              type="button"
+              onClick={onPainelAdmin}
+              className="mz-focus -mt-3 mb-5 flex min-h-[52px] w-full items-center gap-3 rounded-2xl border-2 border-dashed border-[color:var(--mz-line)] px-4 py-3 text-left transition hover:border-[color:var(--mz-accent)]"
+            >
+              <Settings className="h-5 w-5 shrink-0 text-[color:var(--mz-accent)]" strokeWidth={1.8} />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold">Painel de Cadastro (Admin)</span>
+                <span className={`block text-xs ${C.muted}`}>Novas cores e novas peças</span>
+              </span>
+            </button>
+          )}
 
           <p className="mz-eyebrow px-1">Catálogo</p>
           <ul className="mt-2 flex flex-col">
@@ -1977,12 +1996,12 @@ function Chips({ titulo, opcoes, valor, onChange, idBase, contar }) {
   );
 }
 
-function TelaCatalogo({ cliente, itensPedido, colecao, ativas, onColecao, onAbrirPeca }) {
+function TelaCatalogo({ cliente, itensPedido, colecao, ativas, versaoCatalogo = 0, onColecao, onAbrirPeca }) {
   const [categoria, setCategoria] = useState("Todos");
   const [busca, setBusca] = useState("");
   const vitrineRef = useRef(null);
 
-  const daColecao = useMemo(() => pecasDaVisao(colecao, ativas), [colecao, ativas]);
+  const daColecao = useMemo(() => pecasDaVisao(colecao, ativas), [colecao, ativas, versaoCatalogo]);
   const lanc = LANCAMENTOS.find((l) => l.nome === colecao && ativas.has(l.nome));
   const filtrados = useMemo(() => {
     const termo = busca.trim();
@@ -2160,8 +2179,11 @@ function TelaSelecaoCor({ acabamentos, valor, onSelecionar, onFechar }) {
 
   const t = termoAdiado.trim();
   const n = encontrados.length;
+  const totalCartela = useMemo(() => acabamentos.filter((a) => !a.oculta).length, [acabamentos]);
   const contador = t
     ? `${formatarNumero(n)} ${n === 1 ? "acabamento encontrado" : "acabamentos encontrados"} para '${t}'`
+    : totalCartela > n
+    ? `Mostrando ${formatarNumero(n)} de ${formatarNumero(totalCartela)} acabamentos · digite o código ou o nome`
     : `${formatarNumero(n)} acabamentos na cartela`;
 
   return (
@@ -2987,6 +3009,259 @@ function TelaEnviado({ pedido, importacao = false, onBaixarTxt, onBaixarPdf, onN
   );
 }
 
+/* ----------------------------- painel de cadastro (admin) ----------------------------- */
+
+// "293 ouro light/228 preto" -> nome "293 OURO LIGHT / 228 PRETO", códigos ["293", "228"], bicolor
+function analisarNomeCor(texto) {
+  const nome = normalizarTexto(texto).replace(/\s+/g, " ").replace(/\//g, " / ").replace(/\s+/g, " ").trim();
+  const partes = nome ? nome.split(" / ").map((t) => t.trim()) : [];
+  const codigos = partes.map((t) => (t.match(/^(\d+)\s+\S/) || [])[1]).filter(Boolean);
+  let erro = "";
+  if (!nome) erro = "Informe o nome completo do acabamento.";
+  else if (partes.length > 2) erro = "Use no máximo duas cores (uma \"/\").";
+  else if (partes.some((t) => !t)) erro = "Complete a cor dos dois lados da \"/\".";
+  else if (codigos.length !== partes.length) erro = "Cada cor deve começar pelo código e ter o nome depois (ex.: 293 OURO LIGHT).";
+  return { nome, partes, codigos, bicolor: partes.length === 2, erro };
+}
+
+const COLECAO_PERMANENTE = "Linha permanente";
+const FORM_PECA_VAZIO = { ref: "", categoria: "", colecao: COLECAO_PERMANENTE, arquivo: null, previa: "" };
+
+function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) {
+  const sb = obterSupabase();
+  const noBanco = !!(sb && rep?.id);
+  const [aba, setAba] = useState("cor");
+  const [nomeCor, setNomeCor] = useState("");
+  const [peca, setPeca] = useState(FORM_PECA_VAZIO);
+  const [erro, setErro] = useState("");
+  const [ok, setOk] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const analise = analisarNomeCor(nomeCor);
+  const previaCor = !analise.erro ? corDoBanco({ id: "previa", nome: analise.nome, codigos: analise.codigos, bicolor: analise.bicolor }) : null;
+
+  useEffect(() => {
+    const esc = (e) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      onFechar();
+    };
+    window.addEventListener("keydown", esc, true);
+    return () => window.removeEventListener("keydown", esc, true);
+  }, [onFechar]);
+  useEffect(() => () => peca.previa && URL.revokeObjectURL(peca.previa), [peca.previa]);
+
+  const trocarAba = (a) => {
+    setAba(a);
+    setErro("");
+    setOk("");
+  };
+
+  const salvarCor = async () => {
+    setOk("");
+    if (analise.erro) return setErro(analise.erro);
+    const chave = normalizarTexto(analise.nome);
+    const mesmosCodigos = analise.codigos.join("/");
+    const dup = acabamentos.find((a) => normalizarTexto(a.nome) === chave || (a.codigos.length && a.codigos.join("/") === mesmosCodigos));
+    if (dup) return setErro(`Já existe na cartela: [${dup.codigo}] ${dup.nome}.`);
+    setSalvando(true);
+    setErro("");
+    try {
+      let linha = { id: `local-${Date.now()}`, nome: analise.nome, codigos: analise.codigos, bicolor: analise.bicolor, ativo: true };
+      if (noBanco) {
+        const { data, error } = await sb.from("cores").insert({ nome: analise.nome, codigos: analise.codigos, bicolor: analise.bicolor, ativo: true }).select().single();
+        if (error) throw error;
+        linha = data;
+      }
+      onCorCriada(corDoBanco(linha));
+      setOk(`Cor cadastrada${noBanco ? "" : " nesta sessão"}: ${analise.nome}`);
+      setNomeCor("");
+    } catch (err) {
+      setErro(mensagemErroBanco(err));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const escolherFoto = (arquivo) => {
+    setErro("");
+    if (!arquivo) return setPeca((f) => ({ ...f, arquivo: null, previa: "" }));
+    if (!/^image\/(jpeg|png|webp)$/.test(arquivo.type)) return setErro("A foto deve ser JPG, PNG ou WEBP.");
+    if (arquivo.size > 5 * 1024 * 1024) return setErro("A foto deve ter no máximo 5 MB.");
+    setPeca((f) => ({ ...f, arquivo, previa: URL.createObjectURL(arquivo) }));
+  };
+
+  const salvarPeca = async () => {
+    setOk("");
+    const ref = peca.ref.trim().replace(/\s+/g, " ").toUpperCase();
+    if (!ref) return setErro("Informe a referência (ex.: EF 1234).");
+    if (!peca.categoria) return setErro("Selecione a categoria.");
+    if (PRODUTOS.some((p) => normalizarRef(p.ref) === normalizarRef(ref))) return setErro(`A referência ${ref} já está no catálogo.`);
+    setSalvando(true);
+    setErro("");
+    try {
+      const colecao = peca.colecao === COLECAO_PERMANENTE ? null : peca.colecao;
+      let foto = null;
+      let linha;
+      if (noBanco) {
+        if (peca.arquivo) {
+          const ext = peca.arquivo.type.split("/")[1].replace("jpeg", "jpg");
+          const caminho = `${ref.replace(/[^A-Z0-9]+/g, "-").toLowerCase()}-${Date.now()}.${ext}`;
+          const { error: erroFoto } = await sb.storage.from("produtos").upload(caminho, peca.arquivo, { contentType: peca.arquivo.type, upsert: false });
+          if (erroFoto) throw erroFoto;
+          foto = caminho;
+        }
+        const { data, error } = await sb.from("produtos").insert({ ref, categoria: peca.categoria, colecao, foto, ativo: true }).select().single();
+        if (error) {
+          // A foto já subiu mas a peça não entrou: remove a foto para não deixar arquivo órfão no bucket
+          if (foto) await sb.storage.from("produtos").remove([foto]).catch(() => {});
+          throw error;
+        }
+        linha = data;
+      } else {
+        // Demonstração: a foto fica só nesta sessão (URL local do arquivo)
+        linha = { ref, categoria: peca.categoria, colecao, foto: peca.arquivo ? URL.createObjectURL(peca.arquivo) : null, ativo: true };
+      }
+      onPecaCriada(linha);
+      setOk(`Peça cadastrada${noBanco ? "" : " nesta sessão"}: Ref. ${ref} (${CATEGORIA_SINGULAR[peca.categoria] || peca.categoria})`);
+      setPeca(FORM_PECA_VAZIO);
+    } catch (err) {
+      setErro(mensagemErroBanco(err));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const abaBotao = (id, texto) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={aba === id}
+      onClick={() => trocarAba(id)}
+      className={`mz-focus min-h-[44px] flex-1 rounded-lg px-3 text-sm font-bold transition ${
+        aba === id ? "bg-[color:var(--mz-surface)] text-[color:var(--mz-ink)] shadow-[var(--mz-shadow)]" : C.muted
+      }`}
+    >
+      {texto}
+    </button>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-6">
+      <div role="dialog" aria-modal="true" aria-labelledby="mz-admin-titulo" className="mz-sheet flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-[color:var(--mz-soft)] shadow-2xl sm:rounded-3xl">
+        <div className="border-b border-[color:var(--mz-line)] bg-white px-5 pb-3 pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="mz-eyebrow flex items-center gap-1.5"><Settings className="h-3.5 w-3.5" strokeWidth={2} /> Administração</p>
+              <h2 id="mz-admin-titulo" className="mz-display text-lg font-bold">Painel de Cadastro</h2>
+            </div>
+            <button type="button" onClick={onFechar} className={`${C.fechar} -mr-2`} aria-label="Fechar painel">
+              <X className="h-6 w-6" strokeWidth={2} />
+            </button>
+          </div>
+          <div className="mt-3 flex gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1" role="tablist">
+            {abaBotao("cor", "Nova Cor / Acabamento")}
+            {abaBotao("peca", "Nova Peça")}
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+          {!noBanco && (
+            <p role="note" className="rounded-xl border border-[#F5C26B] bg-[#FFF7E6] p-3 text-xs font-semibold text-[#7A4B00]">
+              Modo demonstração sem login no Supabase: os cadastros valem só nesta sessão, neste aparelho. Para gravar no banco, entre com um usuário administrador.
+            </p>
+          )}
+
+          {aba === "cor" ? (
+            <section className="flex flex-col gap-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="mz-admin-cor" className="text-sm font-semibold">Nome completo do acabamento</label>
+                <input
+                  id="mz-admin-cor"
+                  className={`${C.input} uppercase`}
+                  placeholder="1554 OURO QUEIMADO ou 293 OURO LIGHT / 228 PRETO"
+                  value={nomeCor}
+                  autoComplete="off"
+                  onChange={(e) => { setNomeCor(e.target.value.slice(0, 120)); setErro(""); setOk(""); }}
+                />
+                <span className={`text-xs ${C.muted}`}>Comece cada cor pelo código. Para bicolor, separe as duas cores com "/".</span>
+              </div>
+              <div className="rounded-xl bg-[color:var(--mz-sunken)] p-3">
+                <p className="mz-eyebrow">Identificação automática</p>
+                {nomeCor.trim() && !analise.erro ? (
+                  <div className="mt-2 flex items-center gap-3">
+                    <Swatch acabamento={previaCor} size="h-10 w-10" />
+                    <PilulasCodigo a={previaCor} />
+                    <span className="min-w-0 flex-1 break-words text-sm font-bold">{analise.nome}</span>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${analise.bicolor ? "bg-[color:var(--mz-accent)] text-white" : "bg-white text-[color:var(--mz-ink-2)]"}`}>
+                      {analise.bicolor ? "Bicolor" : "Solo"}
+                    </span>
+                  </div>
+                ) : (
+                  <p className={`mt-1 text-xs ${nomeCor.trim() ? "font-semibold text-[color:var(--mz-warn)]" : C.muted}`}>
+                    {nomeCor.trim() ? analise.erro : "Os códigos e o tipo (Solo ou Bicolor) aparecem aqui enquanto você digita."}
+                  </p>
+                )}
+              </div>
+            </section>
+          ) : (
+            <section className="grid grid-cols-6 gap-x-3 gap-y-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4">
+              <div className="col-span-6 flex flex-col gap-1.5 sm:col-span-3">
+                <label htmlFor="mz-admin-ref" className="text-sm font-semibold">Referência</label>
+                <input id="mz-admin-ref" className={`${C.input} mz-mono uppercase`} placeholder="EF 1234" autoComplete="off" value={peca.ref}
+                  onChange={(e) => { setPeca((f) => ({ ...f, ref: e.target.value.slice(0, 20) })); setErro(""); setOk(""); }} />
+              </div>
+              <div className="col-span-6 flex flex-col gap-1.5 sm:col-span-3">
+                <label htmlFor="mz-admin-cat" className="text-sm font-semibold">Categoria</label>
+                <select id="mz-admin-cat" className={C.input} value={peca.categoria} onChange={(e) => { setPeca((f) => ({ ...f, categoria: e.target.value })); setErro(""); }}>
+                  <option value="">Selecione</option>
+                  {CATEGORIAS.filter((c) => c !== "Todos").map((c) => <option key={c} value={c}>{CATEGORIA_SINGULAR[c] || c}</option>)}
+                </select>
+              </div>
+              <div className="col-span-6 flex flex-col gap-1.5">
+                <label htmlFor="mz-admin-col" className="text-sm font-semibold">Coleção</label>
+                <select id="mz-admin-col" className={C.input} value={peca.colecao} onChange={(e) => setPeca((f) => ({ ...f, colecao: e.target.value }))}>
+                  <option value={COLECAO_PERMANENTE}>{COLECAO_PERMANENTE} (Catálogo Geral)</option>
+                  {LANCAMENTOS.map((l) => <option key={l.nome} value={l.nome}>Lançamento {l.nome}</option>)}
+                </select>
+              </div>
+              <div className="col-span-6 flex flex-col gap-1.5">
+                <label htmlFor="mz-admin-foto" className="text-sm font-semibold">Foto da peça <span className={`font-normal ${C.muted}`}>(opcional · JPG, PNG ou WEBP até 5 MB)</span></label>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[color:var(--mz-sunken)] text-[10px] text-[color:var(--mz-muted)]">
+                    {peca.previa ? <img src={peca.previa} alt="" className="h-full w-full object-contain" /> : "Sem foto"}
+                  </div>
+                  <input id="mz-admin-foto" type="file" accept="image/jpeg,image/png,image/webp" className="min-w-0 flex-1 text-sm file:mr-3 file:min-h-[44px] file:rounded-xl file:border-0 file:bg-[color:var(--mz-accent-soft)] file:px-4 file:font-semibold file:text-[color:var(--mz-accent)]"
+                    onChange={(e) => escolherFoto(e.target.files?.[0] || null)} />
+                </div>
+              </div>
+            </section>
+          )}
+        </div>
+
+        <div className="border-t border-[color:var(--mz-line)] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 sm:px-5">
+          {erro && <p role="alert" className="mb-2 text-sm font-semibold text-[color:var(--mz-warn)]">{erro}</p>}
+          {ok && <p role="status" className="mb-2 text-sm font-semibold text-[color:var(--mz-ok)]">✓ {ok}</p>}
+          <div className="grid grid-cols-[auto_1fr] gap-3">
+            <button type="button" onClick={onFechar} className={C.btnGhost}>Fechar</button>
+            <button type="button" disabled={salvando} onClick={aba === "cor" ? salvarCor : salvarPeca} className={C.btnAccent}>
+              {salvando ? "Salvando…" : aba === "cor" ? "Cadastrar cor" : "Cadastrar peça"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Erros do Supabase em português (permissão, duplicidade, conexão)
+function mensagemErroBanco(err) {
+  const msg = err?.message || String(err);
+  if (err?.code === "23505" || /duplicate/i.test(msg)) return "Já existe um cadastro igual no banco.";
+  if (err?.code === "42501" || /row-level security|permission|not authorized|unauthorized/i.test(msg))
+    return "Sem permissão para gravar: o usuário precisa ter o papel admin no Supabase (veja o script SQL do painel).";
+  return `Não foi possível salvar: ${msg}`;
+}
+
 /* ----------------------------- meus pedidos (histórico de 30 dias) ----------------------------- */
 
 function TelaHistorico({ rep, historicoLocal, onVoltar, onBaixarTxt, onBaixarPdf }) {
@@ -3147,6 +3422,16 @@ export default function MetalizaApp() {
   }, []);
   const [itensPorCliente, setItensPorCliente] = useState({});
   const [acabamentos, setAcabamentos] = useState(ACABAMENTOS_DEMO);
+  const [versaoCatalogo, setVersaoCatalogo] = useState(0);
+  const [painelAdmin, setPainelAdmin] = useState(false);
+  const corCriada = (cor) => {
+    registrarAcabamentos([cor]);
+    setAcabamentos((l) => [...l, cor].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+  };
+  const pecaCriada = (peca) => {
+    PRODUTOS = [...PRODUTOS, peca];
+    setVersaoCatalogo((v) => v + 1);
+  };
 
   // Cores ativas da tabela "cores" (ao abrir o app e de novo após o login, caso a leitura exija autenticação).
   // Sem Supabase, com erro ou com a tabela vazia, fica a cartela de demonstração.
@@ -3509,6 +3794,10 @@ export default function MetalizaApp() {
               onTrocarCliente={trocarCliente}
               onTrocarModo={trocarModo}
               onMeusPedidos={abrirHistorico}
+              onPainelAdmin={() => {
+                setMenuAberto(false);
+                setPainelAdmin(true);
+              }}
               onSair={sair}
               onFechar={() => setMenuAberto(false)}
             />
@@ -3519,7 +3808,7 @@ export default function MetalizaApp() {
             <TelaClientes clientes={clientes} historico={historico} onSelecionar={selecionarCliente} onCadastrar={cadastrarCliente} />
           )}
           {tela === "catalogo" && (cliente || apresentacao) && (
-            <TelaCatalogo cliente={cliente} itensPedido={itens} colecao={colecao} ativas={ativas} onColecao={setColecao} onAbrirPeca={setPeca} />
+            <TelaCatalogo cliente={cliente} itensPedido={itens} colecao={colecao} ativas={ativas} versaoCatalogo={versaoCatalogo} onColecao={setColecao} onAbrirPeca={setPeca} />
           )}
           {tela === "revisao" && cliente && (
             <TelaRevisao rep={rep} cliente={cliente} itens={itens} enviando={enviando} onVoltar={() => setTela("catalogo")} onQtd={alterarQtd} onRemover={remover} onEnviar={enviar} />
@@ -3582,6 +3871,10 @@ export default function MetalizaApp() {
               onRemover={remover}
               onRevisar={() => { setPedidoAberto(false); setTela("revisao"); window.scrollTo?.(0, 0); }}
             />
+          )}
+
+          {painelAdmin && podeAcessarAdmin(rep) && (
+            <PainelAdmin rep={rep} acabamentos={acabamentos} onCorCriada={corCriada} onPecaCriada={pecaCriada} onFechar={() => setPainelAdmin(false)} />
           )}
 
           {escolhendoCliente && (
