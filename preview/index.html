@@ -258,7 +258,7 @@ function hojeFormatado() {
 }
 const totalPecas = (itens) => itens.reduce((s, i) => s + i.qtd, 0);
 const clienteNovo = (c) => c.novo === true || !c.ultimoPedido;
-const TIPO_EMAIL = { amostra: "AMOSTRA", producao: "PEDIDO DE PRODU\xC7\xC3O", misto: "AMOSTRA E PRODU\xC7\xC3O" };
+const TIPO_EMAIL = { amostra: "AMOSTRA", producao: "PEDIDO DE PRODU\xC7\xC3O" };
 function blocoCadastroClienteNovo(c) {
   const numeroCompl = [c.numero, c.complemento].filter(Boolean).join(" ");
   return [
@@ -272,20 +272,17 @@ function blocoCadastroClienteNovo(c) {
     `E-mail: ${c.email || "\u2014"}`
   ];
 }
-function montarEmail({ numero, rep, cliente, novo, tipo, itens, anexos }) {
-  const anexoTxt = anexos.txt ? ` e o arquivo de importa\xE7\xE3o do SJSYS (${anexos.txt})` : "";
+function montarEmail({ numero, rep, cliente, novo, tipo, itens }) {
   return {
     para: EMAIL_PEDIDOS,
     cc: rep.email,
-    assunto: `[Pedido ${numero}] ${cliente.nome} \xB7 ${itens.length} ${itens.length === 1 ? "item" : "itens"} \xB7 ${formatarNumero(totalPecas(itens))} un`,
+    assunto: `[Pedido ${numero} \xB7 ${TIPO_EMAIL[tipo]}] ${cliente.nome} \xB7 ${itens.length} ${itens.length === 1 ? "item" : "itens"} \xB7 ${formatarNumero(totalPecas(itens))} un`,
     corpo: [
       `SOLICITA\xC7\xC3O ${numero} \u2014 TIPO: ${TIPO_EMAIL[tipo]}`,
       `Data: ${hojeFormatado()}`,
       `Representante: ${rep.nome} (${rep.codigo})`,
       "",
-      ...novo ? blocoCadastroClienteNovo(cliente) : [`Cliente: ${cliente.razaoSocial || cliente.nome} (CNPJ: ${cliente.cnpj || "\u2014"})`],
-      "",
-      `Segue em anexo o espelho do pedido em PDF (${anexos.pdf}) com a discrimina\xE7\xE3o dos itens${anexoTxt}.`
+      ...novo ? blocoCadastroClienteNovo(cliente) : [`Cliente: ${cliente.razaoSocial || cliente.nome} (CNPJ: ${cliente.cnpj || "\u2014"})`]
     ].join("\n")
   };
 }
@@ -295,10 +292,19 @@ const rotuloNumero = (n) => `#${pad4(n)}`;
 const doisDigitos = (n) => String(n).padStart(2, "0");
 const dataBR = (d) => `${doisDigitos(d.getDate())}/${doisDigitos(d.getMonth() + 1)}/${d.getFullYear()}`;
 const horaBR = (d) => `${doisDigitos(d.getHours())}:${doisDigitos(d.getMinutes())}:${doisDigitos(d.getSeconds())}`;
-const TIPO_PEDIDO_LABEL = { amostra: "Amostra", producao: "Pedido de Produ\xE7\xE3o", misto: "Amostra + Produ\xE7\xE3o" };
+const TIPO_PEDIDO_LABEL = { amostra: "Amostra", producao: "Pedido de Produ\xE7\xE3o" };
 const tipoDoPedido = (itens) => {
-  const tipos = new Set(itens.map((i) => i.tipo));
-  return tipos.size > 1 ? "misto" : [...tipos][0];
+  var _a;
+  return (_a = itens[0]) == null ? void 0 : _a.tipo;
+};
+const MSG_MISTURA = {
+  amostra: "N\xE3o \xE9 permitido misturar Amostra e Pedido de Produ\xE7\xE3o na mesma solicita\xE7\xE3o. Finalize ou limpe o carrinho atual antes de mudar de tipo.",
+  producao: "Este pedido j\xE1 cont\xE9m pe\xE7as de Produ\xE7\xE3o. N\xE3o \xE9 permitido adicionar amostras nesta solicita\xE7\xE3o."
+};
+const conflitoDeTipo = (lista, tipoNovo) => {
+  var _a;
+  const existente = (_a = lista[0]) == null ? void 0 : _a.tipo;
+  return existente && existente !== tipoNovo ? MSG_MISTURA[existente] : null;
 };
 const diasParaExpirar = (criadoEm) => Math.max(0, DIAS_RETENCAO - Math.floor((inicioDoDia().getTime() - inicioDoDia(new Date(criadoEm)).getTime()) / DIA_MS));
 const expirado = (criadoEm) => Date.now() - new Date(criadoEm).getTime() >= DIAS_RETENCAO * DIA_MS;
@@ -329,7 +335,7 @@ function descricaoErp(i) {
   return i.afra ? `${base} - AFRA ${i.afra}` : base;
 }
 const campoTxt = (v) => String(v != null ? v : "").replace(/[#\r\n]+/g, " ").trim();
-const OBSERVACAO_TXT = { amostra: "AMOSTRA", producao: "", misto: "AMOSTRA E PRODUCAO" };
+const OBSERVACAO_TXT = { amostra: "AMOSTRA", producao: "" };
 function gerarTxtSjsys(pedido) {
   var _a;
   const quando = new Date(pedido.criadoEm);
@@ -1411,16 +1417,17 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
   )), atual.oculta && /* @__PURE__ */ React.createElement("div", { className: "mz-in" }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, "Cor encontrada pelo c\xF3digo \xB7 fora da cartela padr\xE3o"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2" }, /* @__PURE__ */ React.createElement(BotaoCor, { a: atual, ativo: true, titulo, largo: true, onClick: () => {
   } }))), GRUPOS_ACABAMENTO.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.id }, /* @__PURE__ */ React.createElement("p", { className: `mb-1.5 text-[11px] font-semibold ${C.muted}` }, g.titulo), /* @__PURE__ */ React.createElement("div", { className: `grid gap-2 ${g.id === "bicolor" ? "grid-cols-2" : "grid-cols-3 sm:grid-cols-5"}` }, ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => /* @__PURE__ */ React.createElement(BotaoCor, { key: a.id, a, ativo: a.id === valor, titulo, largo: g.id === "bicolor", onClick: () => onChange(a.id) }))))));
 }
-function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
+function ModalPeca({ produto, semCliente = false, tipoExistente = null, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
   const [comAfra, setComAfra] = useState(false);
   const [afra, setAfra] = useState(null);
-  const [tipo, setTipo] = useState("amostra");
-  const [qtd, setQtd] = useState(REGRAS.amostra.min);
-  const [texto, setTexto] = useState(String(REGRAS.amostra.min));
+  const [tipo, setTipo] = useState(tipoExistente || "amostra");
+  const [qtd, setQtd] = useState(REGRAS[tipoExistente || "amostra"].min);
+  const [texto, setTexto] = useState(String(REGRAS[tipoExistente || "amostra"].min));
   const [aviso, setAviso] = useState("");
   const [tremer, setTremer] = useState(0);
   const regra = REGRAS[tipo];
+  const conflitoTipo = !!tipoExistente && tipo !== tipoExistente;
   const arrastar = useArrastarParaFechar(onFechar);
   const descricaoAcabamento = textoAcabamento(acabamentoId);
   useEffect(() => {
@@ -1564,11 +1571,12 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
         type: "button",
         role: "radio",
         "aria-checked": tipo === t,
+        disabled: !!tipoExistente && t !== tipoExistente,
         onClick: () => trocarTipo(t),
-        className: `mz-focus min-h-[44px] rounded-lg px-3 text-sm font-bold transition ${tipo === t ? "bg-[color:var(--mz-surface)] text-[color:var(--mz-ink)] shadow-[var(--mz-shadow)]" : C.muted}`
+        className: `mz-focus min-h-[44px] rounded-lg px-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${tipo === t ? "bg-[color:var(--mz-surface)] text-[color:var(--mz-ink)] shadow-[var(--mz-shadow)]" : C.muted}`
       },
       TIPO_LABEL[t]
-    ))), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-xs ${C.muted}` }, "M\xEDnimo de ", /* @__PURE__ */ React.createElement("b", { className: "text-[color:var(--mz-ink)]" }, regra.min, " pe\xE7as"), regra.passo > 1 ? `, em lotes de ${regra.passo}` : "", " \xB7 prazo estimado ", PRAZO[tipo], ".")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-qtd", className: "mz-eyebrow mb-3 block" }, "Quantidade (pe\xE7as)"), /* @__PURE__ */ React.createElement("div", { key: tremer, className: `flex items-stretch gap-2 ${tremer ? "mz-shake" : ""}` }, /* @__PURE__ */ React.createElement(
+    ))), tipoExistente && /* @__PURE__ */ React.createElement("p", { className: "mt-2 rounded-md bg-[color:var(--mz-accent-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--mz-accent)]", role: "note" }, "Carrinho em andamento com itens de ", tipoExistente === "amostra" ? "Amostra" : "Produ\xE7\xE3o", "."), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-xs ${C.muted}` }, "M\xEDnimo de ", /* @__PURE__ */ React.createElement("b", { className: "text-[color:var(--mz-ink)]" }, regra.min, " pe\xE7as"), regra.passo > 1 ? `, em lotes de ${regra.passo}` : "", " \xB7 prazo estimado ", PRAZO[tipo], ".")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-qtd", className: "mz-eyebrow mb-3 block" }, "Quantidade (pe\xE7as)"), /* @__PURE__ */ React.createElement("div", { key: tremer, className: `flex items-stretch gap-2 ${tremer ? "mz-shake" : ""}` }, /* @__PURE__ */ React.createElement(
       "button",
       {
         type: "button",
@@ -1594,7 +1602,7 @@ function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
       "button",
       {
         type: "button",
-        disabled: !valido,
+        disabled: !valido || conflitoTipo,
         onClick: () => onAdicionar({
           ref: produto.ref,
           acabamento: acabamentoId,
@@ -1774,10 +1782,11 @@ function TelaHistorico({ rep, historicoLocal, onVoltar, onBaixarTxt, onBaixarPdf
         className: `shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${urgente ? "bg-[color:var(--mz-warn-soft)] text-[color:var(--mz-warn)]" : "bg-[color:var(--mz-sunken)] text-[color:var(--mz-ink-2)]"}`
       },
       dias === 0 ? "Expira hoje" : `Expira em ${dias} ${dias === 1 ? "dia" : "dias"}`
-    )), /* @__PURE__ */ React.createElement("dl", { className: "grid grid-cols-3 gap-2 border-y border-[color:var(--mz-line)] py-3 text-xs" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Data"), /* @__PURE__ */ React.createElement("dd", { className: "font-semibold" }, dataBR(new Date(p.criadoEm)))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Tipo"), /* @__PURE__ */ React.createElement("dd", { className: "font-semibold" }, p.tipo === "producao" ? "Produ\xE7\xE3o" : p.tipo === "misto" ? "Amostra + Produ\xE7\xE3o" : "Amostra")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Pe\xE7as"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono font-semibold" }, formatarNumero(totalPecas(p.itens)), " un"))), /* @__PURE__ */ React.createElement("div", { className: "grid gap-2 sm:grid-cols-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => baixarPdf(p), disabled: baixando === `pdf-${p.numero}`, className: C.btnGhost }, baixando === `pdf-${p.numero}` ? "Gerando\u2026" : "Baixar PDF"), importacao && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onBaixarTxt(p), className: C.btnGhost }, "Baixar TXT (SJSYS)")));
+    )), /* @__PURE__ */ React.createElement("dl", { className: "grid grid-cols-3 gap-2 border-y border-[color:var(--mz-line)] py-3 text-xs" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Data"), /* @__PURE__ */ React.createElement("dd", { className: "font-semibold" }, dataBR(new Date(p.criadoEm)))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Tipo"), /* @__PURE__ */ React.createElement("dd", { className: "font-semibold" }, p.tipo === "producao" ? "Produ\xE7\xE3o" : "Amostra")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, "Pe\xE7as"), /* @__PURE__ */ React.createElement("dd", { className: "mz-mono font-semibold" }, formatarNumero(totalPecas(p.itens)), " un"))), /* @__PURE__ */ React.createElement("div", { className: "grid gap-2 sm:grid-cols-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => baixarPdf(p), disabled: baixando === `pdf-${p.numero}`, className: C.btnGhost }, baixando === `pdf-${p.numero}` ? "Gerando\u2026" : "Baixar PDF"), importacao && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onBaixarTxt(p), className: C.btnGhost }, "Baixar TXT (SJSYS)")));
   })));
 }
 function MetalizaApp() {
+  var _a;
   const [rep, setRep] = useState(null);
   const [clientes, setClientes] = useState(CLIENTES_INICIAIS);
   const [cliente, setCliente] = useState(null);
@@ -1876,44 +1885,44 @@ function MetalizaApp() {
     setTela("modo");
   };
   const iniciarAtendimento = () => {
-    var _a;
+    var _a2;
     setModo("atendimento");
     setTela("clientes");
-    (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+    (_a2 = window.scrollTo) == null ? void 0 : _a2.call(window, 0, 0);
   };
   const iniciarApresentacao = () => {
-    var _a;
+    var _a2;
     setModo("apresentacao");
     setCliente(null);
     setColecao(visaoInicial(ativas));
     setTela("catalogo");
-    (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+    (_a2 = window.scrollTo) == null ? void 0 : _a2.call(window, 0, 0);
   };
   const trocarModo = () => {
-    var _a;
+    var _a2;
     setMenuAberto(false);
     setPedidoAberto(false);
     setPeca(null);
     setCliente(null);
     setTela("modo");
-    (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+    (_a2 = window.scrollTo) == null ? void 0 : _a2.call(window, 0, 0);
   };
   const selecionarCliente = (c) => {
-    var _a;
+    var _a2;
     setCliente(c);
     setModo("atendimento");
     setColecao(visaoInicial(ativas));
     setTela("catalogo");
-    (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+    (_a2 = window.scrollTo) == null ? void 0 : _a2.call(window, 0, 0);
   };
   const vincularClienteDoModal = (c) => {
     setCliente(c);
     setModo("atendimento");
     setEscolhendoCliente(false);
     if (pendente) {
-      adicionarPara(c.id, pendente);
+      const erro = adicionarPara(c.id, pendente);
       const prod = PRODUTOS.find((x) => x.ref === pendente.ref);
-      setToast(`Atendendo ${c.nome} \xB7 Adicionado: ${linhaPedido(prod, pendente)}`);
+      setToast(erro ? `Atendendo ${c.nome} \xB7 Pe\xE7a n\xE3o adicionada. ${erro}` : `Atendendo ${c.nome} \xB7 Adicionado: ${linhaPedido(prod, pendente)}`);
       setPendente(null);
     } else {
       setToast(`Atendendo ${c.nome} \xB7 Pedido liberado.`);
@@ -1968,7 +1977,7 @@ function MetalizaApp() {
     setToast(`${nome} reativada para a demonstra\xE7\xE3o.`);
   };
   const escolherColecao = (c) => {
-    var _a;
+    var _a2;
     setColecao(c);
     setMenuAberto(false);
     if (!cliente && modo !== "apresentacao") {
@@ -1977,9 +1986,11 @@ function MetalizaApp() {
       return;
     }
     setTela("catalogo");
-    (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+    (_a2 = window.scrollTo) == null ? void 0 : _a2.call(window, 0, 0);
   };
   const adicionarPara = (clienteId, novo) => {
+    const erro = conflitoDeTipo(itensPorCliente[clienteId] || [], novo.tipo);
+    if (erro) return erro;
     const chave = [
       novo.ref,
       novo.acabamento,
@@ -1994,6 +2005,7 @@ function MetalizaApp() {
       const nova = existente ? lista.map((i) => i.chave === chave ? { ...i, qtd: i.qtd + novo.qtd } : i) : [...lista, { ...novo, chave }];
       return { ...m, [clienteId]: nova };
     });
+    return null;
   };
   const adicionar = (novo) => {
     setPeca(null);
@@ -2002,7 +2014,11 @@ function MetalizaApp() {
       setEscolhendoCliente(true);
       return;
     }
-    adicionarPara(cliente.id, novo);
+    const erro = adicionarPara(cliente.id, novo);
+    if (erro) {
+      setToast(erro);
+      return;
+    }
     const prod = PRODUTOS.find((x) => x.ref === novo.ref);
     setToast(`Adicionado (${TIPO_LABEL[novo.tipo]}): ${linhaPedido(prod, novo)}`);
   };
@@ -2019,16 +2035,16 @@ function MetalizaApp() {
     }
   };
   const abrirHistorico = () => {
-    var _a;
+    var _a2;
     setMenuAberto(false);
     setPedidoAberto(false);
     setPeca(null);
     if (tela !== "historico") setTelaAntesHistorico(tela);
     setTela("historico");
-    (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+    (_a2 = window.scrollTo) == null ? void 0 : _a2.call(window, 0, 0);
   };
   const enviar = async () => {
-    var _a;
+    var _a2;
     if (enviando) return;
     setEnviando(true);
     try {
@@ -2087,8 +2103,7 @@ function MetalizaApp() {
         cliente,
         novo,
         tipo,
-        itens: itensApp,
-        anexos: { pdf: nomeArquivoPdf(pedido), txt: importacao ? nomeArquivoTxt(pedido) : null }
+        itens: itensApp
       });
       pedido.txt = importacao ? gerarTxtSjsys(pedido) : null;
       if (sb && id) {
@@ -2102,7 +2117,7 @@ function MetalizaApp() {
       setCliente(jaCadastrado);
       setItensPorCliente((m) => ({ ...m, [cliente.id]: [] }));
       setTela("enviado");
-      (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+      (_a2 = window.scrollTo) == null ? void 0 : _a2.call(window, 0, 0);
       if (importacao) baixarTxtPedido(pedido);
       await baixarPdfPedido(pedido);
     } catch (err) {
@@ -2168,7 +2183,7 @@ function MetalizaApp() {
     },
     /* @__PURE__ */ React.createElement(Icone.sacola, { className: "h-5 w-5" }),
     cliente ? `Ver pedido${qtdItens ? ` (${qtdItens})` : ""}` : "Selecionar cliente"
-  ))), peca && /* @__PURE__ */ React.createElement(ModalPeca, { produto: peca, semCliente: !cliente, onFechar: () => setPeca(null), onAdicionar: adicionar }), pedidoAberto && cliente && /* @__PURE__ */ React.createElement(
+  ))), peca && /* @__PURE__ */ React.createElement(ModalPeca, { produto: peca, semCliente: !cliente, tipoExistente: cliente ? (_a = itens[0]) == null ? void 0 : _a.tipo : null, onFechar: () => setPeca(null), onAdicionar: adicionar }), pedidoAberto && cliente && /* @__PURE__ */ React.createElement(
     PainelPedido,
     {
       cliente,
@@ -2177,10 +2192,10 @@ function MetalizaApp() {
       onQtd: alterarQtd,
       onRemover: remover,
       onRevisar: () => {
-        var _a;
+        var _a2;
         setPedidoAberto(false);
         setTela("revisao");
-        (_a = window.scrollTo) == null ? void 0 : _a.call(window, 0, 0);
+        (_a2 = window.scrollTo) == null ? void 0 : _a2.call(window, 0, 0);
       }
     }
   ), escolhendoCliente && /* @__PURE__ */ React.createElement(

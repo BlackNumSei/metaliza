@@ -294,7 +294,7 @@ const totalPecas = (itens) => itens.reduce((s, i) => s + i.qtd, 0);
 
 // Cliente novo: ainda sem pedido enviado. Só ele leva os dados cadastrais no e-mail, para o cadastro no ERP.
 const clienteNovo = (c) => c.novo === true || !c.ultimoPedido;
-const TIPO_EMAIL = { amostra: "AMOSTRA", producao: "PEDIDO DE PRODUÇÃO", misto: "AMOSTRA E PRODUÇÃO" };
+const TIPO_EMAIL = { amostra: "AMOSTRA", producao: "PEDIDO DE PRODUÇÃO" };
 
 function blocoCadastroClienteNovo(c) {
   const numeroCompl = [c.numero, c.complemento].filter(Boolean).join(" ");
@@ -310,14 +310,13 @@ function blocoCadastroClienteNovo(c) {
   ];
 }
 
-// E-mail ao PCP: só identificação do pedido, do cliente e dos anexos.
+// E-mail ao PCP: só a identificação do pedido e do cliente, nada depois dos dados do cliente.
 // As peças vão no espelho em PDF (e no TXT do SJSYS, para os representantes liberados).
-function montarEmail({ numero, rep, cliente, novo, tipo, itens, anexos }) {
-  const anexoTxt = anexos.txt ? ` e o arquivo de importação do SJSYS (${anexos.txt})` : "";
+function montarEmail({ numero, rep, cliente, novo, tipo, itens }) {
   return {
     para: EMAIL_PEDIDOS,
     cc: rep.email,
-    assunto: `[Pedido ${numero}] ${cliente.nome} · ${itens.length} ${itens.length === 1 ? "item" : "itens"} · ${formatarNumero(totalPecas(itens))} un`,
+    assunto: `[Pedido ${numero} · ${TIPO_EMAIL[tipo]}] ${cliente.nome} · ${itens.length} ${itens.length === 1 ? "item" : "itens"} · ${formatarNumero(totalPecas(itens))} un`,
     corpo: [
       `SOLICITAÇÃO ${numero} — TIPO: ${TIPO_EMAIL[tipo]}`,
       `Data: ${hojeFormatado()}`,
@@ -326,8 +325,6 @@ function montarEmail({ numero, rep, cliente, novo, tipo, itens, anexos }) {
       ...(novo
         ? blocoCadastroClienteNovo(cliente)
         : [`Cliente: ${cliente.razaoSocial || cliente.nome} (CNPJ: ${cliente.cnpj || "—"})`]),
-      "",
-      `Segue em anexo o espelho do pedido em PDF (${anexos.pdf}) com a discriminação dos itens${anexoTxt}.`,
     ].join("\n"),
   };
 }
@@ -340,10 +337,17 @@ const rotuloNumero = (n) => `#${pad4(n)}`;
 const doisDigitos = (n) => String(n).padStart(2, "0");
 const dataBR = (d) => `${doisDigitos(d.getDate())}/${doisDigitos(d.getMonth() + 1)}/${d.getFullYear()}`;
 const horaBR = (d) => `${doisDigitos(d.getHours())}:${doisDigitos(d.getMinutes())}:${doisDigitos(d.getSeconds())}`;
-const TIPO_PEDIDO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção", misto: "Amostra + Produção" };
-const tipoDoPedido = (itens) => {
-  const tipos = new Set(itens.map((i) => i.tipo));
-  return tipos.size > 1 ? "misto" : [...tipos][0];
+const TIPO_PEDIDO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção" };
+// Uma solicitação é 100% Amostra ou 100% Pedido de Produção (a trava fica na adição ao carrinho)
+const tipoDoPedido = (itens) => itens[0]?.tipo;
+const MSG_MISTURA = {
+  amostra: "Não é permitido misturar Amostra e Pedido de Produção na mesma solicitação. Finalize ou limpe o carrinho atual antes de mudar de tipo.",
+  producao: "Este pedido já contém peças de Produção. Não é permitido adicionar amostras nesta solicitação.",
+};
+// Mensagem de bloqueio quando o tipo novo difere do tipo já presente no carrinho (null = pode adicionar)
+const conflitoDeTipo = (lista, tipoNovo) => {
+  const existente = lista[0]?.tipo;
+  return existente && existente !== tipoNovo ? MSG_MISTURA[existente] : null;
 };
 // Dias até a exclusão definitiva (política de retenção de 30 dias corridos)
 const diasParaExpirar = (criadoEm) =>
@@ -386,7 +390,7 @@ function descricaoErp(i) {
 
 // Campo do TXT: o "#" é o separador, então não pode aparecer dentro de um valor
 const campoTxt = (v) => String(v ?? "").replace(/[#\r\n]+/g, " ").trim();
-const OBSERVACAO_TXT = { amostra: "AMOSTRA", producao: "", misto: "AMOSTRA E PRODUCAO" };
+const OBSERVACAO_TXT = { amostra: "AMOSTRA", producao: "" };
 
 // Arquivo de importação homologado no ERP (SJSYS SOFTWARE, layout V0002), linhas terminadas em "#" e CRLF
 function gerarTxtSjsys(pedido) {
@@ -2108,17 +2112,19 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
   );
 }
 
-function ModalPeca({ produto, semCliente = false, onFechar, onAdicionar }) {
+function ModalPeca({ produto, semCliente = false, tipoExistente = null, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
   const [comAfra, setComAfra] = useState(false);
   const [afra, setAfra] = useState(null);
-  const [tipo, setTipo] = useState("amostra");
-  const [qtd, setQtd] = useState(REGRAS.amostra.min);
-  const [texto, setTexto] = useState(String(REGRAS.amostra.min));
+  // Com carrinho em andamento, o tipo já vem travado no tipo dos itens existentes
+  const [tipo, setTipo] = useState(tipoExistente || "amostra");
+  const [qtd, setQtd] = useState(REGRAS[tipoExistente || "amostra"].min);
+  const [texto, setTexto] = useState(String(REGRAS[tipoExistente || "amostra"].min));
   const [aviso, setAviso] = useState("");
   const [tremer, setTremer] = useState(0);
 
   const regra = REGRAS[tipo];
+  const conflitoTipo = !!tipoExistente && tipo !== tipoExistente;
   const arrastar = useArrastarParaFechar(onFechar);
   const descricaoAcabamento = textoAcabamento(acabamentoId);
 
@@ -2360,8 +2366,9 @@ const isCorrente = ehCorrente(produto);
                     type="button"
                     role="radio"
                     aria-checked={tipo === t}
+                    disabled={!!tipoExistente && t !== tipoExistente}
                     onClick={() => trocarTipo(t)}
-                    className={`mz-focus min-h-[44px] rounded-lg px-3 text-sm font-bold transition ${
+                    className={`mz-focus min-h-[44px] rounded-lg px-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
                       tipo === t ? "bg-[color:var(--mz-surface)] text-[color:var(--mz-ink)] shadow-[var(--mz-shadow)]" : C.muted
                     }`}
                   >
@@ -2369,6 +2376,11 @@ const isCorrente = ehCorrente(produto);
                   </button>
                 ))}
               </div>
+              {tipoExistente && (
+                <p className="mt-2 rounded-md bg-[color:var(--mz-accent-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--mz-accent)]" role="note">
+                  Carrinho em andamento com itens de {tipoExistente === "amostra" ? "Amostra" : "Produção"}.
+                </p>
+              )}
               <p className={`mt-2 text-xs ${C.muted}`}>
                 Mínimo de <b className="text-[color:var(--mz-ink)]">{regra.min} peças</b>
                 {regra.passo > 1 ? `, em lotes de ${regra.passo}` : ""} · prazo estimado {PRAZO[tipo]}.
@@ -2426,7 +2438,7 @@ const isCorrente = ehCorrente(produto);
           {semCliente && <p className={`w-full text-xs ${C.muted} sm:order-last`}>Modo Apresentação: ao adicionar, você escolhe o cliente e a peça entra no pedido dele.</p>}
           <button
     type="button"
-    disabled={!valido}
+    disabled={!valido || conflitoTipo}
     onClick={() => onAdicionar({
     ref: produto.ref,
     acabamento: acabamentoId,
@@ -2919,7 +2931,7 @@ function TelaHistorico({ rep, historicoLocal, onVoltar, onBaixarTxt, onBaixarPdf
                   </div>
                   <div>
                     <dt className={C.muted}>Tipo</dt>
-                    <dd className="font-semibold">{p.tipo === "producao" ? "Produção" : p.tipo === "misto" ? "Amostra + Produção" : "Amostra"}</dd>
+                    <dd className="font-semibold">{p.tipo === "producao" ? "Produção" : "Amostra"}</dd>
                   </div>
                   <div>
                     <dt className={C.muted}>Peças</dt>
@@ -3073,9 +3085,10 @@ export default function MetalizaApp() {
     setModo("atendimento");
     setEscolhendoCliente(false);
     if (pendente) {
-      adicionarPara(c.id, pendente);
+      // O cliente escolhido pode já ter carrinho do outro tipo: aí a peça pendente não entra
+      const erro = adicionarPara(c.id, pendente);
       const prod = PRODUTOS.find((x) => x.ref === pendente.ref);
-      setToast(`Atendendo ${c.nome} · Adicionado: ${linhaPedido(prod, pendente)}`);
+      setToast(erro ? `Atendendo ${c.nome} · Peça não adicionada. ${erro}` : `Atendendo ${c.nome} · Adicionado: ${linhaPedido(prod, pendente)}`);
       setPendente(null);
     } else {
       setToast(`Atendendo ${c.nome} · Pedido liberado.`);
@@ -3134,7 +3147,10 @@ export default function MetalizaApp() {
     window.scrollTo?.(0, 0);
   };
 
-const adicionarPara = (clienteId, novo) => {
+  // Devolve a mensagem de bloqueio (tipo diferente do carrinho) ou null quando o item entrou
+  const adicionarPara = (clienteId, novo) => {
+    const erro = conflitoDeTipo(itensPorCliente[clienteId] || [], novo.tipo);
+    if (erro) return erro;
     const chave = [
       novo.ref,
       novo.acabamento,
@@ -3152,6 +3168,7 @@ const adicionarPara = (clienteId, novo) => {
         : [...lista, { ...novo, chave }];
       return { ...m, [clienteId]: nova };
     });
+    return null;
   };
 
 
@@ -3164,7 +3181,11 @@ const adicionarPara = (clienteId, novo) => {
       setEscolhendoCliente(true);
       return;
     }
-    adicionarPara(cliente.id, novo);
+    const erro = adicionarPara(cliente.id, novo);
+    if (erro) {
+      setToast(erro);
+      return;
+    }
     const prod = PRODUTOS.find((x) => x.ref === novo.ref);
     setToast(`Adicionado (${TIPO_LABEL[novo.tipo]}): ${linhaPedido(prod, novo)}`);
   };
@@ -3257,7 +3278,6 @@ const adicionarPara = (clienteId, novo) => {
         novo,
         tipo,
         itens: itensApp,
-        anexos: { pdf: nomeArquivoPdf(pedido), txt: importacao ? nomeArquivoTxt(pedido) : null },
       });
       pedido.txt = importacao ? gerarTxtSjsys(pedido) : null;
 
@@ -3382,7 +3402,7 @@ const adicionarPara = (clienteId, novo) => {
             </div>
           )}
 
-          {peca && <ModalPeca produto={peca} semCliente={!cliente} onFechar={() => setPeca(null)} onAdicionar={adicionar} />}
+          {peca && <ModalPeca produto={peca} semCliente={!cliente} tipoExistente={cliente ? itens[0]?.tipo : null} onFechar={() => setPeca(null)} onAdicionar={adicionar} />}
           {pedidoAberto && cliente && (
             <PainelPedido
               cliente={cliente}

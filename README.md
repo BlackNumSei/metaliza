@@ -123,6 +123,8 @@ Rode no SQL Editor, nesta ordem (os dois scripts podem ser executados de novo se
 
 3. `supabase/migrations/20261023120000_clientes.sql`: tabela permanente `clientes` (fora da purga de 30 dias), compartilhada entre os representantes, e nova versão de `registrar_pedido`, que devolve `cliente_novo` e marca `ultimo_pedido_em`.
 
+4. `supabase/migrations/20261023150000_pedido_sem_tipo_misto.sql`: o tipo do pedido passa a ser só `amostra` ou `producao`.
+
 Com login real, a lista de clientes vem da tabela `clientes` e o cadastro grava direto nela (CNPJ só com dígitos, único). Se o banco falhar no cadastro, o cliente fica no aparelho e entra na tabela no 1º pedido. Cliente novo é quem ainda não tem `ultimo_pedido_em`: só ele leva os dados cadastrais no e-mail.
 
 O de-para usa o CNPJ (só dígitos) e a chave `REF|COR|AFRA[|ELOS|PONTEIRA]`, sem o tipo: a mesma peça como amostra ou produção tem o mesmo código. Os códigos não são apagados pela purga.
@@ -142,14 +144,21 @@ Sem Supabase (ou no acesso de demonstração), a numeração e o de-para ficam g
   ITEM#0002#CORRENTE METALIZA CR 101 NÍQUEL · 45 ELOS COM PONTEIRA#NÍQUEL##100#0#2#
   ```
 
-  `OBS` sai `AMOSTRA`, vazio (produção) ou `AMOSTRA E PRODUCAO` (pedido misto).
+  `OBS` sai `AMOSTRA` ou vazio (produção).
 - `Pedido_[NUMERO]_[CLIENTE].pdf`: espelho A4 (jsPDF + autoTable) com cliente, representante, itens com o código SJSYS e totais.
 
 Os demais representantes baixam só o PDF (sem o TXT). O PDF fica disponível para todos em Meus Pedidos.
 
+### Um tipo por solicitação
+
+Cada solicitação é 100% Amostra ou 100% Pedido de Produção:
+
+- **Na peça:** com carrinho em andamento, o tipo já vem no tipo dos itens, o outro fica desabilitado e aparece "Carrinho em andamento com itens de Amostra/Produção".
+- **Na adição:** um item do outro tipo é recusado, com aviso. Isso vale também no modo apresentação, quando o cliente escolhido já tem carrinho do outro tipo.
+
 ### E-mail ao PCP
 
-O corpo é enxuto, sem a lista de peças:
+O corpo traz só o pedido e o cliente, sem lista de peças e sem texto sobre anexos:
 
 ```
 SOLICITAÇÃO #0002 — TIPO: AMOSTRA
@@ -157,14 +166,7 @@ Data: 22/10/2026
 Representante: Carlos Mendes (REP-014)
 
 Cliente: Bella Passo Indústria de Calçados Ltda. (CNPJ: 12.847.365/0001-35)
-
-Segue em anexo o espelho do pedido em PDF (Pedido_2_Calcados_Bella_Passo.pdf) com a discriminação dos itens e o arquivo de importação do SJSYS (PedC2_12847365000135.txt).
 ```
 
-- **Tipo:** `AMOSTRA`, `PEDIDO DE PRODUÇÃO` ou `AMOSTRA E PRODUÇÃO`.
-- **Cliente novo** (sem pedido anterior): no lugar da linha `Cliente:`, vai o bloco `DADOS CADASTRAIS (CLIENTE NOVO)` com razão social, fantasia, CNPJ, IE, endereço, CEP, cidade/UF, contato, telefone e e-mail. Depois do primeiro pedido, o cliente passa a sair só com razão social e CNPJ.
-- **Anexos:** a última linha cita o PDF e, só para os representantes liberados, o TXT.
-
-### Meus Pedidos
-
-No menu. Lista os pedidos do representante dos últimos 30 dias, com o contador "Expira em X dias", e permite baixar de novo o PDF e (para os liberados) o TXT.
+- **Tipo:** `AMOSTRA` ou `PEDIDO DE PRODUÇÃO`, também no assunto: `[Pedido #0002 · AMOSTRA] Calçados Bella Passo · 1 item · 10 un`.
+- **Cliente novo** (sem pedido anterior): no lugar da linha `Cliente:`, vai o bloco `DADOS CADASTRAIS (CLIENTE NOVO)` com razão social, fantasia, CNPJ, IE, endereço, CEP, cidade/UF, contato, telefone e e-mail.
