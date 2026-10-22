@@ -23,6 +23,10 @@ const REPRESENTANTE_DEMO = {
   codigo: "REP-014",
 };
 
+// Representantes de alto volume liberados para gerar o arquivo de importação do ERP (SJSYS)
+const REPS_IMPORTACAO = ["carlos@metaliza.com.br", "marcos@metaliza.com.br", "rep3@metaliza.com.br"];
+const podeGerarImportacao = (rep) => REPS_IMPORTACAO.includes(rep?.email?.trim().toLowerCase());
+
 // Clientes de demonstração já com o cadastro PJ completo (dados fictícios; CNPJs com dígitos verificadores válidos)
 const CLIENTES_INICIAIS = [
   {

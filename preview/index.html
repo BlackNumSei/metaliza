@@ -24,6 +24,11 @@ const REPRESENTANTE_DEMO = {
   senha: "demo123",
   codigo: "REP-014"
 };
+const REPS_IMPORTACAO = ["carlos@metaliza.com.br", "marcos@metaliza.com.br", "rep3@metaliza.com.br"];
+const podeGerarImportacao = (rep) => {
+  var _a;
+  return REPS_IMPORTACAO.includes((_a = rep == null ? void 0 : rep.email) == null ? void 0 : _a.trim().toLowerCase());
+};
 const CLIENTES_INICIAIS = [
   {
     id: "c1",
