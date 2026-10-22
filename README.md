@@ -76,10 +76,10 @@ Não existe mais seleção separada de Parte de Cima / Parte de Baixo: peças de
 
 ### Cartela do Supabase (tabela `cores`)
 
-Com Supabase, o app carrega as cores ativas ao abrir e de novo após o login: `from("cores").select("*").eq("ativo", true).order("nome")`. Colunas usadas: `nome` e `codigos` (array: um código na cor solo, dois nos bicolores; ex.: `nome = "002 CORAL/ 293 OURO LIGHT"`, `codigos = {002,293}`). A leitura precisa estar liberada pelo RLS da tabela. Sem Supabase, com erro ou com a tabela vazia, vale a cartela de demonstração.
+Com Supabase, o app carrega as cores ativas ao abrir e de novo após o login (`select("*").eq("ativo", true).order("nome")`). Como a API devolve no máximo 1.000 linhas por consulta, a leitura é paginada com `.range()` em lotes de 1.000 até o fim da tabela (as 2.920 cores entram inteiras). Colunas usadas: `nome` e `codigos` (`TEXT[]`: um código na cor solo, dois nos bicolores; ex.: `nome = "002 CORAL/ 293 OURO LIGHT"`, `codigos = {002,293}`). Sem Supabase, com erro ou com a tabela vazia, vale a cartela de demonstração.
 
-- **Busca no modal:** por nome ou por código dentro de `codigos` (aceita com ou sem zeros à esquerda). `293` traz a cor solo e todos os bicolores com 293; `002 293` traz só os bicolores com os dois. Cores solo vêm antes dos bicolores. Um único resultado já é selecionado.
-- **Lista:** no máximo 40 cores, com rolagem própria.
+- **Seleção:** no modal da peça, o campo "Cor do Acabamento" mostra a cor escolhida; "Trocar" abre a tela cheia **Selecionar Acabamento** (cabeçalho fixo com busca, botão de limpar e contador; lista vertical rolável, uma cor por linha, com bolinha, códigos em pílulas e nome completo). Tocar na cor seleciona, fecha a tela e volta ao modal.
+- **Busca, sem limite de resultados:** texto procura no nome; número procura no início de cada código de `codigos` (zeros à esquerda opcionais). `293` traz a cor solo e todos os bicolores com 293 (nunca o 1293); `002 293` traz só os que têm os dois. Código exato primeiro, solo antes de bicolor.
 - **Cor exata:** código e nome da cor escolhida são gravados no item ao adicionar e vão assim para o TXT e para o PDF (ex.: `[002/293] 002 CORAL/ 293 OURO LIGHT`).
 - **Padrão:** Ouro Light solo, se existir na tabela.
 

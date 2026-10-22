@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 
 /* ------------------------------------------------------------------
@@ -202,29 +202,52 @@ function registrarAcabamentos(lista) {
 }
 registrarAcabamentos(ACABAMENTOS_DEMO);
 
-// Busca no modal da peça: por código (só dentro de "codigos", com ou sem zeros à esquerda) ou por nome.
-// "293" traz a cor solo 293 e todos os bicolores com 293 (nunca 1293). Enquanto o código está incompleto
-// ("29"), valem os códigos que começam assim. Ordem: solo antes de bicolor, depois o nome.
-const LIMITE_CORES_LISTA = 40;
+// Busca de cores, sem limite de resultados:
+// - texto ("ouro", "coral"): o nome do acabamento contém o termo (sem diferenciar acento/maiúscula);
+// - número ("293", "29", "2"): algum código de "codigos" é igual ou começa com o número
+//   (zeros à esquerda opcionais: "2" encontra "002"). Só o início do código conta: "293" nunca traz o 1293.
+// Vários termos ("002 293") precisam bater todos. Ordem: código exato, solo antes de bicolor, nome.
 const semZerosEsquerda = (c) => c.replace(/^0+(?=\d)/, "");
+const nomeDeBusca = (a) => (a._busca ??= semAcento(a.nome));
+const codigoComeca = (c, p) => c.startsWith(p) || (!p.startsWith("0") && semZerosEsquerda(c).startsWith(p));
 const codigoIgual = (c, p) => c === p || semZerosEsquerda(c) === semZerosEsquerda(p);
 function filtrarAcabamentos(lista, termo) {
   const palavras = semAcento(termo).split(/\s+/).filter(Boolean);
   if (!palavras.length) return lista.filter((a) => !a.oculta);
-  // Para cada número digitado: se existe código exato na lista, só ele vale; senão, vale o prefixo
-  const exato = Object.fromEntries(
-    palavras.filter((p) => /^\d+$/.test(p)).map((p) => [p, lista.some((a) => a.codigos.some((c) => codigoIgual(c, p)))])
-  );
+  const numeros = palavras.filter((p) => /^\d+$/.test(p));
   const casa = (a, p) => {
     if (/^\d+$/.test(p)) {
-      if (!a.codigos.length) return semAcento(a.nome).split(/[^0-9]+/).includes(p);
-      return exato[p] ? a.codigos.some((c) => codigoIgual(c, p)) : a.codigos.some((c) => c.startsWith(p));
+      if (a.codigos.length) return a.codigos.some((c) => codigoComeca(c, p));
+      return nomeDeBusca(a).split(/[^0-9]+/).some((c) => codigoComeca(c, p));
     }
-    return semAcento(a.nome).includes(p);
+    return nomeDeBusca(a).includes(p);
   };
+  const exato = (a) => numeros.length > 0 && numeros.every((p) => a.codigos.some((c) => codigoIgual(c, p)));
   return lista
     .filter((a) => palavras.every((p) => casa(a, p)))
-    .sort((x, y) => x.codigos.length - y.codigos.length || x.nome.localeCompare(y.nome, "pt-BR"));
+    .map((a) => [a, exato(a) ? 0 : 1])
+    .sort((x, y) => x[1] - y[1] || x[0].codigos.length - y[0].codigos.length || x[0].nome.localeCompare(y[0].nome, "pt-BR"))
+    .map(([a]) => a);
+}
+
+// Lê a tabela "cores" inteira em lotes de 1.000 (o Supabase devolve no máximo 1.000 linhas por consulta)
+const LOTE_CORES = 1000;
+async function carregarTodasAsCores(sb) {
+  const linhas = [];
+  for (let de = 0; de < 100 * LOTE_CORES; de += LOTE_CORES) {
+    const { data, error } = await sb.from("cores").select("*").eq("ativo", true).order("nome").range(de, de + LOTE_CORES - 1);
+    if (error) throw error;
+    linhas.push(...(data || []));
+    if (!data || data.length < LOTE_CORES) break;
+  }
+  // Sem duplicadas caso a ordem mude entre um lote e outro
+  const vistas = new Set();
+  return linhas.filter((r) => {
+    const chave = r.id != null ? `id:${r.id}` : `${r.nome}|${(r.codigos || []).join(",")}`;
+    if (vistas.has(chave)) return false;
+    vistas.add(chave);
+    return true;
+  });
 }
 
 // Afra: só para Enfeites e Fivelas (não existe para Passadores e Ponteiras)
@@ -834,6 +857,7 @@ const ESTILOS = `
 .mz-slide[aria-hidden="true"] { opacity: 0; visibility: hidden; }
 @keyframes mz-in { from { opacity: .4; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .mz-in { animation: mz-in .22s ease-out; }
+.mz-linha-cor { content-visibility: auto; contain-intrinsic-size: auto 60px; }
 @keyframes mz-sheet { from { transform: translateY(100%); } to { transform: none; } }
 .mz-sheet { animation: mz-sheet .32s cubic-bezier(.2,.8,.2,1); }
 @media (min-width: 640px) { .mz-sheet { animation: mz-in .22s ease-out; } }
@@ -2071,107 +2095,157 @@ function CardProduto({ produto: p, ativas, noPedido, onAbrir }) {
 
 /* ----------------------------- tela 4: modal da peça ----------------------------- */
 
-function BotaoCor({ a, ativo, titulo, onClick, largo = false }) {
+// Códigos em pílulas separadas: [293] na cor solo, [002] [293] no bicolor
+function PilulasCodigo({ a, tamanho = "text-xs" }) {
+  const codigos = a.codigos.length ? a.codigos : [a.codigo];
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={ativo}
-      aria-label={`${titulo}: ${rotuloAcabamentoComCodigo(a.id)}`}
-      className={`mz-focus flex min-h-[56px] w-full min-w-0 items-center gap-2 rounded-xl border-2 p-2 transition active:scale-95 ${largo ? "text-left" : "flex-col text-center"} ${
-        ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] bg-white hover:border-[color:var(--mz-ink)]"
-      }`}
-    >
-      <span className="relative shrink-0">
-        <Swatch acabamento={a} size={largo ? "h-9 w-9" : "h-10 w-10"} />
-        {ativo && (
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--mz-accent)] text-[color:var(--mz-on-accent)]">
-            <Icone.check className="h-3 w-3" />
-          </span>
-        )}
-      </span>
-      <span className="min-w-0 leading-tight">
-        <span className={`block font-semibold ${largo ? "text-xs" : "text-[11px]"}`}>
-          <span className="mz-mono mr-0.5 rounded bg-[color:var(--mz-ink)] px-1 text-[10px] font-bold text-[color:var(--mz-bg)]">{a.codigo}</span> {a.nome}
+    <span className="flex shrink-0 flex-wrap gap-1">
+      {codigos.map((c, k) => (
+        <span key={`${c}-${k}`} className={`mz-mono rounded-md bg-[color:var(--mz-ink)] px-1.5 py-0.5 font-bold leading-none text-white ${tamanho}`}>
+          {c}
         </span>
-        {largo && a.detalhe && <span className="block text-[11px] text-[color:var(--mz-muted)]">{a.detalhe}</span>}
-      </span>
-    </button>
+      ))}
+    </span>
   );
 }
 
-function SeletorAcabamento({ titulo, valor, onChange, idBase, acabamentos }) {
+// Campo do modal da peça: mostra a cor escolhida e abre a tela cheia de busca
+function SeletorAcabamento({ titulo, valor, onAbrir, idBase }) {
   const atual = acabamentoPorId(valor);
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="mz-eyebrow" id={`${idBase}-rotulo`}>{titulo}</p>
+      <button
+        type="button"
+        onClick={onAbrir}
+        aria-labelledby={`${idBase}-rotulo ${idBase}-atual`}
+        aria-haspopup="dialog"
+        className="mz-focus flex min-h-[64px] w-full items-center gap-3 rounded-2xl border-2 border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)] px-3 py-2.5 text-left transition hover:bg-white active:scale-[.99]"
+      >
+        <Swatch acabamento={atual} size="h-10 w-10" />
+        <span className="flex min-w-0 flex-1 flex-col gap-1" id={`${idBase}-atual`}>
+          <PilulasCodigo a={atual} />
+          <span className="break-words text-sm font-bold leading-snug">{atual.nome}</span>
+        </span>
+        <span className={`flex shrink-0 items-center gap-1 text-sm font-bold ${C.accentText}`}>
+          <Icone.busca className="h-4 w-4" /> Trocar
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// Tela cheia "Selecionar Acabamento": busca por código ou nome e lista vertical com TODOS os resultados
+function TelaSelecaoCor({ acabamentos, valor, onSelecionar, onFechar }) {
   const [termo, setTermo] = useState("");
-  const encontrados = useMemo(() => filtrarAcabamentos(acabamentos, termo), [acabamentos, termo]);
-  const visiveis = encontrados.slice(0, LIMITE_CORES_LISTA);
+  const inputRef = useRef(null);
+  // A lista acompanha a digitação sem travar o campo, mesmo com milhares de cores
+  const termoAdiado = useDeferredValue(termo);
+  const encontrados = useMemo(() => filtrarAcabamentos(acabamentos, termoAdiado), [acabamentos, termoAdiado]);
+  const atualizando = termo !== termoAdiado;
 
-  const buscar = (v) => {
-    const texto = v.slice(0, 40);
-    setTermo(texto);
-    // Um único resultado (ex.: "1554"): já seleciona
-    const r = filtrarAcabamentos(acabamentos, texto);
-    if (texto.trim() && r.length === 1 && r[0].id !== valor) onChange(r[0].id);
-  };
+  useEffect(() => {
+    inputRef.current?.focus();
+    // Esc fecha só esta tela (o modal da peça continua aberto)
+    const esc = (e) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      onFechar();
+    };
+    window.addEventListener("keydown", esc, true);
+    return () => window.removeEventListener("keydown", esc, true);
+  }, [onFechar]);
 
-  const ajuda = !termo.trim()
-    ? encontrados.length > LIMITE_CORES_LISTA
-      ? `Mostrando ${LIMITE_CORES_LISTA} de ${encontrados.length} cores. Digite o código ou o nome para filtrar.`
-      : "Digite o código (ex.: 293) ou o nome da cor."
-    : encontrados.length === 0
-    ? `Nenhuma cor com "${termo.trim()}".`
-    : encontrados.length > LIMITE_CORES_LISTA
-    ? `${encontrados.length} cores encontradas; mostrando as ${LIMITE_CORES_LISTA} primeiras. Refine a busca.`
-    : `${encontrados.length} ${encontrados.length === 1 ? "cor encontrada" : "cores encontradas"}.`;
+  const t = termoAdiado.trim();
+  const n = encontrados.length;
+  const contador = t
+    ? `${formatarNumero(n)} ${n === 1 ? "acabamento encontrado" : "acabamentos encontrados"} para '${t}'`
+    : `${formatarNumero(n)} acabamentos na cartela`;
 
   return (
-    <fieldset className="flex flex-col gap-3">
-      <legend className="mz-eyebrow mb-3">
-        {titulo} · <span className="text-[color:var(--mz-ink)]">[{atual.codigo}] {atual.nome}</span>
-      </legend>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={`${idBase}-codigo`} className="text-xs font-semibold">Buscar cor por código ou nome</label>
-        <div className="relative w-full sm:max-w-[20rem]">
-          <Icone.busca className={`pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}`} />
-          <input
-            id={`${idBase}-codigo`}
-            type="search"
-            autoComplete="off"
-            className={`${C.input} pl-10 font-semibold ${termo.trim() && !encontrados.length ? "border-[color:var(--mz-warn)]" : ""}`}
-            placeholder="Código ou nome (ex.: 293 ou coral)"
-            aria-describedby={`${idBase}-codigo-ajuda`}
-            aria-controls={`${idBase}-lista`}
-            value={termo}
-            onChange={(e) => buscar(e.target.value)}
-          />
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="mz-cores-titulo"
+      className="fixed inset-0 z-[65] flex flex-col bg-white sm:inset-y-6 sm:left-1/2 sm:w-[40rem] sm:-translate-x-1/2 sm:rounded-3xl sm:shadow-2xl"
+    >
+      <div className="border-b border-[color:var(--mz-line)] bg-white px-4 pb-3 pt-[max(12px,env(safe-area-inset-top,0px))] sm:rounded-t-3xl sm:px-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="mz-cores-titulo" className="mz-display text-lg font-bold">Selecionar Acabamento</h2>
+          <button type="button" onClick={onFechar} className={`${C.fechar} -mr-2`} aria-label="Fechar seleção de acabamento">
+            <X className="h-6 w-6" strokeWidth={2} />
+          </button>
         </div>
-        <span
-          id={`${idBase}-codigo-ajuda`}
-          aria-live="polite"
-          className={`text-xs ${termo.trim() && !encontrados.length ? "font-semibold text-[color:var(--mz-warn)]" : C.muted}`}
-        >
-          {ajuda}
-        </span>
+        <label htmlFor="mz-cor-codigo" className="sr-only">Buscar acabamento por código ou nome</label>
+        <div className="relative mt-2">
+          <Icone.busca className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${C.muted}`} />
+          <input
+            ref={inputRef}
+            id="mz-cor-codigo"
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            className={`${C.input} min-h-[56px] pl-12 pr-12 text-lg font-semibold`}
+            placeholder="Código ou nome (ex.: 293, coral)"
+            value={termo}
+            onChange={(e) => setTermo(e.target.value.slice(0, 40))}
+            aria-describedby="mz-cores-contador"
+          />
+          {termo && (
+            <button
+              type="button"
+              onClick={() => {
+                setTermo("");
+                inputRef.current?.focus();
+              }}
+              className="mz-focus absolute right-1.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-[color:var(--mz-ink-2)] hover:bg-[color:var(--mz-sunken)]"
+              aria-label="Limpar busca"
+            >
+              <X className="h-5 w-5" strokeWidth={2} />
+            </button>
+          )}
+        </div>
+        <p id="mz-cores-contador" aria-live="polite" className={`mt-2 text-sm font-semibold ${n === 0 ? "text-[color:var(--mz-warn)]" : C.muted} ${atualizando ? "opacity-60" : ""}`}>
+          {n === 0 && t ? `Nenhum acabamento encontrado para '${t}'` : contador}
+        </p>
       </div>
 
-      {visiveis.length > 0 && (
-        <ul
-          id={`${idBase}-lista`}
-          className="grid max-h-[22rem] grid-cols-1 gap-2 overflow-y-auto overscroll-contain rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-soft)] p-2 sm:grid-cols-2"
-        >
-          {visiveis.map((a) => (
-            <li key={a.id} className="min-w-0">
-              <BotaoCor a={a} ativo={a.id === valor} titulo={titulo} largo onClick={() => onChange(a.id)} />
-            </li>
-          ))}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[color:var(--mz-soft)] px-3 py-3 pb-[max(12px,env(safe-area-inset-bottom,0px))] sm:rounded-b-3xl sm:px-4">
+        <ul id="mz-cor-lista" className="flex flex-col gap-2">
+          {encontrados.map((a) => {
+            const ativo = a.id === valor;
+            return (
+              <li key={a.id} className="mz-linha-cor">
+                <button
+                  type="button"
+                  onClick={() => onSelecionar(a.id)}
+                  aria-pressed={ativo}
+                  className={`mz-focus flex min-h-[56px] w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left transition active:scale-[.99] ${
+                    ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-transparent bg-white hover:border-[color:var(--mz-line)]"
+                  }`}
+                >
+                  <Swatch acabamento={a} size="h-9 w-9" />
+                  <PilulasCodigo a={a} />
+                  <span className="min-w-0 flex-1 break-words text-[15px] font-semibold leading-snug">{a.nome}</span>
+                  {ativo && (
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-accent)] text-white" aria-label="Selecionado">
+                      <Icone.check className="h-4 w-4" />
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
-      )}
-    </fieldset>
+      </div>
+    </div>
   );
 }
 
 function ModalPeca({ produto, acabamentos, semCliente = false, tipoExistente = null, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
+  const [escolhendoCor, setEscolhendoCor] = useState(false);
   const [comAfra, setComAfra] = useState(false);
   const [afra, setAfra] = useState(null);
   // Com carrinho em andamento, o tipo já vem travado no tipo dos itens existentes
@@ -2288,7 +2362,7 @@ const isCorrente = ehCorrente(produto);
 
           {/* Configuração */}
           <div className="flex flex-col gap-6 p-4 pb-6 sm:p-5">
-            <SeletorAcabamento titulo="Cor do Acabamento" idBase="mz-cor" acabamentos={acabamentos} valor={acabamentoId} onChange={setAcabamentoId} />
+            <SeletorAcabamento titulo="Cor do Acabamento" idBase="mz-cor" valor={acabamentoId} onAbrir={() => setEscolhendoCor(true)} />
             {temAfra(produto) && (
               <fieldset>
                 <legend className="mz-eyebrow mb-3">Afra</legend>
@@ -2518,6 +2592,18 @@ const isCorrente = ehCorrente(produto);
   </button>
         </div>
       </div>
+      {/* Fora do painel animado (transform), para a tela de cores ocupar a tela inteira */}
+      {escolhendoCor && (
+        <TelaSelecaoCor
+          acabamentos={acabamentos}
+          valor={acabamentoId}
+          onSelecionar={(id) => {
+            setAcabamentoId(id);
+            setEscolhendoCor(false);
+          }}
+          onFechar={() => setEscolhendoCor(false)}
+        />
+      )}
     </div>
   );
 }
@@ -3066,22 +3152,15 @@ export default function MetalizaApp() {
     const sb = obterSupabase();
     if (!sb) return undefined;
     let ativo = true;
-    sb.from("cores")
-      .select("*")
-      .eq("ativo", true)
-      .order("nome")
-      .then(({ data, error }) => {
+    carregarTodasAsCores(sb)
+      .then((linhas) => {
         if (!ativo) return;
-        if (error) {
-          console.error("Erro ao buscar cores do Supabase:", error.message);
-          return;
-        }
-        const lista = (data || []).map(corDoBanco).filter((a) => a.nome);
+        const lista = linhas.map(corDoBanco).filter((a) => a.nome);
         if (!lista.length) return;
         registrarAcabamentos(lista);
         setAcabamentos(lista);
       })
-      .catch((err) => console.error("Falha ao comunicar com Supabase (cores):", err));
+      .catch((err) => console.error("Erro ao buscar cores do Supabase:", err?.message || err));
     return () => {
       ativo = false;
     };

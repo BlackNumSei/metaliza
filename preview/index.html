@@ -12,7 +12,7 @@
 <style>html,body{height:100%}body{background:#FFFFFF}</style>
 <div id="root"></div>
 <script>
-const { useEffect, useMemo, useRef, useState } = React;
+const { useDeferredValue, useEffect, useMemo, useRef, useState } = React;
 const { ChevronLeft, ChevronRight, Menu, X } = LucideReact;
 const REGRAS = {
   amostra: { min: 10, passo: 1, alerta: "Quantidade m\xEDnima de amostra: 10 pe\xE7as." },
@@ -190,23 +190,43 @@ function registrarAcabamentos(lista) {
   if (lista.length) ACABAMENTO_PADRAO = escolherPadrao(lista);
 }
 registrarAcabamentos(ACABAMENTOS_DEMO);
-const LIMITE_CORES_LISTA = 40;
 const semZerosEsquerda = (c) => c.replace(/^0+(?=\d)/, "");
+const nomeDeBusca = (a) => {
+  var _a;
+  return (_a = a._busca) != null ? _a : a._busca = semAcento(a.nome);
+};
+const codigoComeca = (c, p) => c.startsWith(p) || !p.startsWith("0") && semZerosEsquerda(c).startsWith(p);
 const codigoIgual = (c, p) => c === p || semZerosEsquerda(c) === semZerosEsquerda(p);
 function filtrarAcabamentos(lista, termo) {
   const palavras = semAcento(termo).split(/\s+/).filter(Boolean);
   if (!palavras.length) return lista.filter((a) => !a.oculta);
-  const exato = Object.fromEntries(
-    palavras.filter((p) => /^\d+$/.test(p)).map((p) => [p, lista.some((a) => a.codigos.some((c) => codigoIgual(c, p)))])
-  );
+  const numeros = palavras.filter((p) => /^\d+$/.test(p));
   const casa = (a, p) => {
     if (/^\d+$/.test(p)) {
-      if (!a.codigos.length) return semAcento(a.nome).split(/[^0-9]+/).includes(p);
-      return exato[p] ? a.codigos.some((c) => codigoIgual(c, p)) : a.codigos.some((c) => c.startsWith(p));
+      if (a.codigos.length) return a.codigos.some((c) => codigoComeca(c, p));
+      return nomeDeBusca(a).split(/[^0-9]+/).some((c) => codigoComeca(c, p));
     }
-    return semAcento(a.nome).includes(p);
+    return nomeDeBusca(a).includes(p);
   };
-  return lista.filter((a) => palavras.every((p) => casa(a, p))).sort((x, y) => x.codigos.length - y.codigos.length || x.nome.localeCompare(y.nome, "pt-BR"));
+  const exato = (a) => numeros.length > 0 && numeros.every((p) => a.codigos.some((c) => codigoIgual(c, p)));
+  return lista.filter((a) => palavras.every((p) => casa(a, p))).map((a) => [a, exato(a) ? 0 : 1]).sort((x, y) => x[1] - y[1] || x[0].codigos.length - y[0].codigos.length || x[0].nome.localeCompare(y[0].nome, "pt-BR")).map(([a]) => a);
+}
+const LOTE_CORES = 1e3;
+async function carregarTodasAsCores(sb) {
+  const linhas = [];
+  for (let de = 0; de < 100 * LOTE_CORES; de += LOTE_CORES) {
+    const { data, error } = await sb.from("cores").select("*").eq("ativo", true).order("nome").range(de, de + LOTE_CORES - 1);
+    if (error) throw error;
+    linhas.push(...data || []);
+    if (!data || data.length < LOTE_CORES) break;
+  }
+  const vistas = /* @__PURE__ */ new Set();
+  return linhas.filter((r) => {
+    const chave = r.id != null ? `id:${r.id}` : `${r.nome}|${(r.codigos || []).join(",")}`;
+    if (vistas.has(chave)) return false;
+    vistas.add(chave);
+    return true;
+  });
 }
 const CATEGORIAS_COM_AFRA = ["Enfeites", "Fivelas"];
 const temAfra = (produto) => CATEGORIAS_COM_AFRA.includes(produto.categoria);
@@ -717,6 +737,7 @@ const ESTILOS = `
 .mz-slide[aria-hidden="true"] { opacity: 0; visibility: hidden; }
 @keyframes mz-in { from { opacity: .4; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .mz-in { animation: mz-in .22s ease-out; }
+.mz-linha-cor { content-visibility: auto; contain-intrinsic-size: auto 60px; }
 @keyframes mz-sheet { from { transform: translateY(100%); } to { transform: none; } }
 .mz-sheet { animation: mz-sheet .32s cubic-bezier(.2,.8,.2,1); }
 @media (min-width: 640px) { .mz-sheet { animation: mz-in .22s ease-out; } }
@@ -1402,64 +1423,104 @@ function CardProduto({ produto: p, ativas, noPedido, onAbrir }) {
     ))
   ));
 }
-function BotaoCor({ a, ativo, titulo, onClick, largo = false }) {
-  return /* @__PURE__ */ React.createElement(
+function PilulasCodigo({ a, tamanho = "text-xs" }) {
+  const codigos = a.codigos.length ? a.codigos : [a.codigo];
+  return /* @__PURE__ */ React.createElement("span", { className: "flex shrink-0 flex-wrap gap-1" }, codigos.map((c, k) => /* @__PURE__ */ React.createElement("span", { key: `${c}-${k}`, className: `mz-mono rounded-md bg-[color:var(--mz-ink)] px-1.5 py-0.5 font-bold leading-none text-white ${tamanho}` }, c)));
+}
+function SeletorAcabamento({ titulo, valor, onAbrir, idBase }) {
+  const atual = acabamentoPorId(valor);
+  return /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow", id: `${idBase}-rotulo` }, titulo), /* @__PURE__ */ React.createElement(
     "button",
     {
       type: "button",
-      onClick,
-      "aria-pressed": ativo,
-      "aria-label": `${titulo}: ${rotuloAcabamentoComCodigo(a.id)}`,
-      className: `mz-focus flex min-h-[56px] w-full min-w-0 items-center gap-2 rounded-xl border-2 p-2 transition active:scale-95 ${largo ? "text-left" : "flex-col text-center"} ${ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] bg-white hover:border-[color:var(--mz-ink)]"}`
+      onClick: onAbrir,
+      "aria-labelledby": `${idBase}-rotulo ${idBase}-atual`,
+      "aria-haspopup": "dialog",
+      className: "mz-focus flex min-h-[64px] w-full items-center gap-3 rounded-2xl border-2 border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)] px-3 py-2.5 text-left transition hover:bg-white active:scale-[.99]"
     },
-    /* @__PURE__ */ React.createElement("span", { className: "relative shrink-0" }, /* @__PURE__ */ React.createElement(Swatch, { acabamento: a, size: largo ? "h-9 w-9" : "h-10 w-10" }), ativo && /* @__PURE__ */ React.createElement("span", { className: "absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--mz-accent)] text-[color:var(--mz-on-accent)]" }, /* @__PURE__ */ React.createElement(Icone.check, { className: "h-3 w-3" }))),
-    /* @__PURE__ */ React.createElement("span", { className: "min-w-0 leading-tight" }, /* @__PURE__ */ React.createElement("span", { className: `block font-semibold ${largo ? "text-xs" : "text-[11px]"}` }, /* @__PURE__ */ React.createElement("span", { className: "mz-mono mr-0.5 rounded bg-[color:var(--mz-ink)] px-1 text-[10px] font-bold text-[color:var(--mz-bg)]" }, a.codigo), " ", a.nome), largo && a.detalhe && /* @__PURE__ */ React.createElement("span", { className: "block text-[11px] text-[color:var(--mz-muted)]" }, a.detalhe))
-  );
-}
-function SeletorAcabamento({ titulo, valor, onChange, idBase, acabamentos }) {
-  const atual = acabamentoPorId(valor);
-  const [termo, setTermo] = useState("");
-  const encontrados = useMemo(() => filtrarAcabamentos(acabamentos, termo), [acabamentos, termo]);
-  const visiveis = encontrados.slice(0, LIMITE_CORES_LISTA);
-  const buscar = (v) => {
-    const texto = v.slice(0, 40);
-    setTermo(texto);
-    const r = filtrarAcabamentos(acabamentos, texto);
-    if (texto.trim() && r.length === 1 && r[0].id !== valor) onChange(r[0].id);
-  };
-  const ajuda = !termo.trim() ? encontrados.length > LIMITE_CORES_LISTA ? `Mostrando ${LIMITE_CORES_LISTA} de ${encontrados.length} cores. Digite o c\xF3digo ou o nome para filtrar.` : "Digite o c\xF3digo (ex.: 293) ou o nome da cor." : encontrados.length === 0 ? `Nenhuma cor com "${termo.trim()}".` : encontrados.length > LIMITE_CORES_LISTA ? `${encontrados.length} cores encontradas; mostrando as ${LIMITE_CORES_LISTA} primeiras. Refine a busca.` : `${encontrados.length} ${encontrados.length === 1 ? "cor encontrada" : "cores encontradas"}.`;
-  return /* @__PURE__ */ React.createElement("fieldset", { className: "flex flex-col gap-3" }, /* @__PURE__ */ React.createElement("legend", { className: "mz-eyebrow mb-3" }, titulo, " \xB7 ", /* @__PURE__ */ React.createElement("span", { className: "text-[color:var(--mz-ink)]" }, "[", atual.codigo, "] ", atual.nome)), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-1.5" }, /* @__PURE__ */ React.createElement("label", { htmlFor: `${idBase}-codigo`, className: "text-xs font-semibold" }, "Buscar cor por c\xF3digo ou nome"), /* @__PURE__ */ React.createElement("div", { className: "relative w-full sm:max-w-[20rem]" }, /* @__PURE__ */ React.createElement(Icone.busca, { className: `pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}` }), /* @__PURE__ */ React.createElement(
-    "input",
-    {
-      id: `${idBase}-codigo`,
-      type: "search",
-      autoComplete: "off",
-      className: `${C.input} pl-10 font-semibold ${termo.trim() && !encontrados.length ? "border-[color:var(--mz-warn)]" : ""}`,
-      placeholder: "C\xF3digo ou nome (ex.: 293 ou coral)",
-      "aria-describedby": `${idBase}-codigo-ajuda`,
-      "aria-controls": `${idBase}-lista`,
-      value: termo,
-      onChange: (e) => buscar(e.target.value)
-    }
-  )), /* @__PURE__ */ React.createElement(
-    "span",
-    {
-      id: `${idBase}-codigo-ajuda`,
-      "aria-live": "polite",
-      className: `text-xs ${termo.trim() && !encontrados.length ? "font-semibold text-[color:var(--mz-warn)]" : C.muted}`
-    },
-    ajuda
-  )), visiveis.length > 0 && /* @__PURE__ */ React.createElement(
-    "ul",
-    {
-      id: `${idBase}-lista`,
-      className: "grid max-h-[22rem] grid-cols-1 gap-2 overflow-y-auto overscroll-contain rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-soft)] p-2 sm:grid-cols-2"
-    },
-    visiveis.map((a) => /* @__PURE__ */ React.createElement("li", { key: a.id, className: "min-w-0" }, /* @__PURE__ */ React.createElement(BotaoCor, { a, ativo: a.id === valor, titulo, largo: true, onClick: () => onChange(a.id) })))
+    /* @__PURE__ */ React.createElement(Swatch, { acabamento: atual, size: "h-10 w-10" }),
+    /* @__PURE__ */ React.createElement("span", { className: "flex min-w-0 flex-1 flex-col gap-1", id: `${idBase}-atual` }, /* @__PURE__ */ React.createElement(PilulasCodigo, { a: atual }), /* @__PURE__ */ React.createElement("span", { className: "break-words text-sm font-bold leading-snug" }, atual.nome)),
+    /* @__PURE__ */ React.createElement("span", { className: `flex shrink-0 items-center gap-1 text-sm font-bold ${C.accentText}` }, /* @__PURE__ */ React.createElement(Icone.busca, { className: "h-4 w-4" }), " Trocar")
   ));
+}
+function TelaSelecaoCor({ acabamentos, valor, onSelecionar, onFechar }) {
+  const [termo, setTermo] = useState("");
+  const inputRef = useRef(null);
+  const termoAdiado = useDeferredValue(termo);
+  const encontrados = useMemo(() => filtrarAcabamentos(acabamentos, termoAdiado), [acabamentos, termoAdiado]);
+  const atualizando = termo !== termoAdiado;
+  useEffect(() => {
+    var _a;
+    (_a = inputRef.current) == null ? void 0 : _a.focus();
+    const esc = (e) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      onFechar();
+    };
+    window.addEventListener("keydown", esc, true);
+    return () => window.removeEventListener("keydown", esc, true);
+  }, [onFechar]);
+  const t = termoAdiado.trim();
+  const n = encontrados.length;
+  const contador = t ? `${formatarNumero(n)} ${n === 1 ? "acabamento encontrado" : "acabamentos encontrados"} para '${t}'` : `${formatarNumero(n)} acabamentos na cartela`;
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-labelledby": "mz-cores-titulo",
+      className: "fixed inset-0 z-[65] flex flex-col bg-white sm:inset-y-6 sm:left-1/2 sm:w-[40rem] sm:-translate-x-1/2 sm:rounded-3xl sm:shadow-2xl"
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "border-b border-[color:var(--mz-line)] bg-white px-4 pb-3 pt-[max(12px,env(safe-area-inset-top,0px))] sm:rounded-t-3xl sm:px-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-3" }, /* @__PURE__ */ React.createElement("h2", { id: "mz-cores-titulo", className: "mz-display text-lg font-bold" }, "Selecionar Acabamento"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: `${C.fechar} -mr-2`, "aria-label": "Fechar sele\xE7\xE3o de acabamento" }, /* @__PURE__ */ React.createElement(X, { className: "h-6 w-6", strokeWidth: 2 }))), /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-cor-codigo", className: "sr-only" }, "Buscar acabamento por c\xF3digo ou nome"), /* @__PURE__ */ React.createElement("div", { className: "relative mt-2" }, /* @__PURE__ */ React.createElement(Icone.busca, { className: `pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${C.muted}` }), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        ref: inputRef,
+        id: "mz-cor-codigo",
+        type: "text",
+        inputMode: "search",
+        enterKeyHint: "search",
+        autoComplete: "off",
+        className: `${C.input} min-h-[56px] pl-12 pr-12 text-lg font-semibold`,
+        placeholder: "C\xF3digo ou nome (ex.: 293, coral)",
+        value: termo,
+        onChange: (e) => setTermo(e.target.value.slice(0, 40)),
+        "aria-describedby": "mz-cores-contador"
+      }
+    ), termo && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        onClick: () => {
+          var _a;
+          setTermo("");
+          (_a = inputRef.current) == null ? void 0 : _a.focus();
+        },
+        className: "mz-focus absolute right-1.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-[color:var(--mz-ink-2)] hover:bg-[color:var(--mz-sunken)]",
+        "aria-label": "Limpar busca"
+      },
+      /* @__PURE__ */ React.createElement(X, { className: "h-5 w-5", strokeWidth: 2 })
+    )), /* @__PURE__ */ React.createElement("p", { id: "mz-cores-contador", "aria-live": "polite", className: `mt-2 text-sm font-semibold ${n === 0 ? "text-[color:var(--mz-warn)]" : C.muted} ${atualizando ? "opacity-60" : ""}` }, n === 0 && t ? `Nenhum acabamento encontrado para '${t}'` : contador)),
+    /* @__PURE__ */ React.createElement("div", { className: "min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[color:var(--mz-soft)] px-3 py-3 pb-[max(12px,env(safe-area-inset-bottom,0px))] sm:rounded-b-3xl sm:px-4" }, /* @__PURE__ */ React.createElement("ul", { id: "mz-cor-lista", className: "flex flex-col gap-2" }, encontrados.map((a) => {
+      const ativo = a.id === valor;
+      return /* @__PURE__ */ React.createElement("li", { key: a.id, className: "mz-linha-cor" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => onSelecionar(a.id),
+          "aria-pressed": ativo,
+          className: `mz-focus flex min-h-[56px] w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left transition active:scale-[.99] ${ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-transparent bg-white hover:border-[color:var(--mz-line)]"}`
+        },
+        /* @__PURE__ */ React.createElement(Swatch, { acabamento: a, size: "h-9 w-9" }),
+        /* @__PURE__ */ React.createElement(PilulasCodigo, { a }),
+        /* @__PURE__ */ React.createElement("span", { className: "min-w-0 flex-1 break-words text-[15px] font-semibold leading-snug" }, a.nome),
+        ativo && /* @__PURE__ */ React.createElement("span", { className: "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-accent)] text-white", "aria-label": "Selecionado" }, /* @__PURE__ */ React.createElement(Icone.check, { className: "h-4 w-4" }))
+      ));
+    })))
+  );
 }
 function ModalPeca({ produto, acabamentos, semCliente = false, tipoExistente = null, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
+  const [escolhendoCor, setEscolhendoCor] = useState(false);
   const [comAfra, setComAfra] = useState(false);
   const [afra, setAfra] = useState(null);
   const [tipo, setTipo] = useState(tipoExistente || "amostra");
@@ -1534,7 +1595,7 @@ function ModalPeca({ produto, acabamentos, semCliente = false, tipoExistente = n
     },
     /* @__PURE__ */ React.createElement(AlcaSheet, { arrastar }),
     /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3 border-b border-[color:var(--mz-line)] px-4 pb-3 pt-1 sm:px-5 sm:pt-4", ...arrastar }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("h2", { id: "mz-modal-titulo", className: "mz-ref text-[22px] leading-tight" }, rotuloRef(produto)), /* @__PURE__ */ React.createElement("p", { className: `mt-0.5 text-sm ${C.muted}` }, "Categoria: ", /* @__PURE__ */ React.createElement("b", { className: "text-[color:var(--mz-ink)]" }, categoriaPeca(produto)))), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: `${C.fechar} -mr-2 -mt-1`, "aria-label": "Fechar" }, /* @__PURE__ */ React.createElement(X, { className: "h-6 w-6", strokeWidth: 2 }))),
-    /* @__PURE__ */ React.createElement("div", { className: "grid flex-1 gap-0 overflow-y-auto overscroll-contain md:grid-cols-[1fr_1.1fr]" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-3 p-4 sm:p-5 md:border-r md:border-[color:var(--mz-line)]" }, /* @__PURE__ */ React.createElement(ImagemPeca, { produto, alturaMax: 300, className: "overflow-hidden rounded-2xl" }), /* @__PURE__ */ React.createElement("p", { className: "flex items-start gap-2 rounded-md bg-[color:var(--mz-accent-soft)] px-3 py-2 text-sm font-medium" }, /* @__PURE__ */ React.createElement(Swatch, { acabamento: ACABAMENTOS_DEMO[0], size: "mt-0.5 h-4 w-4" }), /* @__PURE__ */ React.createElement("span", null, "Foto de refer\xEAncia em Ouro Light. Selecione o acabamento desejado abaixo:", /* @__PURE__ */ React.createElement("span", { className: `mt-0.5 block text-xs font-normal ${C.muted}` }, "A foto permanece original. O acabamento escolhido fica registrado no pedido."))), /* @__PURE__ */ React.createElement("dl", { className: "grid grid-cols-2 gap-2 text-xs" }, [["Categoria", categoriaPeca(produto)], ["Cole\xE7\xE3o", produto.colecao && produto.colecao !== "Linha" ? produto.colecao : "Linha permanente"]].map(([k, v]) => /* @__PURE__ */ React.createElement("div", { key: k, className: "rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2" }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, k), /* @__PURE__ */ React.createElement("dd", { className: "font-bold" }, v))))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-6 p-4 pb-6 sm:p-5" }, /* @__PURE__ */ React.createElement(SeletorAcabamento, { titulo: "Cor do Acabamento", idBase: "mz-cor", acabamentos, valor: acabamentoId, onChange: setAcabamentoId }), temAfra(produto) && /* @__PURE__ */ React.createElement("fieldset", null, /* @__PURE__ */ React.createElement("legend", { className: "mz-eyebrow mb-3" }, "Afra"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1", role: "radiogroup", "aria-label": "Afra" }, [[false, "Sem Afra"], [true, "Com Afra"]].map(([v, rotulo]) => /* @__PURE__ */ React.createElement(
+    /* @__PURE__ */ React.createElement("div", { className: "grid flex-1 gap-0 overflow-y-auto overscroll-contain md:grid-cols-[1fr_1.1fr]" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-3 p-4 sm:p-5 md:border-r md:border-[color:var(--mz-line)]" }, /* @__PURE__ */ React.createElement(ImagemPeca, { produto, alturaMax: 300, className: "overflow-hidden rounded-2xl" }), /* @__PURE__ */ React.createElement("p", { className: "flex items-start gap-2 rounded-md bg-[color:var(--mz-accent-soft)] px-3 py-2 text-sm font-medium" }, /* @__PURE__ */ React.createElement(Swatch, { acabamento: ACABAMENTOS_DEMO[0], size: "mt-0.5 h-4 w-4" }), /* @__PURE__ */ React.createElement("span", null, "Foto de refer\xEAncia em Ouro Light. Selecione o acabamento desejado abaixo:", /* @__PURE__ */ React.createElement("span", { className: `mt-0.5 block text-xs font-normal ${C.muted}` }, "A foto permanece original. O acabamento escolhido fica registrado no pedido."))), /* @__PURE__ */ React.createElement("dl", { className: "grid grid-cols-2 gap-2 text-xs" }, [["Categoria", categoriaPeca(produto)], ["Cole\xE7\xE3o", produto.colecao && produto.colecao !== "Linha" ? produto.colecao : "Linha permanente"]].map(([k, v]) => /* @__PURE__ */ React.createElement("div", { key: k, className: "rounded-md bg-[color:var(--mz-sunken)] px-2.5 py-2" }, /* @__PURE__ */ React.createElement("dt", { className: C.muted }, k), /* @__PURE__ */ React.createElement("dd", { className: "font-bold" }, v))))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-6 p-4 pb-6 sm:p-5" }, /* @__PURE__ */ React.createElement(SeletorAcabamento, { titulo: "Cor do Acabamento", idBase: "mz-cor", valor: acabamentoId, onAbrir: () => setEscolhendoCor(true) }), temAfra(produto) && /* @__PURE__ */ React.createElement("fieldset", null, /* @__PURE__ */ React.createElement("legend", { className: "mz-eyebrow mb-3" }, "Afra"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1", role: "radiogroup", "aria-label": "Afra" }, [[false, "Sem Afra"], [true, "Com Afra"]].map(([v, rotulo]) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: rotulo,
@@ -1661,6 +1722,17 @@ function ModalPeca({ produto, acabamentos, semCliente = false, tipoExistente = n
       /* @__PURE__ */ React.createElement(Icone.sacola, { className: "h-5 w-5" }),
       afraPendente ? "Selecione a fura\xE7\xE3o/afra" : "Adicionar ao pedido"
     ))
+  ), escolhendoCor && /* @__PURE__ */ React.createElement(
+    TelaSelecaoCor,
+    {
+      acabamentos,
+      valor: acabamentoId,
+      onSelecionar: (id) => {
+        setAcabamentoId(id);
+        setEscolhendoCor(false);
+      },
+      onFechar: () => setEscolhendoCor(false)
+    }
   ));
 }
 function LinhaItem({ item, onQtd, onRemover, compacto = false }) {
@@ -1865,17 +1937,13 @@ function MetalizaApp() {
     const sb = obterSupabase();
     if (!sb) return void 0;
     let ativo = true;
-    sb.from("cores").select("*").eq("ativo", true).order("nome").then(({ data, error }) => {
+    carregarTodasAsCores(sb).then((linhas) => {
       if (!ativo) return;
-      if (error) {
-        console.error("Erro ao buscar cores do Supabase:", error.message);
-        return;
-      }
-      const lista = (data || []).map(corDoBanco).filter((a) => a.nome);
+      const lista = linhas.map(corDoBanco).filter((a) => a.nome);
       if (!lista.length) return;
       registrarAcabamentos(lista);
       setAcabamentos(lista);
-    }).catch((err) => console.error("Falha ao comunicar com Supabase (cores):", err));
+    }).catch((err) => console.error("Erro ao buscar cores do Supabase:", (err == null ? void 0 : err.message) || err));
     return () => {
       ativo = false;
     };
