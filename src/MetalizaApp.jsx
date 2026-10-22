@@ -135,40 +135,96 @@ let PRODUTOS = [
   { ref: "PS 057", categoria: "Passadores", foto: "ps057" },
 ];
 
-const ACABAMENTOS = [
-  // Banhos tradicionais. Escolha só técnica: a foto não muda.
-  { id: "ouro-light", codigo: "6", nome: "Ouro Light", grupo: "banho", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"] },
-  { id: "ouro-24k", codigo: "1", nome: "Ouro 24k", grupo: "banho", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"] },
-  { id: "niquel", codigo: "2", nome: "Níquel", grupo: "banho", cores: ["#FAFBFC", "#D2D7DC", "#929AA1", "#5A6066"] },
-  { id: "onix", codigo: "3", nome: "Ônix", grupo: "banho", cores: ["#7D8187", "#45484D", "#222428", "#0D0E10"] },
-  { id: "marrom", codigo: "4", nome: "Marrom", grupo: "banho", cores: ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"] },
-  // Cor oculta: não aparece na cartela; só pela busca de código (1554) ou nome
-  { id: "ouro-queimado", codigo: "1554", nome: "Ouro Queimado", grupo: "banho", oculta: true, cores: ["#EBBE78", "#BC7A30", "#7E4614", "#452208"] },
-  // Bicolores prontos: atendem as peças de duas cores com um único código
-  { id: "ouro-light-preto", codigo: "50", nome: "Ouro Light / Preto", grupo: "bicolor", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"], cores2: ["#45484D", "#222428", "#0D0E10", "#000000"] },
-  { id: "dourado-branco", codigo: "51", nome: "Dourado / Branco", grupo: "bicolor", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"], cores2: ["#FFFFFF", "#F4F4F2", "#E4E4E0", "#C9C9C4"] },
+// Cartela de demonstração/offline. Com Supabase, a lista vem da tabela "cores" (ativo = true).
+// Cada cor tem "codigos": um código na cor solo, dois nos bicolores (ex.: ["002", "293"]).
+const ACABAMENTOS_DEMO = [
+  { id: "ouro-light", codigo: "6", codigos: ["6"], nome: "Ouro Light", grupo: "banho", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"] },
+  { id: "ouro-24k", codigo: "1", codigos: ["1"], nome: "Ouro 24k", grupo: "banho", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"] },
+  { id: "niquel", codigo: "2", codigos: ["2"], nome: "Níquel", grupo: "banho", cores: ["#FAFBFC", "#D2D7DC", "#929AA1", "#5A6066"] },
+  { id: "onix", codigo: "3", codigos: ["3"], nome: "Ônix", grupo: "banho", cores: ["#7D8187", "#45484D", "#222428", "#0D0E10"] },
+  { id: "marrom", codigo: "4", codigos: ["4"], nome: "Marrom", grupo: "banho", cores: ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"] },
+  // Cor oculta: não aparece na lista inicial; só pela busca de código (1554) ou nome
+  { id: "ouro-queimado", codigo: "1554", codigos: ["1554"], nome: "Ouro Queimado", grupo: "banho", oculta: true, cores: ["#EBBE78", "#BC7A30", "#7E4614", "#452208"] },
+  // Bicolores prontos: atendem as peças de duas cores com uma única escolha
+  { id: "ouro-light-preto", codigo: "50", codigos: ["50"], nome: "Ouro Light / Preto", grupo: "bicolor", cores: ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"], cores2: ["#45484D", "#222428", "#0D0E10", "#000000"] },
+  { id: "dourado-branco", codigo: "51", codigos: ["51"], nome: "Dourado / Branco", grupo: "bicolor", cores: ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"], cores2: ["#FFFFFF", "#F4F4F2", "#E4E4E0", "#C9C9C4"] },
 ];
-const GRUPOS_ACABAMENTO = [
-  { id: "banho", titulo: "Banhos" },
-  { id: "bicolor", titulo: "Bicolores" },
+const semAcento = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+// Paleta aproximada pelo nome, só para a bolinha de cor (a tabela "cores" não traz hexadecimais)
+const PALETAS_POR_NOME = [
+  [/ouro light|light gold/, ["#FBF3C8", "#EBD58A", "#C9A954", "#8E7430"]],
+  [/queimado|envelhecido|velho/, ["#EBBE78", "#BC7A30", "#7E4614", "#452208"]],
+  [/ouro|dourado|gold|24k/, ["#FFE08A", "#E7B43C", "#B07A16", "#6E4708"]],
+  [/rose|rosé/, ["#F7D9CF", "#E0A897", "#B87566", "#7A463B"]],
+  [/cobre|copper/, ["#F2C4A0", "#C9804F", "#8E4F28", "#552C12"]],
+  [/niquel|prata|prateado|cromo|silver|rodio/, ["#FAFBFC", "#D2D7DC", "#929AA1", "#5A6066"]],
+  [/grafite|onix|preto|black|negro|fume/, ["#7D8187", "#45484D", "#222428", "#0D0E10"]],
+  [/marrom|bronze|chocolate|cafe|caramelo/, ["#C79A7A", "#8E5A3C", "#5C3420", "#2E180C"]],
+  [/coral|salmao|laranja/, ["#FFD3C4", "#FF9B7F", "#E26A4F", "#9E3F2B"]],
+  [/vermelho|vinho|bordo/, ["#F4A4A4", "#D2444A", "#9A1E28", "#5C0E16"]],
+  [/rosa|pink/, ["#FFE0EA", "#F7A8C4", "#D9709A", "#99415F"]],
+  [/azul|marinho|blue/, ["#D6E4F7", "#7FA6DB", "#3D6AAE", "#1D3A66"]],
+  [/verde|green/, ["#D8EFD9", "#86C08A", "#3F8A4A", "#1E4F26"]],
+  [/branco|perola|off white|white|nude|bege/, ["#FFFFFF", "#F4F4F2", "#E4E4E0", "#C9C9C4"]],
 ];
-const ACABAMENTO_PADRAO = ACABAMENTOS[0];
-const acabamentoPorCodigo = (cod) => ACABAMENTOS.find((a) => a.codigo === String(cod).trim());
-const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-// Busca por código exato ou por nome (só seleciona quando o nome identifica uma única cor)
-function buscarAcabamento(termo) {
-  const t = semAcento(termo);
-  if (!t) return { tipo: "vazio" };
-  if (/^\d+$/.test(t)) {
-    const achado = acabamentoPorCodigo(t);
-    if (achado) return { tipo: "achado", acabamento: achado };
-    const prefixo = ACABAMENTOS.some((a) => a.codigo.startsWith(t));
-    return { tipo: prefixo ? "parcial" : "inexistente" };
-  }
-  if (t.length < 3) return { tipo: "parcial" };
-  const nomes = ACABAMENTOS.filter((a) => semAcento(a.nome).includes(t) || (a.rotulo && semAcento(a.rotulo).includes(t)));
-  if (nomes.length === 1) return { tipo: "achado", acabamento: nomes[0] };
-  return { tipo: nomes.length ? "varios" : "inexistente", opcoes: nomes };
+const PALETA_NEUTRA = ["#F1F5F9", "#CBD5E1", "#94A3B8", "#64748B"];
+const paletaPorNome = (nome) => (PALETAS_POR_NOME.find(([re]) => re.test(semAcento(nome))) || [null, PALETA_NEUTRA])[1];
+
+// Linha da tabela "cores" (nome, codigos[], ativo) para o formato do app
+function corDoBanco(r) {
+  const brutos = Array.isArray(r.codigos) ? r.codigos : r.codigo != null ? [r.codigo] : [];
+  const codigos = brutos.map((c) => String(c).trim()).filter(Boolean);
+  const nome = String(r.nome || "").trim();
+  const partes = nome.split("/").map((t) => t.trim()).filter(Boolean);
+  const bicolor = codigos.length > 1 || partes.length > 1;
+  return {
+    id: `cor-${r.id ?? codigos.join("-")}`,
+    codigo: codigos.join("/") || "—",
+    codigos,
+    nome,
+    grupo: bicolor ? "bicolor" : "banho",
+    oculta: !!r.oculta,
+    cores: paletaPorNome(partes[0] || nome),
+    ...(bicolor ? { cores2: paletaPorNome(partes[1] || "") } : {}),
+  };
+}
+
+// Todas as cores já vistas na sessão (o item do carrinho continua legível mesmo se a lista mudar)
+const ACABAMENTOS_CONHECIDOS = new Map();
+let ACABAMENTO_PADRAO = ACABAMENTOS_DEMO[0];
+// Padrão: Ouro Light solo, se existir na lista; senão a primeira cor
+const escolherPadrao = (lista) =>
+  lista.find((a) => a.codigos.length === 1 && /ouro light/.test(semAcento(a.nome)) && !a.nome.includes("/")) || lista[0];
+function registrarAcabamentos(lista) {
+  lista.forEach((a) => ACABAMENTOS_CONHECIDOS.set(a.id, a));
+  if (lista.length) ACABAMENTO_PADRAO = escolherPadrao(lista);
+}
+registrarAcabamentos(ACABAMENTOS_DEMO);
+
+// Busca no modal da peça: por código (só dentro de "codigos", com ou sem zeros à esquerda) ou por nome.
+// "293" traz a cor solo 293 e todos os bicolores com 293 (nunca 1293). Enquanto o código está incompleto
+// ("29"), valem os códigos que começam assim. Ordem: solo antes de bicolor, depois o nome.
+const LIMITE_CORES_LISTA = 40;
+const semZerosEsquerda = (c) => c.replace(/^0+(?=\d)/, "");
+const codigoIgual = (c, p) => c === p || semZerosEsquerda(c) === semZerosEsquerda(p);
+function filtrarAcabamentos(lista, termo) {
+  const palavras = semAcento(termo).split(/\s+/).filter(Boolean);
+  if (!palavras.length) return lista.filter((a) => !a.oculta);
+  // Para cada número digitado: se existe código exato na lista, só ele vale; senão, vale o prefixo
+  const exato = Object.fromEntries(
+    palavras.filter((p) => /^\d+$/.test(p)).map((p) => [p, lista.some((a) => a.codigos.some((c) => codigoIgual(c, p)))])
+  );
+  const casa = (a, p) => {
+    if (/^\d+$/.test(p)) {
+      if (!a.codigos.length) return semAcento(a.nome).split(/[^0-9]+/).includes(p);
+      return exato[p] ? a.codigos.some((c) => codigoIgual(c, p)) : a.codigos.some((c) => c.startsWith(p));
+    }
+    return semAcento(a.nome).includes(p);
+  };
+  return lista
+    .filter((a) => palavras.every((p) => casa(a, p)))
+    .sort((x, y) => x.codigos.length - y.codigos.length || x.nome.localeCompare(y.nome, "pt-BR"));
 }
 
 // Afra: só para Enfeites e Fivelas (não existe para Passadores e Ponteiras)
@@ -178,7 +234,7 @@ const LINHAS_AFRA = [
   { titulo: "Linha 800", codigos: ["800", "801", "802", "803", "804", "805", "806", "807"] },
   { titulo: "Linha 900", codigos: ["901", "902", "903", "904", "905", "906", "907"] },
 ];
-const acabamentoPorId = (id) => ACABAMENTOS.find((a) => a.id === id) || ACABAMENTO_PADRAO;
+const acabamentoPorId = (id) => ACABAMENTOS_CONHECIDOS.get(id) || ACABAMENTO_PADRAO;
 
 const TIPO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção" };
 const ehCorrente = (produto) => produto?.categoria === "Correntes" || produto?.ref?.startsWith("CR");
@@ -359,11 +415,12 @@ const expirado = (criadoEm) => Date.now() - new Date(criadoEm).getTime() >= DIAS
 function itemParaRegistro(i) {
   const a = acabamentoPorId(i.acabamento);
   const prod = PRODUTOS.find((x) => x.ref === i.ref);
+  // A cor exata escolhida foi gravada no item ao adicionar; a busca por id é só para itens antigos
   return {
     ref: i.ref,
     categoria: prod ? categoriaPeca(prod) : "Peça",
-    acabamentoCodigo: a.codigo,
-    acabamentoNome: a.nome,
+    acabamentoCodigo: i.acabamentoCodigo || a.codigo,
+    acabamentoNome: i.acabamentoNome || a.nome,
     afra: i.afra || null,
     elos: i.elos || null,
     comPonteira: i.elos ? !!i.comPonteira : null,
@@ -1056,7 +1113,7 @@ function TelaLogin({ onEntrar }) {
             ))}
           </div>
           <div className="flex gap-2">
-            {ACABAMENTOS.filter((a) => !a.oculta).map((a) => (
+            {ACABAMENTOS_DEMO.filter((a) => !a.oculta).map((a) => (
               <Swatch key={a.id} acabamento={a} size="h-5 w-5" />
             ))}
           </div>
@@ -2021,8 +2078,8 @@ function BotaoCor({ a, ativo, titulo, onClick, largo = false }) {
       onClick={onClick}
       aria-pressed={ativo}
       aria-label={`${titulo}: ${rotuloAcabamentoComCodigo(a.id)}`}
-      className={`mz-focus flex min-h-[56px] min-w-0 items-center gap-2 rounded-xl border-2 p-2 transition active:scale-95 ${largo ? "text-left" : "flex-col text-center"} ${
-        ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] hover:border-[color:var(--mz-ink)]"
+      className={`mz-focus flex min-h-[56px] w-full min-w-0 items-center gap-2 rounded-xl border-2 p-2 transition active:scale-95 ${largo ? "text-left" : "flex-col text-center"} ${
+        ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] bg-white hover:border-[color:var(--mz-ink)]"
       }`}
     >
       <span className="relative shrink-0">
@@ -2043,34 +2100,29 @@ function BotaoCor({ a, ativo, titulo, onClick, largo = false }) {
   );
 }
 
-function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
+function SeletorAcabamento({ titulo, valor, onChange, idBase, acabamentos }) {
   const atual = acabamentoPorId(valor);
-  const [termo, setTermo] = useState(atual.codigo);
-  const [resultado, setResultado] = useState({ tipo: "achado", acabamento: atual });
-  // Quando a cor muda pela cartela, o campo passa a mostrar o código dela.
-  // Se o texto digitado já aponta para a cor selecionada (ex.: "ouro queimado"), ele é mantido.
-  useEffect(() => {
-    const r = buscarAcabamento(termo);
-    if (r.tipo === "achado" && r.acabamento.id === atual.id) return;
-    setTermo(atual.codigo);
-    setResultado({ tipo: "achado", acabamento: atual });
-  }, [atual.id]);
+  const [termo, setTermo] = useState("");
+  const encontrados = useMemo(() => filtrarAcabamentos(acabamentos, termo), [acabamentos, termo]);
+  const visiveis = encontrados.slice(0, LIMITE_CORES_LISTA);
 
   const buscar = (v) => {
-    const texto = v.slice(0, 24);
+    const texto = v.slice(0, 40);
     setTermo(texto);
-    const r = buscarAcabamento(texto);
-    setResultado(r);
-    if (r.tipo === "achado" && r.acabamento.id !== valor) onChange(r.acabamento.id);
+    // Um único resultado (ex.: "1554"): já seleciona
+    const r = filtrarAcabamentos(acabamentos, texto);
+    if (texto.trim() && r.length === 1 && r[0].id !== valor) onChange(r[0].id);
   };
 
-  const ajuda = {
-    vazio: "Digite o código (ex.: 6 ou 1554) ou o nome da cor.",
-    parcial: "Continue digitando…",
-    achado: `Selecionado: [${atual.codigo}] ${atual.nome}`,
-    inexistente: `Nenhuma cor com "${termo.trim()}".`,
-    varios: `Várias cores com "${termo.trim()}": ${(resultado.opcoes || []).map((a) => `[${a.codigo}] ${a.nome}`).join(", ")}.`,
-  }[resultado.tipo];
+  const ajuda = !termo.trim()
+    ? encontrados.length > LIMITE_CORES_LISTA
+      ? `Mostrando ${LIMITE_CORES_LISTA} de ${encontrados.length} cores. Digite o código ou o nome para filtrar.`
+      : "Digite o código (ex.: 293) ou o nome da cor."
+    : encontrados.length === 0
+    ? `Nenhuma cor com "${termo.trim()}".`
+    : encontrados.length > LIMITE_CORES_LISTA
+    ? `${encontrados.length} cores encontradas; mostrando as ${LIMITE_CORES_LISTA} primeiras. Refine a busca.`
+    : `${encontrados.length} ${encontrados.length === 1 ? "cor encontrada" : "cores encontradas"}.`;
 
   return (
     <fieldset className="flex flex-col gap-3">
@@ -2079,57 +2131,46 @@ function SeletorAcabamento({ titulo, valor, onChange, produto, idBase }) {
       </legend>
       <div className="flex flex-col gap-1.5">
         <label htmlFor={`${idBase}-codigo`} className="text-xs font-semibold">Buscar cor por código ou nome</label>
-        <div className="flex items-center gap-2">
-          <div className="relative w-full max-w-[16rem]">
-            <Icone.busca className={`pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}`} />
-            <input
-              id={`${idBase}-codigo`}
-              type="search"
-              autoComplete="off"
-              className={`${C.input} mz-mono pl-10 font-bold ${resultado.tipo === "inexistente" ? "border-[color:var(--mz-warn)]" : ""}`}
-              placeholder="Código da cor (ex: 6)"
-              aria-describedby={`${idBase}-codigo-ajuda`}
-              value={termo}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => buscar(e.target.value)}
-            />
-          </div>
+        <div className="relative w-full sm:max-w-[20rem]">
+          <Icone.busca className={`pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}`} />
+          <input
+            id={`${idBase}-codigo`}
+            type="search"
+            autoComplete="off"
+            className={`${C.input} pl-10 font-semibold ${termo.trim() && !encontrados.length ? "border-[color:var(--mz-warn)]" : ""}`}
+            placeholder="Código ou nome (ex.: 293 ou coral)"
+            aria-describedby={`${idBase}-codigo-ajuda`}
+            aria-controls={`${idBase}-lista`}
+            value={termo}
+            onChange={(e) => buscar(e.target.value)}
+          />
         </div>
         <span
           id={`${idBase}-codigo-ajuda`}
           aria-live="polite"
-          className={`text-xs ${resultado.tipo === "inexistente" ? "font-semibold text-[color:var(--mz-warn)]" : C.muted}`}
+          className={`text-xs ${termo.trim() && !encontrados.length ? "font-semibold text-[color:var(--mz-warn)]" : C.muted}`}
         >
           {ajuda}
         </span>
       </div>
 
-      {atual.oculta && (
-        <div className="mz-in">
-          <p className={`mb-1.5 text-[11px] font-semibold ${C.muted}`}>Cor encontrada pelo código · fora da cartela padrão</p>
-          <div className="grid grid-cols-2">
-            <BotaoCor a={atual} ativo titulo={titulo} largo onClick={() => {}} />
-          </div>
-        </div>
+      {visiveis.length > 0 && (
+        <ul
+          id={`${idBase}-lista`}
+          className="grid max-h-[22rem] grid-cols-1 gap-2 overflow-y-auto overscroll-contain rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-soft)] p-2 sm:grid-cols-2"
+        >
+          {visiveis.map((a) => (
+            <li key={a.id} className="min-w-0">
+              <BotaoCor a={a} ativo={a.id === valor} titulo={titulo} largo onClick={() => onChange(a.id)} />
+            </li>
+          ))}
+        </ul>
       )}
-
-      {GRUPOS_ACABAMENTO.map((g) => (
-        <div key={g.id}>
-          <p className={`mb-1.5 text-[11px] font-semibold ${C.muted}`}>
-            {g.titulo}
-          </p>
-          <div className={`grid gap-2 ${g.id === "bicolor" ? "grid-cols-2" : "grid-cols-3 sm:grid-cols-5"}`}>
-            {ACABAMENTOS.filter((a) => a.grupo === g.id && !a.oculta).map((a) => (
-              <BotaoCor key={a.id} a={a} ativo={a.id === valor} titulo={titulo} largo={g.id === "bicolor"} onClick={() => onChange(a.id)} />
-            ))}
-          </div>
-        </div>
-      ))}
     </fieldset>
   );
 }
 
-function ModalPeca({ produto, semCliente = false, tipoExistente = null, onFechar, onAdicionar }) {
+function ModalPeca({ produto, acabamentos, semCliente = false, tipoExistente = null, onFechar, onAdicionar }) {
   const [acabamentoId, setAcabamentoId] = useState(ACABAMENTO_PADRAO.id);
   const [comAfra, setComAfra] = useState(false);
   const [afra, setAfra] = useState(null);
@@ -2229,7 +2270,7 @@ const isCorrente = ehCorrente(produto);
           <div className="flex flex-col gap-3 p-4 sm:p-5 md:border-r md:border-[color:var(--mz-line)]">
             <ImagemPeca produto={produto} alturaMax={300} className="overflow-hidden rounded-2xl" />
             <p className="flex items-start gap-2 rounded-md bg-[color:var(--mz-accent-soft)] px-3 py-2 text-sm font-medium">
-              <Swatch acabamento={ACABAMENTO_PADRAO} size="mt-0.5 h-4 w-4" />
+              <Swatch acabamento={ACABAMENTOS_DEMO[0]} size="mt-0.5 h-4 w-4" />
               <span>
                 Foto de referência em Ouro Light. Selecione o acabamento desejado abaixo:
                 <span className={`mt-0.5 block text-xs font-normal ${C.muted}`}>A foto permanece original. O acabamento escolhido fica registrado no pedido.</span>
@@ -2247,7 +2288,7 @@ const isCorrente = ehCorrente(produto);
 
           {/* Configuração */}
           <div className="flex flex-col gap-6 p-4 pb-6 sm:p-5">
-            <SeletorAcabamento titulo="Cor do Acabamento" idBase="mz-cor" produto={produto} valor={acabamentoId} onChange={setAcabamentoId} />
+            <SeletorAcabamento titulo="Cor do Acabamento" idBase="mz-cor" acabamentos={acabamentos} valor={acabamentoId} onChange={setAcabamentoId} />
             {temAfra(produto) && (
               <fieldset>
                 <legend className="mz-eyebrow mb-3">Afra</legend>
@@ -2459,6 +2500,9 @@ const isCorrente = ehCorrente(produto);
     onClick={() => onAdicionar({
     ref: produto.ref,
     acabamento: acabamentoId,
+    // Cor exata gravada no item (vai assim para o TXT e para o PDF)
+    acabamentoCodigo: acabamentoPorId(acabamentoId).codigo,
+    acabamentoNome: acabamentoPorId(acabamentoId).nome,
     afra: temAfra(produto) && comAfra ? afra : null,
     elos: isCorrente ? elos : null,
     comPonteira: isCorrente ? comPonteira : null,
@@ -3014,6 +3058,34 @@ export default function MetalizaApp() {
     carregarProdutosDoBanco();
   }, []);
   const [itensPorCliente, setItensPorCliente] = useState({});
+  const [acabamentos, setAcabamentos] = useState(ACABAMENTOS_DEMO);
+
+  // Cores ativas da tabela "cores" (ao abrir o app e de novo após o login, caso a leitura exija autenticação).
+  // Sem Supabase, com erro ou com a tabela vazia, fica a cartela de demonstração.
+  useEffect(() => {
+    const sb = obterSupabase();
+    if (!sb) return undefined;
+    let ativo = true;
+    sb.from("cores")
+      .select("*")
+      .eq("ativo", true)
+      .order("nome")
+      .then(({ data, error }) => {
+        if (!ativo) return;
+        if (error) {
+          console.error("Erro ao buscar cores do Supabase:", error.message);
+          return;
+        }
+        const lista = (data || []).map(corDoBanco).filter((a) => a.nome);
+        if (!lista.length) return;
+        registrarAcabamentos(lista);
+        setAcabamentos(lista);
+      })
+      .catch((err) => console.error("Falha ao comunicar com Supabase (cores):", err));
+    return () => {
+      ativo = false;
+    };
+  }, [rep?.id]);
   const [historico, setHistorico] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const [telaAntesHistorico, setTelaAntesHistorico] = useState("modo");
@@ -3419,7 +3491,7 @@ export default function MetalizaApp() {
             </div>
           )}
 
-          {peca && <ModalPeca produto={peca} semCliente={!cliente} tipoExistente={cliente ? itens[0]?.tipo : null} onFechar={() => setPeca(null)} onAdicionar={adicionar} />}
+          {peca && <ModalPeca produto={peca} acabamentos={acabamentos} semCliente={!cliente} tipoExistente={cliente ? itens[0]?.tipo : null} onFechar={() => setPeca(null)} onAdicionar={adicionar} />}
           {pedidoAberto && cliente && (
             <PainelPedido
               cliente={cliente}

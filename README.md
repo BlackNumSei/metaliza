@@ -74,6 +74,15 @@ O representante não classifica o material de injeção (ABS, TPU, PVC etc.): o 
 
 Não existe mais seleção separada de Parte de Cima / Parte de Baixo: peças de duas cores usam os bicolores prontos (50 Ouro Light / Preto, 51 Dourado / Branco).
 
+### Cartela do Supabase (tabela `cores`)
+
+Com Supabase, o app carrega as cores ativas ao abrir e de novo após o login: `from("cores").select("*").eq("ativo", true).order("nome")`. Colunas usadas: `nome` e `codigos` (array: um código na cor solo, dois nos bicolores; ex.: `nome = "002 CORAL/ 293 OURO LIGHT"`, `codigos = {002,293}`). A leitura precisa estar liberada pelo RLS da tabela. Sem Supabase, com erro ou com a tabela vazia, vale a cartela de demonstração.
+
+- **Busca no modal:** por nome ou por código dentro de `codigos` (aceita com ou sem zeros à esquerda). `293` traz a cor solo e todos os bicolores com 293; `002 293` traz só os bicolores com os dois. Cores solo vêm antes dos bicolores. Um único resultado já é selecionado.
+- **Lista:** no máximo 40 cores, com rolagem própria.
+- **Cor exata:** código e nome da cor escolhida são gravados no item ao adicionar e vão assim para o TXT e para o PDF (ex.: `[002/293] 002 CORAL/ 293 OURO LIGHT`).
+- **Padrão:** Ouro Light solo, se existir na tabela.
+
 ## Regras técnicas do modal
 
 - **Cores da cartela:** 6 Ouro Light (padrão), 1 Ouro 24k, 2 Níquel, 3 Ônix, 4 Marrom e os bicolores 50 Ouro Light / Preto e 51 Dourado / Branco. Não há efeitos especiais (Aura e Policarbonato foram retirados). Cada botão mostra o código junto da cor.
