@@ -209,7 +209,8 @@ function filtrarAcabamentos(lista, termo) {
     return nomeDeBusca(a).includes(p);
   };
   const exato = (a) => numeros.length > 0 && numeros.every((p) => a.codigos.some((c) => codigoIgual(c, p)));
-  return lista.filter((a) => palavras.every((p) => casa(a, p))).map((a) => [a, exato(a) ? 0 : 1]).sort((x, y) => x[1] - y[1] || x[0].codigos.length - y[0].codigos.length || x[0].nome.localeCompare(y[0].nome, "pt-BR")).map(([a]) => a);
+  const bicolor = (a) => a.grupo === "bicolor" || a.codigos.length > 1 || a.nome.includes("/") ? 1 : 0;
+  return lista.filter((a) => palavras.every((p) => casa(a, p))).map((a) => [a, bicolor(a), bicolor(a) ? 0 : exato(a) ? 0 : 1]).sort((x, y) => x[1] - y[1] || x[2] - y[2] || x[0].nome.localeCompare(y[0].nome, "pt-BR")).map(([a]) => a);
 }
 const LOTE_CORES = 1e3;
 async function carregarTodasAsCores(sb) {

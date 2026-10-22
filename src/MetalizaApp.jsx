@@ -206,7 +206,8 @@ registrarAcabamentos(ACABAMENTOS_DEMO);
 // - texto ("ouro", "coral"): o nome do acabamento contém o termo (sem diferenciar acento/maiúscula);
 // - número ("293", "29", "2"): algum código de "codigos" é igual ou começa com o número
 //   (zeros à esquerda opcionais: "2" encontra "002"). Só o início do código conta: "293" nunca traz o 1293.
-// Vários termos ("002 293") precisam bater todos. Ordem: código exato, solo antes de bicolor, nome.
+// Vários termos ("002 293") precisam bater todos.
+// Ordem: TODAS as cores solo primeiro (código exato à frente), depois os bicolores em ordem alfabética.
 const semZerosEsquerda = (c) => c.replace(/^0+(?=\d)/, "");
 const nomeDeBusca = (a) => (a._busca ??= semAcento(a.nome));
 const codigoComeca = (c, p) => c.startsWith(p) || (!p.startsWith("0") && semZerosEsquerda(c).startsWith(p));
@@ -223,10 +224,11 @@ function filtrarAcabamentos(lista, termo) {
     return nomeDeBusca(a).includes(p);
   };
   const exato = (a) => numeros.length > 0 && numeros.every((p) => a.codigos.some((c) => codigoIgual(c, p)));
+  const bicolor = (a) => (a.grupo === "bicolor" || a.codigos.length > 1 || a.nome.includes("/") ? 1 : 0);
   return lista
     .filter((a) => palavras.every((p) => casa(a, p)))
-    .map((a) => [a, exato(a) ? 0 : 1])
-    .sort((x, y) => x[1] - y[1] || x[0].codigos.length - y[0].codigos.length || x[0].nome.localeCompare(y[0].nome, "pt-BR"))
+    .map((a) => [a, bicolor(a), bicolor(a) ? 0 : exato(a) ? 0 : 1])
+    .sort((x, y) => x[1] - y[1] || x[2] - y[2] || x[0].nome.localeCompare(y[0].nome, "pt-BR"))
     .map(([a]) => a);
 }
 
