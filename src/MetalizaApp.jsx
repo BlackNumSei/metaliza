@@ -471,16 +471,15 @@ async function obterJsPDF() {
   return window.jspdf.jsPDF;
 }
 
-function detalhesItemPdf(i) {
-  return [
-    i.categoria,
-    i.tipo === "amostra" ? "Amostra" : "Produção",
-    i.afra ? `Afra ${i.afra}` : null,
-    i.elos ? `${i.elos} elos` : null,
-    i.elos ? (i.comPonteira ? "Com Ponteira" : "Sem Ponteira") : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+// Coluna "Descrição" do PDF: a Afra sempre aparece nas categorias que têm Afra (Enfeites e Fivelas);
+// corrente mostra elos e ponteira. Ex.: "Enfeite · Com Afra - Afra 901", "Corrente · 45 elos · Com ponteira"
+const CATEGORIAS_COM_AFRA_SINGULAR = CATEGORIAS_COM_AFRA.map((c) => CATEGORIA_SINGULAR[c]);
+function descricaoItemPdf(i) {
+  const partes = [i.categoria];
+  if (i.elos) partes.push(`${i.elos} elos`, i.comPonteira ? "Com ponteira" : "Sem ponteira");
+  else if (i.afra) partes.push(`Com Afra - Afra ${i.afra}`);
+  else if (CATEGORIAS_COM_AFRA_SINGULAR.includes(i.categoria)) partes.push("Sem Afra");
+  return partes.join(" · ");
 }
 
 // Espelho visual do pedido (A4 retrato) para a fábrica e para o cliente
@@ -560,12 +559,12 @@ async function gerarPdfPedido(pedido) {
   // Itens
   doc.autoTable({
     startY: yBlocos + hBloco + 8,
-    head: [["Item", "Cód. SJSYS", "Referência", "Descrição / Detalhes (Afra/Elos)", "Acabamento / Cor", "Quantidade"]],
+    head: [["Item", "Código", "Referência", "Descrição", "Acabamento / Cor", "Quantidade"]],
     body: itens.map((i, k) => [
       k + 1,
       i.codigoItem,
       i.ref,
-      detalhesItemPdf(i),
+      descricaoItemPdf(i),
       `[${i.acabamentoCodigo}] ${i.acabamentoNome}`,
       `${formatarNumero(i.qtd)} un`,
     ]),
@@ -605,7 +604,7 @@ async function gerarPdfPedido(pedido) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...CINZA);
-    doc.text("Documento para conferência visual. Pedido integrado ao sistema SJSYS.", M, H - 10);
+    doc.text("Documento para conferência visual da fábrica e do cliente.", M, H - 10);
     doc.text(`Página ${n} de ${paginas}`, W - M, H - 10, { align: "right" });
   }
   return doc.output("blob");

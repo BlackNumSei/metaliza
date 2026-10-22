@@ -145,7 +145,7 @@ Sem Supabase (ou no acesso de demonstração), a numeração e o de-para ficam g
   ```
 
   `OBS` sai `AMOSTRA` ou vazio (produção).
-- `Pedido_[NUMERO]_[CLIENTE].pdf`: espelho A4 (jsPDF + autoTable) com cliente, representante, itens com o código SJSYS e totais.
+- `Pedido_[NUMERO]_[CLIENTE].pdf`: espelho A4 (jsPDF + autoTable) com cliente, representante, itens e totais. Colunas: Item, Código, Referência, Descrição (Afra ou "Sem Afra" em Enfeites/Fivelas; elos e ponteira na corrente), Acabamento / Cor e Quantidade. O PDF não menciona o SJSYS.
 
 Os demais representantes baixam só o PDF (sem o TXT). O PDF fica disponível para todos em Meus Pedidos.
 

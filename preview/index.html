@@ -407,14 +407,13 @@ async function obterJsPDF() {
   if (!pronto()) throw new Error("biblioteca de PDF indispon\xEDvel");
   return window.jspdf.jsPDF;
 }
-function detalhesItemPdf(i) {
-  return [
-    i.categoria,
-    i.tipo === "amostra" ? "Amostra" : "Produ\xE7\xE3o",
-    i.afra ? `Afra ${i.afra}` : null,
-    i.elos ? `${i.elos} elos` : null,
-    i.elos ? i.comPonteira ? "Com Ponteira" : "Sem Ponteira" : null
-  ].filter(Boolean).join(" \xB7 ");
+const CATEGORIAS_COM_AFRA_SINGULAR = CATEGORIAS_COM_AFRA.map((c) => CATEGORIA_SINGULAR[c]);
+function descricaoItemPdf(i) {
+  const partes = [i.categoria];
+  if (i.elos) partes.push(`${i.elos} elos`, i.comPonteira ? "Com ponteira" : "Sem ponteira");
+  else if (i.afra) partes.push(`Com Afra - Afra ${i.afra}`);
+  else if (CATEGORIAS_COM_AFRA_SINGULAR.includes(i.categoria)) partes.push("Sem Afra");
+  return partes.join(" \xB7 ");
 }
 async function gerarPdfPedido(pedido) {
   const JsPDF = await obterJsPDF();
@@ -486,12 +485,12 @@ async function gerarPdfPedido(pedido) {
   caixa(M + wBloco + 6, yBlocos, wBloco, "REPRESENTANTE", camposRep, true);
   doc.autoTable({
     startY: yBlocos + hBloco + 8,
-    head: [["Item", "C\xF3d. SJSYS", "Refer\xEAncia", "Descri\xE7\xE3o / Detalhes (Afra/Elos)", "Acabamento / Cor", "Quantidade"]],
+    head: [["Item", "C\xF3digo", "Refer\xEAncia", "Descri\xE7\xE3o", "Acabamento / Cor", "Quantidade"]],
     body: itens.map((i, k) => [
       k + 1,
       i.codigoItem,
       i.ref,
-      detalhesItemPdf(i),
+      descricaoItemPdf(i),
       `[${i.acabamentoCodigo}] ${i.acabamentoNome}`,
       `${formatarNumero(i.qtd)} un`
     ]),
@@ -527,7 +526,7 @@ async function gerarPdfPedido(pedido) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...CINZA);
-    doc.text("Documento para confer\xEAncia visual. Pedido integrado ao sistema SJSYS.", M, H - 10);
+    doc.text("Documento para confer\xEAncia visual da f\xE1brica e do cliente.", M, H - 10);
     doc.text(`P\xE1gina ${n} de ${paginas}`, W - M, H - 10, { align: "right" });
   }
   return doc.output("blob");
