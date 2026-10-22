@@ -100,14 +100,27 @@ const CLIENTES_INICIAIS = [
 const DIA_MS = 86400000;
 const CICLO_DIAS = 90;
 const inicioDoDia = (d = new Date()) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
-// Lançamento simulado há 48 dias, para a demonstração abrir sempre com 42 dias restantes
-const LANCAMENTOS = [{ nome: "Verão 2026", lancadaEm: new Date(inicioDoDia().getTime() - 48 * DIA_MS) }];
-const diasRestantes = (l) => Math.max(0, Math.ceil((l.lancadaEm.getTime() + CICLO_DIAS * DIA_MS - inicioDoDia().getTime()) / DIA_MS));
-const diasPassados = (l) => Math.min(CICLO_DIAS, CICLO_DIAS - diasRestantes(l));
+// Coleções em lançamento. Com Supabase vêm da tabela "colecoes" (ativa = true) e mudam pelo Painel Admin;
+// sem ela, fica o lançamento de demonstração (simulado há 48 dias, abre sempre com 42 dias restantes).
+let LANCAMENTOS = [{ nome: "Verão 2026", lancadaEm: new Date(inicioDoDia().getTime() - 48 * DIA_MS), dias: CICLO_DIAS }];
+const validade = (l) => l.dias || CICLO_DIAS;
+const diasRestantes = (l) =>
+  Math.min(validade(l), Math.max(0, Math.ceil((l.lancadaEm.getTime() + validade(l) * DIA_MS - inicioDoDia().getTime()) / DIA_MS)));
+const diasPassados = (l) => Math.min(validade(l), validade(l) - diasRestantes(l));
+// "2026-10-24" -> Date local (meia-noite), sem o deslocamento de fuso de new Date("2026-10-24")
+const dataLocal = (iso) => {
+  const [a, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+  return new Date(a, m - 1, d);
+};
+const hojeISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const colecaoDoBanco = (r) => ({ id: r.id, nome: r.nome, lancadaEm: dataLocal(r.data_lancamento), dias: r.dias_validade || CICLO_DIAS });
 
 const VISAO_GERAL = "Catálogo Geral / Linha Permanente";
 // Navegação: só a linha permanente e as coleções de lançamento (sem visão misturada)
-const VISOES = [VISAO_GERAL, ...LANCAMENTOS.map((l) => l.nome)];
+const listarVisoes = () => [VISAO_GERAL, ...LANCAMENTOS.map((l) => l.nome)];
 // Abertura padrão: o primeiro lançamento em vigor; sem lançamento ativo, a linha permanente
 const visaoInicial = (ativas) => LANCAMENTOS.find((l) => ativas.has(l.nome))?.nome || VISAO_GERAL;
 
@@ -1292,14 +1305,14 @@ function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, o
               <Settings className="h-5 w-5 shrink-0 text-[color:var(--mz-accent)]" strokeWidth={1.8} />
               <span className="min-w-0">
                 <span className="block text-sm font-bold">Painel de Cadastro (Admin)</span>
-                <span className={`block text-xs ${C.muted}`}>Novas cores e novas peças</span>
+                <span className={`block text-xs ${C.muted}`}>Novas cores, peças e coleções</span>
               </span>
             </button>
           )}
 
           <p className="mz-eyebrow px-1">Catálogo</p>
           <ul className="mt-2 flex flex-col">
-            {VISOES.map((v) => {
+            {listarVisoes().map((v) => {
               const ativo = colecao === v;
               const lanc = LANCAMENTOS.find((l) => l.nome === v);
               const encerrada = lanc && !ativas.has(v);
@@ -1323,7 +1336,7 @@ function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, o
                       <span className="mt-1.5 flex w-full flex-col gap-1">
                         <span className={`text-xs ${C.muted}`}>🔥 Coleção ativa • Restam <b className="font-medium text-[color:var(--mz-ink)]">{diasRestantes(lanc)} dias</b></span>
                         <span className="h-0.5 w-full overflow-hidden rounded-full bg-[color:var(--mz-line)]" aria-hidden="true">
-                          <span className="block h-full bg-[color:var(--mz-accent)]" style={{ width: `${(diasPassados(lanc) / CICLO_DIAS) * 100}%` }} />
+                          <span className="block h-full bg-[color:var(--mz-accent)]" style={{ width: `${(diasPassados(lanc) / validade(lanc)) * 100}%` }} />
                         </span>
                       </span>
                     )}
@@ -1345,7 +1358,7 @@ function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, o
                   </button>
                 ) : (
                   <button type="button" onClick={() => onSimularExpiracao(l.nome)} className={`${C.btnPrimary} w-full !py-2 text-xs`}>
-                    Simular expiração (90 dias) · {l.nome}
+                    Simular expiração ({validade(l)} dias) · {l.nome}
                   </button>
                 )}
               </div>
@@ -3027,7 +3040,7 @@ function analisarNomeCor(texto) {
 const COLECAO_PERMANENTE = "Linha permanente";
 const FORM_PECA_VAZIO = { ref: "", categoria: "", colecao: COLECAO_PERMANENTE, arquivo: null, previa: "" };
 
-function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) {
+function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onColecaoLancada, onFechar }) {
   const sb = obterSupabase();
   const noBanco = !!(sb && rep?.id);
   const [aba, setAba] = useState("cor");
@@ -3039,11 +3052,28 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
   const analise = analisarNomeCor(nomeCor);
   const previaCor = !analise.erro ? corDoBanco({ id: "previa", nome: analise.nome, codigos: analise.codigos, bicolor: analise.bicolor }) : null;
 
+  // Aba Nova Coleção
+  const [nomeColecao, setNomeColecao] = useState("");
+  const [dataLancamento, setDataLancamento] = useState(hojeISO());
+  const [diasValidade, setDiasValidade] = useState(String(CICLO_DIAS));
+  const [buscaPecas, setBuscaPecas] = useState("");
+  const [selecionadas, setSelecionadas] = useState(() => new Set());
+  const [confirmacao, setConfirmacao] = useState(0); // 0 = fechada, 1 = "Confirmar", 2 = "Tem certeza?"
+  const confirmacaoRef = useRef(0);
+  confirmacaoRef.current = confirmacao;
+  const pecasAtivas = PRODUTOS.filter((p) => p.ativo !== false);
+  const pecasFiltradas = buscaPecas.trim()
+    ? pecasAtivas.filter((p) => normalizarRef(p.ref).includes(normalizarRef(buscaPecas)))
+    : pecasAtivas;
+  const dias = Number(diasValidade);
+
   useEffect(() => {
+    // Esc fecha primeiro a confirmação; sem ela, o painel
     const esc = (e) => {
       if (e.key !== "Escape") return;
       e.stopImmediatePropagation();
-      onFechar();
+      if (confirmacaoRef.current) setConfirmacao(0);
+      else onFechar();
     };
     window.addEventListener("keydown", esc, true);
     return () => window.removeEventListener("keydown", esc, true);
@@ -3054,6 +3084,63 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
     setAba(a);
     setErro("");
     setOk("");
+  };
+
+  const alternarPeca = (ref) =>
+    setSelecionadas((s) => {
+      const n = new Set(s);
+      if (n.has(ref)) n.delete(ref);
+      else n.add(ref);
+      return n;
+    });
+
+  // Validação antes de abrir a confirmação dupla
+  const pedirConfirmacao = () => {
+    setOk("");
+    const nome = nomeColecao.trim().replace(/\s+/g, " ");
+    if (!nome) return setErro("Informe o nome da coleção.");
+    const mesmoNome = (n) => normalizarTexto(n) === normalizarTexto(nome);
+    if (mesmoNome(VISAO_GERAL) || LANCAMENTOS.some((l) => mesmoNome(l.nome))) return setErro(`Já existe uma coleção chamada ${nome}.`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataLancamento)) return setErro("Informe a data de lançamento.");
+    if (!Number.isInteger(dias) || dias < 1 || dias > 365) return setErro("A validade deve ser um número inteiro de 1 a 365 dias.");
+    if (diasRestantes({ lancadaEm: dataLocal(dataLancamento), dias }) <= 0) return setErro("Com essa data e validade, o lançamento já estaria encerrado.");
+    if (!selecionadas.size) return setErro("Selecione ao menos uma peça.");
+    setErro("");
+    setConfirmacao(1);
+  };
+
+  // Gravação definitiva (depois do "Tem certeza?")
+  const lancarColecao = async () => {
+    const nome = nomeColecao.trim().replace(/\s+/g, " ");
+    const refs = [...selecionadas];
+    setSalvando(true);
+    setErro("");
+    try {
+      let colecao = { nome, lancadaEm: dataLocal(dataLancamento), dias };
+      let refsAtualizadas = refs;
+      if (noBanco) {
+        const { data: colData, error: colError } = await sb
+          .from("colecoes")
+          .insert([{ nome, data_lancamento: dataLancamento, dias_validade: dias, ativa: true }])
+          .select()
+          .single();
+        if (colError) throw colError;
+        const { data: atualizadas, error: prodError } = await sb.from("produtos").update({ colecao: nome }).in("ref", refs).select("ref");
+        if (prodError || !atualizadas?.length) {
+          // Sem as peças a coleção ficaria vazia: desfaz o cadastro da coleção
+          await sb.from("colecoes").delete().eq("id", colData.id);
+          throw prodError || new Error("nenhuma peça foi atualizada no banco (confira se as referências existem na tabela produtos)");
+        }
+        colecao = colecaoDoBanco(colData);
+        refsAtualizadas = atualizadas.map((x) => x.ref);
+      }
+      onColecaoLancada(colecao, refsAtualizadas, noBanco);
+    } catch (err) {
+      setConfirmacao(0);
+      setErro(mensagemErroBanco(err));
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const salvarCor = async () => {
@@ -3161,6 +3248,7 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
           <div className="mt-3 flex gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1" role="tablist">
             {abaBotao("cor", "Nova Cor / Acabamento")}
             {abaBotao("peca", "Nova Peça")}
+            {abaBotao("colecao", "Nova Coleção")}
           </div>
         </div>
 
@@ -3171,7 +3259,7 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
             </p>
           )}
 
-          {aba === "cor" ? (
+          {aba === "cor" && (
             <section className="flex flex-col gap-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="mz-admin-cor" className="text-sm font-semibold">Nome completo do acabamento</label>
@@ -3203,7 +3291,8 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
                 )}
               </div>
             </section>
-          ) : (
+          )}
+          {aba === "peca" && (
             <section className="grid grid-cols-6 gap-x-3 gap-y-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4">
               <div className="col-span-6 flex flex-col gap-1.5 sm:col-span-3">
                 <label htmlFor="mz-admin-ref" className="text-sm font-semibold">Referência</label>
@@ -3236,19 +3325,138 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
               </div>
             </section>
           )}
+          {aba === "colecao" && (
+            <>
+              <section className="grid grid-cols-6 gap-x-3 gap-y-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4">
+                <div className="col-span-6 flex flex-col gap-1.5">
+                  <label htmlFor="mz-admin-colnome" className="text-sm font-semibold">Nome da coleção</label>
+                  <input id="mz-admin-colnome" className={C.input} placeholder="Inverno 2026, Alto Verão 2027…" autoComplete="off" value={nomeColecao}
+                    onChange={(e) => { setNomeColecao(e.target.value.slice(0, 60)); setErro(""); setOk(""); }} />
+                </div>
+                <div className="col-span-6 flex flex-col gap-1.5 sm:col-span-3">
+                  <label htmlFor="mz-admin-coldata" className="text-sm font-semibold">Data de lançamento</label>
+                  <input id="mz-admin-coldata" type="date" className={C.input} value={dataLancamento} onChange={(e) => { setDataLancamento(e.target.value); setErro(""); }} />
+                </div>
+                <div className="col-span-6 flex flex-col gap-1.5 sm:col-span-3">
+                  <label htmlFor="mz-admin-coldias" className="text-sm font-semibold">Validade do lançamento (dias)</label>
+                  <input id="mz-admin-coldias" type="number" inputMode="numeric" min="1" max="365" className={C.input} value={diasValidade}
+                    onChange={(e) => { setDiasValidade(e.target.value.replace(/\D/g, "").slice(0, 3)); setErro(""); }} />
+                </div>
+              </section>
+
+              <section className="flex flex-col gap-3 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4" aria-labelledby="mz-admin-pecas-titulo">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 id="mz-admin-pecas-titulo" className="mz-eyebrow">Peças da nova coleção</h3>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setSelecionadas((s) => new Set([...s, ...pecasFiltradas.map((p) => p.ref)]))} className={`mz-focus min-h-[40px] rounded-lg px-3 text-xs font-bold ${C.accentText} hover:bg-[color:var(--mz-accent-soft)]`}>
+                      Selecionar todas{buscaPecas.trim() ? ` (${pecasFiltradas.length})` : ""}
+                    </button>
+                    <button type="button" onClick={() => setSelecionadas(new Set())} className={`mz-focus min-h-[40px] rounded-lg px-3 text-xs font-bold ${C.muted} hover:bg-[color:var(--mz-sunken)]`}>
+                      Limpar seleção
+                    </button>
+                  </div>
+                </div>
+                <div className="relative">
+                  <Icone.busca className={`pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}`} />
+                  <input type="text" inputMode="search" aria-label="Filtrar peças por referência" className={`${C.input} pl-10`} placeholder="Filtrar por referência (EF, PS, FV…)"
+                    value={buscaPecas} onChange={(e) => setBuscaPecas(e.target.value.slice(0, 20))} />
+                </div>
+                {pecasFiltradas.length === 0 ? (
+                  <p className={`py-4 text-center text-sm ${C.muted}`}>Nenhuma peça ativa com "{buscaPecas.trim()}".</p>
+                ) : (
+                  <ul className="grid max-h-[22rem] grid-cols-1 gap-2 overflow-y-auto overscroll-contain sm:grid-cols-2" id="mz-admin-pecas">
+                    {pecasFiltradas.map((p) => {
+                      const marcada = selecionadas.has(p.ref);
+                      return (
+                        <li key={p.ref}>
+                          <label className={`mz-focus flex min-h-[64px] cursor-pointer items-center gap-3 rounded-xl border-2 p-2 transition ${marcada ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] bg-white"}`}>
+                            <input type="checkbox" className="h-5 w-5 shrink-0 accent-[color:var(--mz-accent)]" checked={marcada} onChange={() => alternarPeca(p.ref)} />
+                            <ImagemPeca produto={p} miniatura />
+                            <span className="min-w-0 flex-1">
+                              <span className="mz-mono block text-sm font-bold">{rotuloRef(p)}</span>
+                              <span className={`block text-xs ${C.muted}`}>{categoriaPeca(p)}</span>
+                              {p.colecao && LANCAMENTOS.some((l) => l.nome === p.colecao) && (
+                                <span className="mt-0.5 inline-block rounded-full bg-[color:var(--mz-sunken)] px-2 py-0.5 text-[10px] font-bold text-[color:var(--mz-ink-2)]">Hoje em {p.colecao}</span>
+                              )}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+            </>
+          )}
         </div>
 
         <div className="border-t border-[color:var(--mz-line)] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 sm:px-5">
+          {aba === "colecao" && (
+            <p className="mb-2 text-sm font-bold" aria-live="polite">
+              {selecionadas.size} {selecionadas.size === 1 ? "peça selecionada" : "peças selecionadas"} para esta coleção
+            </p>
+          )}
           {erro && <p role="alert" className="mb-2 text-sm font-semibold text-[color:var(--mz-warn)]">{erro}</p>}
           {ok && <p role="status" className="mb-2 text-sm font-semibold text-[color:var(--mz-ok)]">✓ {ok}</p>}
           <div className="grid grid-cols-[auto_1fr] gap-3">
             <button type="button" onClick={onFechar} className={C.btnGhost}>Fechar</button>
-            <button type="button" disabled={salvando} onClick={aba === "cor" ? salvarCor : salvarPeca} className={C.btnAccent}>
-              {salvando ? "Salvando…" : aba === "cor" ? "Cadastrar cor" : "Cadastrar peça"}
-            </button>
+            {aba === "colecao" ? (
+              <button type="button" disabled={salvando || !nomeColecao.trim() || selecionadas.size === 0} onClick={pedirConfirmacao} className={C.btnAccent}>
+                Lançar Coleção
+              </button>
+            ) : (
+              <button type="button" disabled={salvando} onClick={aba === "cor" ? salvarCor : salvarPeca} className={C.btnAccent}>
+                {salvando ? "Salvando…" : aba === "cor" ? "Cadastrar cor" : "Cadastrar peça"}
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {confirmacao > 0 && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 p-4">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="mz-conf-titulo"
+            aria-describedby="mz-conf-texto"
+            className={`mz-in w-full max-w-md rounded-3xl border-2 p-5 shadow-2xl ${
+              confirmacao === 2 ? "border-[color:var(--mz-warn)] bg-[#FFF8F0]" : "border-transparent bg-white"
+            }`}
+          >
+            {confirmacao === 1 ? (
+              <>
+                <h3 id="mz-conf-titulo" className="mz-display text-lg font-bold">Confirmar Lançamento de Coleção</h3>
+                <p id="mz-conf-texto" className="mt-2 text-sm leading-relaxed">
+                  Você está prestes a lançar a coleção <b>{nomeColecao.trim()}</b> com <b>{selecionadas.size} {selecionadas.size === 1 ? "peça" : "peças"}</b>. Essas referências ficarão visíveis exclusivamente nesta coleção pelo período de {dias} dias.
+                </p>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <button type="button" onClick={() => setConfirmacao(0)} className={C.btnGhost}>Cancelar</button>
+                  <button type="button" onClick={() => setConfirmacao(2)} className={C.btnPrimary}>Continuar</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 id="mz-conf-titulo" className="mz-display text-lg font-bold text-[color:var(--mz-warn)]">⚠️ Tem certeza absoluta?</h3>
+                <p id="mz-conf-texto" className="mt-2 text-sm leading-relaxed">
+                  Esta ação atualizará o catálogo de todos os representantes imediatamente{noBanco ? " no Supabase" : " (nesta sessão de demonstração)"}. Deseja prosseguir?
+                </p>
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                  <button type="button" disabled={salvando} onClick={() => setConfirmacao(1)} className={`${C.btnGhost} sm:flex-1`}>Voltar</button>
+                  <button
+                    type="button"
+                    disabled={salvando}
+                    onClick={lancarColecao}
+                    className="mz-focus inline-flex min-h-[48px] items-center justify-center rounded-xl bg-[color:var(--mz-warn)] px-4 text-[15px] font-bold text-white transition hover:brightness-110 disabled:opacity-50 sm:flex-[1.6]"
+                  >
+                    {salvando ? "Lançando…" : "Sim, tenho certeza e quero lançar"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3423,6 +3631,7 @@ export default function MetalizaApp() {
   const [itensPorCliente, setItensPorCliente] = useState({});
   const [acabamentos, setAcabamentos] = useState(ACABAMENTOS_DEMO);
   const [versaoCatalogo, setVersaoCatalogo] = useState(0);
+  const [versaoColecoes, setVersaoColecoes] = useState(0);
   const [painelAdmin, setPainelAdmin] = useState(false);
   const corCriada = (cor) => {
     registrarAcabamentos([cor]);
@@ -3432,6 +3641,42 @@ export default function MetalizaApp() {
     PRODUTOS = [...PRODUTOS, peca];
     setVersaoCatalogo((v) => v + 1);
   };
+  // Nova coleção: entra na gaveta na hora (com o contador de dias) e as peças marcadas passam para ela
+  const colecaoLancada = (colecao, refs, noBanco) => {
+    LANCAMENTOS = [colecao, ...LANCAMENTOS.filter((l) => l.nome !== colecao.nome)];
+    const marcadas = new Set(refs);
+    PRODUTOS = PRODUTOS.map((p) => (marcadas.has(p.ref) ? { ...p, colecao: colecao.nome } : p));
+    setEncerradas((l) => l.filter((n) => n !== colecao.nome));
+    setVersaoColecoes((v) => v + 1);
+    setVersaoCatalogo((v) => v + 1);
+    setPainelAdmin(false);
+    setToast(`Coleção ${colecao.nome} lançada com sucesso!${noBanco ? "" : " (só nesta sessão de demonstração)"}`);
+  };
+
+  // Coleções em lançamento da tabela "colecoes" (ao abrir e após o login). Sem a tabela, fica a de demonstração.
+  useEffect(() => {
+    const sb = obterSupabase();
+    if (!sb) return undefined;
+    let ativo = true;
+    sb.from("colecoes")
+      .select("*")
+      .eq("ativa", true)
+      .order("data_lancamento", { ascending: false })
+      .then(({ data, error }) => {
+        if (!ativo) return;
+        if (error) {
+          console.error("Erro ao buscar coleções do Supabase:", error.message);
+          return;
+        }
+        if (!data?.length) return;
+        LANCAMENTOS = data.map(colecaoDoBanco);
+        setVersaoColecoes((v) => v + 1);
+      })
+      .catch((err) => console.error("Falha ao comunicar com Supabase (coleções):", err));
+    return () => {
+      ativo = false;
+    };
+  }, [rep?.id]);
 
   // Cores ativas da tabela "cores" (ao abrir o app e de novo após o login, caso a leitura exija autenticação).
   // Sem Supabase, com erro ou com a tabela vazia, fica a cartela de demonstração.
@@ -3465,7 +3710,7 @@ export default function MetalizaApp() {
   const [encerradas, setEncerradas] = useState([]);
   const ativas = useMemo(
     () => new Set(LANCAMENTOS.filter((l) => !encerradas.includes(l.nome) && diasRestantes(l) > 0).map((l) => l.nome)),
-    [encerradas]
+    [encerradas, versaoColecoes]
   );
   const [colecao, setColecao] = useState(() => visaoInicial(ativas));
 
@@ -3874,7 +4119,7 @@ export default function MetalizaApp() {
           )}
 
           {painelAdmin && podeAcessarAdmin(rep) && (
-            <PainelAdmin rep={rep} acabamentos={acabamentos} onCorCriada={corCriada} onPecaCriada={pecaCriada} onFechar={() => setPainelAdmin(false)} />
+            <PainelAdmin rep={rep} acabamentos={acabamentos} onCorCriada={corCriada} onPecaCriada={pecaCriada} onColecaoLancada={colecaoLancada} onFechar={() => setPainelAdmin(false)} />
           )}
 
           {escolhendoCliente && (

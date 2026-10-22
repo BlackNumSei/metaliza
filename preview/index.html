@@ -105,11 +105,21 @@ const inicioDoDia = (d = /* @__PURE__ */ new Date()) => {
   x.setHours(0, 0, 0, 0);
   return x;
 };
-const LANCAMENTOS = [{ nome: "Ver\xE3o 2026", lancadaEm: new Date(inicioDoDia().getTime() - 48 * DIA_MS) }];
-const diasRestantes = (l) => Math.max(0, Math.ceil((l.lancadaEm.getTime() + CICLO_DIAS * DIA_MS - inicioDoDia().getTime()) / DIA_MS));
-const diasPassados = (l) => Math.min(CICLO_DIAS, CICLO_DIAS - diasRestantes(l));
+let LANCAMENTOS = [{ nome: "Ver\xE3o 2026", lancadaEm: new Date(inicioDoDia().getTime() - 48 * DIA_MS), dias: CICLO_DIAS }];
+const validade = (l) => l.dias || CICLO_DIAS;
+const diasRestantes = (l) => Math.min(validade(l), Math.max(0, Math.ceil((l.lancadaEm.getTime() + validade(l) * DIA_MS - inicioDoDia().getTime()) / DIA_MS)));
+const diasPassados = (l) => Math.min(validade(l), validade(l) - diasRestantes(l));
+const dataLocal = (iso) => {
+  const [a, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+  return new Date(a, m - 1, d);
+};
+const hojeISO = () => {
+  const d = /* @__PURE__ */ new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const colecaoDoBanco = (r) => ({ id: r.id, nome: r.nome, lancadaEm: dataLocal(r.data_lancamento), dias: r.dias_validade || CICLO_DIAS });
 const VISAO_GERAL = "Cat\xE1logo Geral / Linha Permanente";
-const VISOES = [VISAO_GERAL, ...LANCAMENTOS.map((l) => l.nome)];
+const listarVisoes = () => [VISAO_GERAL, ...LANCAMENTOS.map((l) => l.nome)];
 const visaoInicial = (ativas) => {
   var _a;
   return ((_a = LANCAMENTOS.find((l) => ativas.has(l.nome))) == null ? void 0 : _a.nome) || VISAO_GERAL;
@@ -968,8 +978,8 @@ function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, o
         className: "mz-focus -mt-3 mb-5 flex min-h-[52px] w-full items-center gap-3 rounded-2xl border-2 border-dashed border-[color:var(--mz-line)] px-4 py-3 text-left transition hover:border-[color:var(--mz-accent)]"
       },
       /* @__PURE__ */ React.createElement(Settings, { className: "h-5 w-5 shrink-0 text-[color:var(--mz-accent)]", strokeWidth: 1.8 }),
-      /* @__PURE__ */ React.createElement("span", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("span", { className: "block text-sm font-bold" }, "Painel de Cadastro (Admin)"), /* @__PURE__ */ React.createElement("span", { className: `block text-xs ${C.muted}` }, "Novas cores e novas pe\xE7as"))
-    ), /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow px-1" }, "Cat\xE1logo"), /* @__PURE__ */ React.createElement("ul", { className: "mt-2 flex flex-col" }, VISOES.map((v) => {
+      /* @__PURE__ */ React.createElement("span", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("span", { className: "block text-sm font-bold" }, "Painel de Cadastro (Admin)"), /* @__PURE__ */ React.createElement("span", { className: `block text-xs ${C.muted}` }, "Novas cores, pe\xE7as e cole\xE7\xF5es"))
+    ), /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow px-1" }, "Cat\xE1logo"), /* @__PURE__ */ React.createElement("ul", { className: "mt-2 flex flex-col" }, listarVisoes().map((v) => {
       const ativo = colecao === v;
       const lanc = LANCAMENTOS.find((l) => l.nome === v);
       const encerrada = lanc && !ativas.has(v);
@@ -984,11 +994,11 @@ function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, o
           className: `mz-focus group my-1 flex w-full flex-col rounded-2xl border-2 px-4 py-3.5 text-left transition disabled:cursor-not-allowed ${ativo ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-transparent hover:bg-[color:var(--mz-soft)]"}`
         },
         /* @__PURE__ */ React.createElement("span", { className: "flex w-full items-center justify-between gap-3" }, /* @__PURE__ */ React.createElement("span", { className: `text-lg font-bold leading-tight ${ativo ? "text-[color:var(--mz-accent)]" : ""} ${encerrada ? "line-through opacity-50" : ""}` }, v), /* @__PURE__ */ React.createElement("span", { className: `mz-mono rounded-full px-2 py-0.5 text-xs font-semibold ${ativo ? "bg-[color:var(--mz-accent)] text-white" : "bg-[color:var(--mz-sunken)] text-[color:var(--mz-ink-2)]"}` }, qtd)),
-        lanc && !encerrada && /* @__PURE__ */ React.createElement("span", { className: "mt-1.5 flex w-full flex-col gap-1" }, /* @__PURE__ */ React.createElement("span", { className: `text-xs ${C.muted}` }, "\u{1F525} Cole\xE7\xE3o ativa \u2022 Restam ", /* @__PURE__ */ React.createElement("b", { className: "font-medium text-[color:var(--mz-ink)]" }, diasRestantes(lanc), " dias")), /* @__PURE__ */ React.createElement("span", { className: "h-0.5 w-full overflow-hidden rounded-full bg-[color:var(--mz-line)]", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("span", { className: "block h-full bg-[color:var(--mz-accent)]", style: { width: `${diasPassados(lanc) / CICLO_DIAS * 100}%` } }))),
+        lanc && !encerrada && /* @__PURE__ */ React.createElement("span", { className: "mt-1.5 flex w-full flex-col gap-1" }, /* @__PURE__ */ React.createElement("span", { className: `text-xs ${C.muted}` }, "\u{1F525} Cole\xE7\xE3o ativa \u2022 Restam ", /* @__PURE__ */ React.createElement("b", { className: "font-medium text-[color:var(--mz-ink)]" }, diasRestantes(lanc), " dias")), /* @__PURE__ */ React.createElement("span", { className: "h-0.5 w-full overflow-hidden rounded-full bg-[color:var(--mz-line)]", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("span", { className: "block h-full bg-[color:var(--mz-accent)]", style: { width: `${diasPassados(lanc) / validade(lanc) * 100}%` } }))),
         encerrada && /* @__PURE__ */ React.createElement("span", { className: `mt-1 text-xs ${C.muted}` }, "Cole\xE7\xE3o encerrada \xB7 pe\xE7as migradas para a Linha Permanente"),
         v === VISAO_GERAL && /* @__PURE__ */ React.createElement("span", { className: `mt-1 text-xs ${C.muted}` }, "Pe\xE7as permanentes, fora do per\xEDodo de lan\xE7amento")
       ));
-    })), /* @__PURE__ */ React.createElement("div", { className: "mt-5 rounded-2xl border border-dashed border-[color:var(--mz-line)] p-4" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Demonstra\xE7\xE3o"), LANCAMENTOS.map((l) => /* @__PURE__ */ React.createElement("div", { key: l.nome, className: "mt-2" }, encerradas.includes(l.nome) ? /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onDesfazerExpiracao(l.nome), className: `${C.btnGhost} w-full !py-2 text-xs` }, "Desfazer simula\xE7\xE3o \xB7 reativar ", l.nome) : /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onSimularExpiracao(l.nome), className: `${C.btnPrimary} w-full !py-2 text-xs` }, "Simular expira\xE7\xE3o (90 dias) \xB7 ", l.nome))), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-[11px] leading-snug ${C.muted}` }, "Encerra a cole\xE7\xE3o e migra as pe\xE7as exclusivas para o Cat\xE1logo Geral / Linha."))),
+    })), /* @__PURE__ */ React.createElement("div", { className: "mt-5 rounded-2xl border border-dashed border-[color:var(--mz-line)] p-4" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Demonstra\xE7\xE3o"), LANCAMENTOS.map((l) => /* @__PURE__ */ React.createElement("div", { key: l.nome, className: "mt-2" }, encerradas.includes(l.nome) ? /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onDesfazerExpiracao(l.nome), className: `${C.btnGhost} w-full !py-2 text-xs` }, "Desfazer simula\xE7\xE3o \xB7 reativar ", l.nome) : /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => onSimularExpiracao(l.nome), className: `${C.btnPrimary} w-full !py-2 text-xs` }, "Simular expira\xE7\xE3o (", validade(l), " dias) \xB7 ", l.nome))), /* @__PURE__ */ React.createElement("p", { className: `mt-2 text-[11px] leading-snug ${C.muted}` }, "Encerra a cole\xE7\xE3o e migra as pe\xE7as exclusivas para o Cat\xE1logo Geral / Linha."))),
     /* @__PURE__ */ React.createElement("div", { className: "mt-auto flex flex-col gap-4 border-t border-[color:var(--mz-line)] bg-[color:var(--mz-soft)] px-5 py-5" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Representante"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-medium" }, rep.nome, " ", /* @__PURE__ */ React.createElement("span", { className: `mz-mono text-xs ${C.muted}` }, rep.codigo)), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, rep.regiao)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Cliente / F\xE1brica"), cliente ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { className: "mt-1 font-medium" }, cliente.nome), /* @__PURE__ */ React.createElement("p", { className: `text-sm ${C.muted}` }, cliente.contato, " \xB7 ", cliente.cidade)) : /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-sm ${C.muted}` }, apresentacao ? "Modo Apresenta\xE7\xE3o \xB7 sem cliente selecionado." : "Nenhuma f\xE1brica selecionada."), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onTrocarCliente, className: `mz-focus -ml-1 mt-1 min-h-[44px] px-1 text-sm font-bold underline underline-offset-4 ${C.accentText}` }, cliente ? "Trocar cliente" : "Escolher cliente")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-x-5 gap-y-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onTrocarModo, className: `mz-focus min-h-[44px] text-sm font-semibold ${C.muted} hover:text-[color:var(--mz-ink)]` }, "Trocar modo de acesso"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onSair, className: `mz-focus min-h-[44px] text-sm font-semibold ${C.muted} hover:text-[color:var(--mz-ink)]` }, "Sair da conta")))
   ));
 }
@@ -1894,7 +1904,7 @@ function analisarNomeCor(texto) {
 }
 const COLECAO_PERMANENTE = "Linha permanente";
 const FORM_PECA_VAZIO = { ref: "", categoria: "", colecao: COLECAO_PERMANENTE, arquivo: null, previa: "" };
-function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) {
+function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onColecaoLancada, onFechar }) {
   const sb = obterSupabase();
   const noBanco = !!(sb && (rep == null ? void 0 : rep.id));
   const [aba, setAba] = useState("cor");
@@ -1905,11 +1915,23 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
   const [salvando, setSalvando] = useState(false);
   const analise = analisarNomeCor(nomeCor);
   const previaCor = !analise.erro ? corDoBanco({ id: "previa", nome: analise.nome, codigos: analise.codigos, bicolor: analise.bicolor }) : null;
+  const [nomeColecao, setNomeColecao] = useState("");
+  const [dataLancamento, setDataLancamento] = useState(hojeISO());
+  const [diasValidade, setDiasValidade] = useState(String(CICLO_DIAS));
+  const [buscaPecas, setBuscaPecas] = useState("");
+  const [selecionadas, setSelecionadas] = useState(() => /* @__PURE__ */ new Set());
+  const [confirmacao, setConfirmacao] = useState(0);
+  const confirmacaoRef = useRef(0);
+  confirmacaoRef.current = confirmacao;
+  const pecasAtivas = PRODUTOS.filter((p) => p.ativo !== false);
+  const pecasFiltradas = buscaPecas.trim() ? pecasAtivas.filter((p) => normalizarRef(p.ref).includes(normalizarRef(buscaPecas))) : pecasAtivas;
+  const dias = Number(diasValidade);
   useEffect(() => {
     const esc = (e) => {
       if (e.key !== "Escape") return;
       e.stopImmediatePropagation();
-      onFechar();
+      if (confirmacaoRef.current) setConfirmacao(0);
+      else onFechar();
     };
     window.addEventListener("keydown", esc, true);
     return () => window.removeEventListener("keydown", esc, true);
@@ -1919,6 +1941,52 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
     setAba(a);
     setErro("");
     setOk("");
+  };
+  const alternarPeca = (ref) => setSelecionadas((s) => {
+    const n = new Set(s);
+    if (n.has(ref)) n.delete(ref);
+    else n.add(ref);
+    return n;
+  });
+  const pedirConfirmacao = () => {
+    setOk("");
+    const nome = nomeColecao.trim().replace(/\s+/g, " ");
+    if (!nome) return setErro("Informe o nome da cole\xE7\xE3o.");
+    const mesmoNome = (n) => normalizarTexto(n) === normalizarTexto(nome);
+    if (mesmoNome(VISAO_GERAL) || LANCAMENTOS.some((l) => mesmoNome(l.nome))) return setErro(`J\xE1 existe uma cole\xE7\xE3o chamada ${nome}.`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataLancamento)) return setErro("Informe a data de lan\xE7amento.");
+    if (!Number.isInteger(dias) || dias < 1 || dias > 365) return setErro("A validade deve ser um n\xFAmero inteiro de 1 a 365 dias.");
+    if (diasRestantes({ lancadaEm: dataLocal(dataLancamento), dias }) <= 0) return setErro("Com essa data e validade, o lan\xE7amento j\xE1 estaria encerrado.");
+    if (!selecionadas.size) return setErro("Selecione ao menos uma pe\xE7a.");
+    setErro("");
+    setConfirmacao(1);
+  };
+  const lancarColecao = async () => {
+    const nome = nomeColecao.trim().replace(/\s+/g, " ");
+    const refs = [...selecionadas];
+    setSalvando(true);
+    setErro("");
+    try {
+      let colecao = { nome, lancadaEm: dataLocal(dataLancamento), dias };
+      let refsAtualizadas = refs;
+      if (noBanco) {
+        const { data: colData, error: colError } = await sb.from("colecoes").insert([{ nome, data_lancamento: dataLancamento, dias_validade: dias, ativa: true }]).select().single();
+        if (colError) throw colError;
+        const { data: atualizadas, error: prodError } = await sb.from("produtos").update({ colecao: nome }).in("ref", refs).select("ref");
+        if (prodError || !(atualizadas == null ? void 0 : atualizadas.length)) {
+          await sb.from("colecoes").delete().eq("id", colData.id);
+          throw prodError || new Error("nenhuma pe\xE7a foi atualizada no banco (confira se as refer\xEAncias existem na tabela produtos)");
+        }
+        colecao = colecaoDoBanco(colData);
+        refsAtualizadas = atualizadas.map((x) => x.ref);
+      }
+      onColecaoLancada(colecao, refsAtualizadas, noBanco);
+    } catch (err) {
+      setConfirmacao(0);
+      setErro(mensagemErroBanco(err));
+    } finally {
+      setSalvando(false);
+    }
   };
   const salvarCor = async () => {
     setOk("");
@@ -2002,7 +2070,7 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
     },
     texto
   );
-  return /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-6" }, /* @__PURE__ */ React.createElement("div", { role: "dialog", "aria-modal": "true", "aria-labelledby": "mz-admin-titulo", className: "mz-sheet flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-[color:var(--mz-soft)] shadow-2xl sm:rounded-3xl" }, /* @__PURE__ */ React.createElement("div", { className: "border-b border-[color:var(--mz-line)] bg-white px-5 pb-3 pt-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow flex items-center gap-1.5" }, /* @__PURE__ */ React.createElement(Settings, { className: "h-3.5 w-3.5", strokeWidth: 2 }), " Administra\xE7\xE3o"), /* @__PURE__ */ React.createElement("h2", { id: "mz-admin-titulo", className: "mz-display text-lg font-bold" }, "Painel de Cadastro")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: `${C.fechar} -mr-2`, "aria-label": "Fechar painel" }, /* @__PURE__ */ React.createElement(X, { className: "h-6 w-6", strokeWidth: 2 }))), /* @__PURE__ */ React.createElement("div", { className: "mt-3 flex gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1", role: "tablist" }, abaBotao("cor", "Nova Cor / Acabamento"), abaBotao("peca", "Nova Pe\xE7a"))), /* @__PURE__ */ React.createElement("div", { className: "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5" }, !noBanco && /* @__PURE__ */ React.createElement("p", { role: "note", className: "rounded-xl border border-[#F5C26B] bg-[#FFF7E6] p-3 text-xs font-semibold text-[#7A4B00]" }, "Modo demonstra\xE7\xE3o sem login no Supabase: os cadastros valem s\xF3 nesta sess\xE3o, neste aparelho. Para gravar no banco, entre com um usu\xE1rio administrador."), aba === "cor" ? /* @__PURE__ */ React.createElement("section", { className: "flex flex-col gap-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-1.5" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-admin-cor", className: "text-sm font-semibold" }, "Nome completo do acabamento"), /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-6" }, /* @__PURE__ */ React.createElement("div", { role: "dialog", "aria-modal": "true", "aria-labelledby": "mz-admin-titulo", className: "mz-sheet flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-[color:var(--mz-soft)] shadow-2xl sm:rounded-3xl" }, /* @__PURE__ */ React.createElement("div", { className: "border-b border-[color:var(--mz-line)] bg-white px-5 pb-3 pt-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow flex items-center gap-1.5" }, /* @__PURE__ */ React.createElement(Settings, { className: "h-3.5 w-3.5", strokeWidth: 2 }), " Administra\xE7\xE3o"), /* @__PURE__ */ React.createElement("h2", { id: "mz-admin-titulo", className: "mz-display text-lg font-bold" }, "Painel de Cadastro")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: `${C.fechar} -mr-2`, "aria-label": "Fechar painel" }, /* @__PURE__ */ React.createElement(X, { className: "h-6 w-6", strokeWidth: 2 }))), /* @__PURE__ */ React.createElement("div", { className: "mt-3 flex gap-1 rounded-lg bg-[color:var(--mz-sunken)] p-1", role: "tablist" }, abaBotao("cor", "Nova Cor / Acabamento"), abaBotao("peca", "Nova Pe\xE7a"), abaBotao("colecao", "Nova Cole\xE7\xE3o"))), /* @__PURE__ */ React.createElement("div", { className: "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5" }, !noBanco && /* @__PURE__ */ React.createElement("p", { role: "note", className: "rounded-xl border border-[#F5C26B] bg-[#FFF7E6] p-3 text-xs font-semibold text-[#7A4B00]" }, "Modo demonstra\xE7\xE3o sem login no Supabase: os cadastros valem s\xF3 nesta sess\xE3o, neste aparelho. Para gravar no banco, entre com um usu\xE1rio administrador."), aba === "cor" && /* @__PURE__ */ React.createElement("section", { className: "flex flex-col gap-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-1.5" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-admin-cor", className: "text-sm font-semibold" }, "Nome completo do acabamento"), /* @__PURE__ */ React.createElement(
     "input",
     {
       id: "mz-admin-cor",
@@ -2016,7 +2084,7 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
         setOk("");
       }
     }
-  ), /* @__PURE__ */ React.createElement("span", { className: `text-xs ${C.muted}` }, 'Comece cada cor pelo c\xF3digo. Para bicolor, separe as duas cores com "/".')), /* @__PURE__ */ React.createElement("div", { className: "rounded-xl bg-[color:var(--mz-sunken)] p-3" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Identifica\xE7\xE3o autom\xE1tica"), nomeCor.trim() && !analise.erro ? /* @__PURE__ */ React.createElement("div", { className: "mt-2 flex items-center gap-3" }, /* @__PURE__ */ React.createElement(Swatch, { acabamento: previaCor, size: "h-10 w-10" }), /* @__PURE__ */ React.createElement(PilulasCodigo, { a: previaCor }), /* @__PURE__ */ React.createElement("span", { className: "min-w-0 flex-1 break-words text-sm font-bold" }, analise.nome), /* @__PURE__ */ React.createElement("span", { className: `shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${analise.bicolor ? "bg-[color:var(--mz-accent)] text-white" : "bg-white text-[color:var(--mz-ink-2)]"}` }, analise.bicolor ? "Bicolor" : "Solo")) : /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-xs ${nomeCor.trim() ? "font-semibold text-[color:var(--mz-warn)]" : C.muted}` }, nomeCor.trim() ? analise.erro : "Os c\xF3digos e o tipo (Solo ou Bicolor) aparecem aqui enquanto voc\xEA digita."))) : /* @__PURE__ */ React.createElement("section", { className: "grid grid-cols-6 gap-x-3 gap-y-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4" }, /* @__PURE__ */ React.createElement("div", { className: "col-span-6 flex flex-col gap-1.5 sm:col-span-3" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-admin-ref", className: "text-sm font-semibold" }, "Refer\xEAncia"), /* @__PURE__ */ React.createElement(
+  ), /* @__PURE__ */ React.createElement("span", { className: `text-xs ${C.muted}` }, 'Comece cada cor pelo c\xF3digo. Para bicolor, separe as duas cores com "/".')), /* @__PURE__ */ React.createElement("div", { className: "rounded-xl bg-[color:var(--mz-sunken)] p-3" }, /* @__PURE__ */ React.createElement("p", { className: "mz-eyebrow" }, "Identifica\xE7\xE3o autom\xE1tica"), nomeCor.trim() && !analise.erro ? /* @__PURE__ */ React.createElement("div", { className: "mt-2 flex items-center gap-3" }, /* @__PURE__ */ React.createElement(Swatch, { acabamento: previaCor, size: "h-10 w-10" }), /* @__PURE__ */ React.createElement(PilulasCodigo, { a: previaCor }), /* @__PURE__ */ React.createElement("span", { className: "min-w-0 flex-1 break-words text-sm font-bold" }, analise.nome), /* @__PURE__ */ React.createElement("span", { className: `shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${analise.bicolor ? "bg-[color:var(--mz-accent)] text-white" : "bg-white text-[color:var(--mz-ink-2)]"}` }, analise.bicolor ? "Bicolor" : "Solo")) : /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-xs ${nomeCor.trim() ? "font-semibold text-[color:var(--mz-warn)]" : C.muted}` }, nomeCor.trim() ? analise.erro : "Os c\xF3digos e o tipo (Solo ou Bicolor) aparecem aqui enquanto voc\xEA digita."))), aba === "peca" && /* @__PURE__ */ React.createElement("section", { className: "grid grid-cols-6 gap-x-3 gap-y-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4" }, /* @__PURE__ */ React.createElement("div", { className: "col-span-6 flex flex-col gap-1.5 sm:col-span-3" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-admin-ref", className: "text-sm font-semibold" }, "Refer\xEAncia"), /* @__PURE__ */ React.createElement(
     "input",
     {
       id: "mz-admin-ref",
@@ -2045,7 +2113,72 @@ function PainelAdmin({ rep, acabamentos, onCorCriada, onPecaCriada, onFechar }) 
         return escolherFoto(((_a = e.target.files) == null ? void 0 : _a[0]) || null);
       }
     }
-  ))))), /* @__PURE__ */ React.createElement("div", { className: "border-t border-[color:var(--mz-line)] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 sm:px-5" }, erro && /* @__PURE__ */ React.createElement("p", { role: "alert", className: "mb-2 text-sm font-semibold text-[color:var(--mz-warn)]" }, erro), ok && /* @__PURE__ */ React.createElement("p", { role: "status", className: "mb-2 text-sm font-semibold text-[color:var(--mz-ok)]" }, "\u2713 ", ok), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-[auto_1fr] gap-3" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: C.btnGhost }, "Fechar"), /* @__PURE__ */ React.createElement("button", { type: "button", disabled: salvando, onClick: aba === "cor" ? salvarCor : salvarPeca, className: C.btnAccent }, salvando ? "Salvando\u2026" : aba === "cor" ? "Cadastrar cor" : "Cadastrar pe\xE7a")))));
+  )))), aba === "colecao" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("section", { className: "grid grid-cols-6 gap-x-3 gap-y-4 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4" }, /* @__PURE__ */ React.createElement("div", { className: "col-span-6 flex flex-col gap-1.5" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-admin-colnome", className: "text-sm font-semibold" }, "Nome da cole\xE7\xE3o"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      id: "mz-admin-colnome",
+      className: C.input,
+      placeholder: "Inverno 2026, Alto Ver\xE3o 2027\u2026",
+      autoComplete: "off",
+      value: nomeColecao,
+      onChange: (e) => {
+        setNomeColecao(e.target.value.slice(0, 60));
+        setErro("");
+        setOk("");
+      }
+    }
+  )), /* @__PURE__ */ React.createElement("div", { className: "col-span-6 flex flex-col gap-1.5 sm:col-span-3" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-admin-coldata", className: "text-sm font-semibold" }, "Data de lan\xE7amento"), /* @__PURE__ */ React.createElement("input", { id: "mz-admin-coldata", type: "date", className: C.input, value: dataLancamento, onChange: (e) => {
+    setDataLancamento(e.target.value);
+    setErro("");
+  } })), /* @__PURE__ */ React.createElement("div", { className: "col-span-6 flex flex-col gap-1.5 sm:col-span-3" }, /* @__PURE__ */ React.createElement("label", { htmlFor: "mz-admin-coldias", className: "text-sm font-semibold" }, "Validade do lan\xE7amento (dias)"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      id: "mz-admin-coldias",
+      type: "number",
+      inputMode: "numeric",
+      min: "1",
+      max: "365",
+      className: C.input,
+      value: diasValidade,
+      onChange: (e) => {
+        setDiasValidade(e.target.value.replace(/\D/g, "").slice(0, 3));
+        setErro("");
+      }
+    }
+  ))), /* @__PURE__ */ React.createElement("section", { className: "flex flex-col gap-3 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4", "aria-labelledby": "mz-admin-pecas-titulo" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center justify-between gap-2" }, /* @__PURE__ */ React.createElement("h3", { id: "mz-admin-pecas-titulo", className: "mz-eyebrow" }, "Pe\xE7as da nova cole\xE7\xE3o"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setSelecionadas((s) => /* @__PURE__ */ new Set([...s, ...pecasFiltradas.map((p) => p.ref)])), className: `mz-focus min-h-[40px] rounded-lg px-3 text-xs font-bold ${C.accentText} hover:bg-[color:var(--mz-accent-soft)]` }, "Selecionar todas", buscaPecas.trim() ? ` (${pecasFiltradas.length})` : ""), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setSelecionadas(/* @__PURE__ */ new Set()), className: `mz-focus min-h-[40px] rounded-lg px-3 text-xs font-bold ${C.muted} hover:bg-[color:var(--mz-sunken)]` }, "Limpar sele\xE7\xE3o"))), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(Icone.busca, { className: `pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${C.muted}` }), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      inputMode: "search",
+      "aria-label": "Filtrar pe\xE7as por refer\xEAncia",
+      className: `${C.input} pl-10`,
+      placeholder: "Filtrar por refer\xEAncia (EF, PS, FV\u2026)",
+      value: buscaPecas,
+      onChange: (e) => setBuscaPecas(e.target.value.slice(0, 20))
+    }
+  )), pecasFiltradas.length === 0 ? /* @__PURE__ */ React.createElement("p", { className: `py-4 text-center text-sm ${C.muted}` }, 'Nenhuma pe\xE7a ativa com "', buscaPecas.trim(), '".') : /* @__PURE__ */ React.createElement("ul", { className: "grid max-h-[22rem] grid-cols-1 gap-2 overflow-y-auto overscroll-contain sm:grid-cols-2", id: "mz-admin-pecas" }, pecasFiltradas.map((p) => {
+    const marcada = selecionadas.has(p.ref);
+    return /* @__PURE__ */ React.createElement("li", { key: p.ref }, /* @__PURE__ */ React.createElement("label", { className: `mz-focus flex min-h-[64px] cursor-pointer items-center gap-3 rounded-xl border-2 p-2 transition ${marcada ? "border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)]" : "border-[color:var(--mz-line)] bg-white"}` }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", className: "h-5 w-5 shrink-0 accent-[color:var(--mz-accent)]", checked: marcada, onChange: () => alternarPeca(p.ref) }), /* @__PURE__ */ React.createElement(ImagemPeca, { produto: p, miniatura: true }), /* @__PURE__ */ React.createElement("span", { className: "min-w-0 flex-1" }, /* @__PURE__ */ React.createElement("span", { className: "mz-mono block text-sm font-bold" }, rotuloRef(p)), /* @__PURE__ */ React.createElement("span", { className: `block text-xs ${C.muted}` }, categoriaPeca(p)), p.colecao && LANCAMENTOS.some((l) => l.nome === p.colecao) && /* @__PURE__ */ React.createElement("span", { className: "mt-0.5 inline-block rounded-full bg-[color:var(--mz-sunken)] px-2 py-0.5 text-[10px] font-bold text-[color:var(--mz-ink-2)]" }, "Hoje em ", p.colecao))));
+  }))))), /* @__PURE__ */ React.createElement("div", { className: "border-t border-[color:var(--mz-line)] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom,0px))] pt-3 sm:px-5" }, aba === "colecao" && /* @__PURE__ */ React.createElement("p", { className: "mb-2 text-sm font-bold", "aria-live": "polite" }, selecionadas.size, " ", selecionadas.size === 1 ? "pe\xE7a selecionada" : "pe\xE7as selecionadas", " para esta cole\xE7\xE3o"), erro && /* @__PURE__ */ React.createElement("p", { role: "alert", className: "mb-2 text-sm font-semibold text-[color:var(--mz-warn)]" }, erro), ok && /* @__PURE__ */ React.createElement("p", { role: "status", className: "mb-2 text-sm font-semibold text-[color:var(--mz-ok)]" }, "\u2713 ", ok), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-[auto_1fr] gap-3" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onFechar, className: C.btnGhost }, "Fechar"), aba === "colecao" ? /* @__PURE__ */ React.createElement("button", { type: "button", disabled: salvando || !nomeColecao.trim() || selecionadas.size === 0, onClick: pedirConfirmacao, className: C.btnAccent }, "Lan\xE7ar Cole\xE7\xE3o") : /* @__PURE__ */ React.createElement("button", { type: "button", disabled: salvando, onClick: aba === "cor" ? salvarCor : salvarPeca, className: C.btnAccent }, salvando ? "Salvando\u2026" : aba === "cor" ? "Cadastrar cor" : "Cadastrar pe\xE7a")))), confirmacao > 0 && /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 p-4" }, /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      role: "alertdialog",
+      "aria-modal": "true",
+      "aria-labelledby": "mz-conf-titulo",
+      "aria-describedby": "mz-conf-texto",
+      className: `mz-in w-full max-w-md rounded-3xl border-2 p-5 shadow-2xl ${confirmacao === 2 ? "border-[color:var(--mz-warn)] bg-[#FFF8F0]" : "border-transparent bg-white"}`
+    },
+    confirmacao === 1 ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("h3", { id: "mz-conf-titulo", className: "mz-display text-lg font-bold" }, "Confirmar Lan\xE7amento de Cole\xE7\xE3o"), /* @__PURE__ */ React.createElement("p", { id: "mz-conf-texto", className: "mt-2 text-sm leading-relaxed" }, "Voc\xEA est\xE1 prestes a lan\xE7ar a cole\xE7\xE3o ", /* @__PURE__ */ React.createElement("b", null, nomeColecao.trim()), " com ", /* @__PURE__ */ React.createElement("b", null, selecionadas.size, " ", selecionadas.size === 1 ? "pe\xE7a" : "pe\xE7as"), ". Essas refer\xEAncias ficar\xE3o vis\xEDveis exclusivamente nesta cole\xE7\xE3o pelo per\xEDodo de ", dias, " dias."), /* @__PURE__ */ React.createElement("div", { className: "mt-5 grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setConfirmacao(0), className: C.btnGhost }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setConfirmacao(2), className: C.btnPrimary }, "Continuar"))) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("h3", { id: "mz-conf-titulo", className: "mz-display text-lg font-bold text-[color:var(--mz-warn)]" }, "\u26A0\uFE0F Tem certeza absoluta?"), /* @__PURE__ */ React.createElement("p", { id: "mz-conf-texto", className: "mt-2 text-sm leading-relaxed" }, "Esta a\xE7\xE3o atualizar\xE1 o cat\xE1logo de todos os representantes imediatamente", noBanco ? " no Supabase" : " (nesta sess\xE3o de demonstra\xE7\xE3o)", ". Deseja prosseguir?"), /* @__PURE__ */ React.createElement("div", { className: "mt-5 flex flex-col gap-2 sm:flex-row" }, /* @__PURE__ */ React.createElement("button", { type: "button", disabled: salvando, onClick: () => setConfirmacao(1), className: `${C.btnGhost} sm:flex-1` }, "Voltar"), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        disabled: salvando,
+        onClick: lancarColecao,
+        className: "mz-focus inline-flex min-h-[48px] items-center justify-center rounded-xl bg-[color:var(--mz-warn)] px-4 text-[15px] font-bold text-white transition hover:brightness-110 disabled:opacity-50 sm:flex-[1.6]"
+      },
+      salvando ? "Lan\xE7ando\u2026" : "Sim, tenho certeza e quero lan\xE7ar"
+    )))
+  )));
 }
 function mensagemErroBanco(err) {
   const msg = (err == null ? void 0 : err.message) || String(err);
@@ -2126,6 +2259,7 @@ function MetalizaApp() {
   const [itensPorCliente, setItensPorCliente] = useState({});
   const [acabamentos, setAcabamentos] = useState(ACABAMENTOS_DEMO);
   const [versaoCatalogo, setVersaoCatalogo] = useState(0);
+  const [versaoColecoes, setVersaoColecoes] = useState(0);
   const [painelAdmin, setPainelAdmin] = useState(false);
   const corCriada = (cor) => {
     registrarAcabamentos([cor]);
@@ -2135,6 +2269,34 @@ function MetalizaApp() {
     PRODUTOS = [...PRODUTOS, peca2];
     setVersaoCatalogo((v) => v + 1);
   };
+  const colecaoLancada = (colecao2, refs, noBanco) => {
+    LANCAMENTOS = [colecao2, ...LANCAMENTOS.filter((l) => l.nome !== colecao2.nome)];
+    const marcadas = new Set(refs);
+    PRODUTOS = PRODUTOS.map((p) => marcadas.has(p.ref) ? { ...p, colecao: colecao2.nome } : p);
+    setEncerradas((l) => l.filter((n) => n !== colecao2.nome));
+    setVersaoColecoes((v) => v + 1);
+    setVersaoCatalogo((v) => v + 1);
+    setPainelAdmin(false);
+    setToast(`Cole\xE7\xE3o ${colecao2.nome} lan\xE7ada com sucesso!${noBanco ? "" : " (s\xF3 nesta sess\xE3o de demonstra\xE7\xE3o)"}`);
+  };
+  useEffect(() => {
+    const sb = obterSupabase();
+    if (!sb) return void 0;
+    let ativo = true;
+    sb.from("colecoes").select("*").eq("ativa", true).order("data_lancamento", { ascending: false }).then(({ data, error }) => {
+      if (!ativo) return;
+      if (error) {
+        console.error("Erro ao buscar cole\xE7\xF5es do Supabase:", error.message);
+        return;
+      }
+      if (!(data == null ? void 0 : data.length)) return;
+      LANCAMENTOS = data.map(colecaoDoBanco);
+      setVersaoColecoes((v) => v + 1);
+    }).catch((err) => console.error("Falha ao comunicar com Supabase (cole\xE7\xF5es):", err));
+    return () => {
+      ativo = false;
+    };
+  }, [rep == null ? void 0 : rep.id]);
   useEffect(() => {
     const sb = obterSupabase();
     if (!sb) return void 0;
@@ -2163,7 +2325,7 @@ function MetalizaApp() {
   const [encerradas, setEncerradas] = useState([]);
   const ativas = useMemo(
     () => new Set(LANCAMENTOS.filter((l) => !encerradas.includes(l.nome) && diasRestantes(l) > 0).map((l) => l.nome)),
-    [encerradas]
+    [encerradas, versaoColecoes]
   );
   const [colecao, setColecao] = useState(() => visaoInicial(ativas));
   const itens = cliente && itensPorCliente[cliente.id] || [];
@@ -2536,7 +2698,7 @@ function MetalizaApp() {
         (_a2 = window.scrollTo) == null ? void 0 : _a2.call(window, 0, 0);
       }
     }
-  ), painelAdmin && podeAcessarAdmin(rep) && /* @__PURE__ */ React.createElement(PainelAdmin, { rep, acabamentos, onCorCriada: corCriada, onPecaCriada: pecaCriada, onFechar: () => setPainelAdmin(false) }), escolhendoCliente && /* @__PURE__ */ React.createElement(
+  ), painelAdmin && podeAcessarAdmin(rep) && /* @__PURE__ */ React.createElement(PainelAdmin, { rep, acabamentos, onCorCriada: corCriada, onPecaCriada: pecaCriada, onColecaoLancada: colecaoLancada, onFechar: () => setPainelAdmin(false) }), escolhendoCliente && /* @__PURE__ */ React.createElement(
     ModalEscolherCliente,
     {
       pendente,

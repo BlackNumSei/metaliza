@@ -197,6 +197,10 @@ No menu lateral, **Painel de Cadastro (Admin)** aparece para quem tem `app_metad
 - **Nova Cor / Acabamento:** nome completo (ex.: `293 OURO LIGHT / 228 PRETO`). O app identifica sozinho os códigos e se é Solo ou Bicolor, recusa nome sem código e cor já existente (mesmo nome ou mesmos códigos) e grava em `cores` (`nome`, `codigos`, `bicolor`, `ativo`).
 - **Nova Peça:** referência, categoria, coleção (Linha permanente ou lançamento) e foto opcional (JPG/PNG/WEBP até 5 MB, enviada ao bucket `produtos`). Recusa referência repetida. A peça aparece no catálogo na hora.
 
-**Segurança:** rode `supabase/migrations/20261024120000_painel_admin.sql`. Ele cria `eh_admin()` e as políticas que só deixam administradores gravarem em `cores`, `produtos` e no bucket `produtos`; a leitura continua liberada. O script também marca o usuário Demo como admin (crie-o antes em Authentication > Users). Esconder o botão no app não é a proteção: quem decide é o banco.
+- **Nova Coleção:** nome, data de lançamento (padrão hoje) e validade em dias (padrão 90). Seleção das peças ativas com busca por referência, "Selecionar todas" (respeita o filtro), "Limpar seleção" e contador. "Lançar Coleção" só habilita com nome e ao menos uma peça e passa por duas confirmações ("Confirmar Lançamento de Coleção" e "⚠️ Tem certeza absoluta?"). Grava em `colecoes` e muda `produtos.colecao` das peças marcadas; se nenhuma peça for atualizada, a coleção criada é desfeita. A coleção entra na hora no menu lateral, com o contador de dias.
+
+As coleções em lançamento vêm da tabela `colecoes` (`ativa = true`), cada uma com a sua validade (`dias_validade`). Sem a tabela (ou vazia), vale o lançamento de demonstração.
+
+**Segurança:** rode `supabase/migrations/20261024120000_painel_admin.sql` e depois `supabase/migrations/20261024150000_colecoes.sql`. Ele cria `eh_admin()` e as políticas que só deixam administradores gravarem em `cores`, `produtos` e no bucket `produtos`; a leitura continua liberada. O script também marca o usuário Demo como admin (crie-o antes em Authentication > Users). Esconder o botão no app não é a proteção: quem decide é o banco.
 
 Sem login real no Supabase (botão de demonstração), o painel funciona só na sessão, sem gravar no banco.
