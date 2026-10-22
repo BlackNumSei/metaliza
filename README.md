@@ -111,3 +111,38 @@ Configuradas em `REGRAS`, no topo do componente:
 |---|---|---|
 | Amostra | 10 peças (inicia em 10; abaixo disso bloqueia e alerta) | 1 |
 | Pedido de Produção | 100 peças | 50 |
+
+## Importação no ERP (SJSYS), espelho em PDF e Meus Pedidos
+
+### Banco (Supabase)
+
+Rode no SQL Editor, nesta ordem (os dois scripts podem ser executados de novo sem problema):
+
+1. `supabase/migrations/20261022120000_pedidos_erp_retencao.sql`: tabelas `codigos_itens_cliente`, `pedidos` e `itens_pedido` (com `ON DELETE CASCADE`), RLS por representante, função `obter_ou_criar_codigo_item` e a purga diária de pedidos com mais de 30 dias via `pg_cron`.
+2. `supabase/migrations/20261022150000_registrar_pedido_sjsys.sql`: número sequencial do pedido (`numero_seq`) e a função `registrar_pedido`, que grava cabeçalho e itens numa transação e amarra o código de cada item.
+
+O de-para usa o CNPJ (só dígitos) e a chave `REF|COR|AFRA[|ELOS|PONTEIRA]`, sem o tipo: a mesma peça como amostra ou produção tem o mesmo código. Os códigos não são apagados pela purga.
+
+Sem Supabase (ou no acesso de demonstração), a numeração e o de-para ficam guardados no próprio aparelho.
+
+### Quem gera o arquivo de importação
+
+`REPS_IMPORTACAO` lista os e-mails liberados. Para eles, ao confirmar o envio, o app baixa automaticamente:
+
+- `PedC[NUMERO]_[CNPJ].txt`: layout SJSYS V0002, campos separados por `#`, cada linha terminada em `#` e CRLF, UTF-8.
+
+  ```
+  PEDIDOCOMPRA#[RAZAO]#[FANTASIA]#[CNPJ]#[DD/MM/AAAA HH:MM:SS] - [CNPJ]#SJSYS SOFTWARE#V0002#
+  HEADER#[NUMERO]#[EMISSAO]#30#[ENTREGA]#0,00#[OBS]#0,00#
+  ITEM#0001#ENFEITE METALIZA EF 661 OURO LIGHT - AFRA 901#OURO LIGHT##10#0#1#
+  ITEM#0002#CORRENTE METALIZA CR 101 NÍQUEL · 45 ELOS COM PONTEIRA#NÍQUEL##100#0#2#
+  ```
+
+  `OBS` sai `AMOSTRA`, vazio (produção) ou `AMOSTRA E PRODUCAO` (pedido misto).
+- `Pedido_[NUMERO]_[CLIENTE].pdf`: espelho A4 (jsPDF + autoTable) com cliente, representante, itens com o código SJSYS e totais.
+
+Os demais representantes seguem com o envio pelo Gmail, sem o TXT. O PDF fica disponível para todos em Meus Pedidos.
+
+### Meus Pedidos
+
+No menu. Lista os pedidos do representante dos últimos 30 dias, com o contador "Expira em X dias", e permite baixar de novo o PDF e (para os liberados) o TXT.

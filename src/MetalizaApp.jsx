@@ -24,7 +24,7 @@ const REPRESENTANTE_DEMO = {
 };
 
 // Representantes de alto volume liberados para gerar o arquivo de importação do ERP (SJSYS)
-const REPS_IMPORTACAO = ["carlos@metaliza.com.br", "marcos@metaliza.com.br", "rep3@metaliza.com.br"];
+const REPS_IMPORTACAO = ["carlos@metaliza.com.br", "carlos.mendes@metaliza.com.br", "marcos@metaliza.com.br", "rep3@metaliza.com.br"];
 const podeGerarImportacao = (rep) => REPS_IMPORTACAO.includes(rep?.email?.trim().toLowerCase());
 
 // Clientes de demonstração já com o cadastro PJ completo (dados fictícios; CNPJs com dígitos verificadores válidos)
@@ -302,11 +302,6 @@ function hojeFormatado() {
   return new Date().toLocaleDateString("pt-BR");
 }
 
-function gerarNumeroPedido(seq) {
-  const ano = new Date().getFullYear();
-  return `PV-${ano}-${String(4180 + seq).padStart(5, "0")}`;
-}
-
 function linhasItens(itens, negrito) {
   const b = (t) => (negrito ? `*${t}*` : t);
   const linhas = [];
@@ -343,23 +338,362 @@ function montarMensagem({ numero, rep, cliente, itens }) {
   ].join("\n");
 }
 
-function montarEmail({ numero, rep, cliente, itens }) {
+function montarEmail({ numero, rep, cliente, itens, anexos = null }) {
   const total = itens.reduce((s, i) => s + i.qtd, 0);
   return {
     para: EMAIL_PEDIDOS,
     cc: rep.email,
-    assunto: `[${numero}] ${cliente.nome} · ${itens.length} ${itens.length === 1 ? "item" : "itens"} · ${formatarNumero(total)} un`,
+    assunto: `[Pedido ${numero}] ${cliente.nome} · ${itens.length} ${itens.length === 1 ? "item" : "itens"} · ${formatarNumero(total)} un`,
     corpo: [
-      `Solicitação ${numero} registrada em ${hojeFormatado()}.`,
+      `Pedido ${numero} registrado em ${hojeFormatado()}.`,
       "",
       ...blocoFiscal(cliente),
       "",
       `Representante: ${rep.nome} (${rep.codigo}) · ${rep.regiao}`,
       `Coleção: ${colecoesDoPedido(itens)}`,
       ...linhasItens(itens, false),
+      ...(anexos ? ["", `Anexos: ${anexos.join(" e ")}`] : []),
     ].join("\n"),
   };
 }
+
+/* ----------------------------- importação ERP (SJSYS) e espelho em PDF ----------------------------- */
+
+const DIAS_RETENCAO = 30;
+const pad4 = (n) => String(n).padStart(4, "0");
+const rotuloNumero = (n) => `#${pad4(n)}`;
+const doisDigitos = (n) => String(n).padStart(2, "0");
+const dataBR = (d) => `${doisDigitos(d.getDate())}/${doisDigitos(d.getMonth() + 1)}/${d.getFullYear()}`;
+const horaBR = (d) => `${doisDigitos(d.getHours())}:${doisDigitos(d.getMinutes())}:${doisDigitos(d.getSeconds())}`;
+const TIPO_PEDIDO_LABEL = { amostra: "Amostra", producao: "Pedido de Produção", misto: "Amostra + Produção" };
+const tipoDoPedido = (itens) => {
+  const tipos = new Set(itens.map((i) => i.tipo));
+  return tipos.size > 1 ? "misto" : [...tipos][0];
+};
+const totalPecas = (itens) => itens.reduce((s, i) => s + i.qtd, 0);
+// Dias até a exclusão definitiva (política de retenção de 30 dias corridos)
+const diasParaExpirar = (criadoEm) =>
+  Math.max(0, DIAS_RETENCAO - Math.floor((inicioDoDia().getTime() - inicioDoDia(new Date(criadoEm)).getTime()) / DIA_MS));
+const expirado = (criadoEm) => Date.now() - new Date(criadoEm).getTime() >= DIAS_RETENCAO * DIA_MS;
+
+// Item no formato gravado no banco e usado no TXT/PDF: a cor vai por código e nome,
+// para o pedido continuar legível mesmo se a cartela mudar depois.
+function itemParaRegistro(i) {
+  const a = acabamentoPorId(i.acabamento);
+  const prod = PRODUTOS.find((x) => x.ref === i.ref);
+  return {
+    ref: i.ref,
+    categoria: prod ? categoriaPeca(prod) : "Peça",
+    acabamentoCodigo: a.codigo,
+    acabamentoNome: a.nome,
+    afra: i.afra || null,
+    elos: i.elos || null,
+    comPonteira: i.elos ? !!i.comPonteira : null,
+    tipo: i.tipo,
+    qtd: i.qtd,
+  };
+}
+
+// Chave do de-para por cliente: REF|COR|AFRA[|ELOS|PONTEIRA]. O tipo (amostra/produção) não entra:
+// no SJSYS a peça física é a mesma. Ex.: "EF 661|OURO LIGHT|sem-afra", "CR 101|NIQUEL|sem-afra|45elos|com-ponteira"
+function chaveItemErp(i) {
+  const partes = [i.ref.toUpperCase(), semAcento(i.acabamentoNome).toUpperCase(), i.afra || "sem-afra"];
+  if (i.elos) partes.push(`${i.elos}elos`, i.comPonteira ? "com-ponteira" : "sem-ponteira");
+  return partes.join("|");
+}
+
+// Descrição do item no SJSYS, ex.: "ENFEITE METALIZA EF 661 OURO LIGHT - AFRA 901"
+function descricaoErp(i) {
+  const cor = i.acabamentoNome.toUpperCase();
+  const base = `${i.categoria.toUpperCase()} METALIZA ${i.ref.toUpperCase()} ${cor}`;
+  if (i.elos) return `${base} · ${i.elos} ELOS ${i.comPonteira ? "COM" : "SEM"} PONTEIRA`;
+  return i.afra ? `${base} - AFRA ${i.afra}` : base;
+}
+
+// Campo do TXT: o "#" é o separador, então não pode aparecer dentro de um valor
+const campoTxt = (v) => String(v ?? "").replace(/[#\r\n]+/g, " ").trim();
+const OBSERVACAO_TXT = { amostra: "AMOSTRA", producao: "", misto: "AMOSTRA E PRODUCAO" };
+
+// Arquivo de importação homologado no ERP (SJSYS SOFTWARE, layout V0002), linhas terminadas em "#" e CRLF
+function gerarTxtSjsys(pedido) {
+  const quando = new Date(pedido.criadoEm);
+  const { cliente } = pedido;
+  const cnpj = mascaraCnpj(cliente.cnpj || "");
+  const razao = campoTxt(cliente.razaoSocial || cliente.nome);
+  const fantasia = campoTxt(cliente.fantasia) || razao;
+  const linhas = [
+    ["PEDIDOCOMPRA", razao, fantasia, cnpj, `${dataBR(quando)} ${horaBR(quando)} - ${cnpj}`, "SJSYS SOFTWARE", "V0002"],
+    ["HEADER", pedido.numero, dataBR(quando), "30", dataBR(quando), "0,00", OBSERVACAO_TXT[pedido.tipo] ?? "", "0,00"],
+    ...pedido.itens.map((i, k) => [
+      "ITEM",
+      i.codigoItem,
+      campoTxt(i.descricao || descricaoErp(i)),
+      campoTxt(i.acabamentoNome.toUpperCase()),
+      "",
+      i.qtd,
+      "0",
+      k + 1,
+    ]),
+  ];
+  return linhas.map((l) => `${l.join("#")}#`).join("\r\n") + "\r\n";
+}
+
+const nomeArquivoTxt = (p) => `PedC${p.numero}_${somenteDigitos(p.cliente.cnpj || "")}.txt`;
+const nomeArquivoPdf = (p) => {
+  const nome = (p.cliente.nome || p.cliente.razaoSocial || "Cliente")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return `Pedido_${p.numero}_${nome}.pdf`;
+};
+
+function baixarArquivo(conteudo, nome, tipo) {
+  const blob = conteudo instanceof Blob ? conteudo : new Blob([conteudo], { type: tipo });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nome;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+// jsPDF + autoTable (UMD). No preview as tags <script> já vêm na página; em outro ambiente, carrega sob demanda.
+const JSPDF_URLS = [
+  "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
+  "https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js",
+];
+let carregandoJsPDF = null;
+const carregarScript = (src) =>
+  new Promise((ok, falha) => {
+    const tag = document.createElement("script");
+    tag.src = src;
+    tag.onload = ok;
+    tag.onerror = () => falha(new Error("sem conexão com a biblioteca de PDF"));
+    document.head.appendChild(tag);
+  });
+async function obterJsPDF() {
+  const pronto = () => window.jspdf?.jsPDF && typeof window.jspdf.jsPDF.API.autoTable === "function";
+  if (!pronto()) {
+    carregandoJsPDF =
+      carregandoJsPDF ||
+      (async () => {
+        if (!window.jspdf?.jsPDF) await carregarScript(JSPDF_URLS[0]);
+        await carregarScript(JSPDF_URLS[1]);
+      })().catch((err) => {
+        carregandoJsPDF = null;
+        throw err;
+      });
+    await carregandoJsPDF;
+  }
+  if (!pronto()) throw new Error("biblioteca de PDF indisponível");
+  return window.jspdf.jsPDF;
+}
+
+function detalhesItemPdf(i) {
+  return [
+    i.categoria,
+    i.tipo === "amostra" ? "Amostra" : "Produção",
+    i.afra ? `Afra ${i.afra}` : null,
+    i.elos ? `${i.elos} elos` : null,
+    i.elos ? (i.comPonteira ? "Com Ponteira" : "Sem Ponteira") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+// Espelho visual do pedido (A4 retrato) para a fábrica e para o cliente
+async function gerarPdfPedido(pedido) {
+  const JsPDF = await obterJsPDF();
+  const doc = new JsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 14;
+  const AZUL = [32, 63, 110];
+  const TINTA = [15, 23, 42];
+  const CINZA = [91, 103, 121];
+  const LINHA = [226, 232, 240];
+  const quando = new Date(pedido.criadoEm);
+  const { cliente, rep = {}, itens } = pedido;
+
+  // Cabeçalho azul Metaliza
+  doc.setFillColor(...AZUL);
+  doc.rect(0, 0, W, 32, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(17);
+  doc.text("METALIZA - ESPELHO DE PEDIDO", M, 14);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10.5);
+  doc.text(`Pedido ${rotuloNumero(pedido.numero)}   |   Emissão: ${dataBR(quando)} ${horaBR(quando).slice(0, 5)}   |   Tipo: ${TIPO_PEDIDO_LABEL[pedido.tipo] || "—"}`, M, 24);
+
+  // Blocos de cliente e representante
+  const caixa = (x, y, w, titulo, campos, desenhar) => {
+    let yy = y + 7;
+    if (desenhar) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...AZUL);
+      doc.text(titulo, x + 4, yy);
+    }
+    yy += 6;
+    campos.forEach(([rotulo, valor]) => {
+      doc.setFontSize(9.5);
+      const linhas = doc.splitTextToSize(String(valor || "—"), w - 8 - 23);
+      if (desenhar) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(...CINZA);
+        doc.text(rotulo, x + 4, yy);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(...TINTA);
+        doc.text(linhas, x + 27, yy);
+      }
+      yy += linhas.length * 4.4 + 1.6;
+    });
+    return yy - y;
+  };
+  const camposCliente = [
+    ["Razão Social", cliente.razaoSocial || cliente.nome],
+    ["CNPJ", cliente.cnpj],
+    ["Cidade/UF", cliente.municipio && cliente.uf ? `${cliente.municipio}/${cliente.uf}` : cliente.cidade],
+    ["Contato", cliente.contato],
+    ["Telefone", cliente.whatsapp],
+  ];
+  const camposRep = [
+    ["Nome", rep.nome],
+    ["Código", rep.codigo],
+    ["E-mail", rep.email],
+  ];
+  const yBlocos = 40;
+  const wBloco = (W - 2 * M - 6) / 2;
+  const hBloco = Math.max(caixa(M, yBlocos, wBloco, "", camposCliente, false), caixa(M, yBlocos, wBloco, "", camposRep, false)) + 2;
+  doc.setDrawColor(...LINHA);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(M, yBlocos, wBloco, hBloco, 2, 2, "S");
+  doc.roundedRect(M + wBloco + 6, yBlocos, wBloco, hBloco, 2, 2, "S");
+  caixa(M, yBlocos, wBloco, "CLIENTE", camposCliente, true);
+  caixa(M + wBloco + 6, yBlocos, wBloco, "REPRESENTANTE", camposRep, true);
+
+  // Itens
+  doc.autoTable({
+    startY: yBlocos + hBloco + 8,
+    head: [["Item", "Cód. SJSYS", "Referência", "Descrição / Detalhes (Afra/Elos)", "Acabamento / Cor", "Quantidade"]],
+    body: itens.map((i, k) => [
+      k + 1,
+      i.codigoItem,
+      i.ref,
+      detalhesItemPdf(i),
+      `[${i.acabamentoCodigo}] ${i.acabamentoNome}`,
+      `${formatarNumero(i.qtd)} un`,
+    ]),
+    theme: "grid",
+    margin: { left: M, right: M, bottom: 22 },
+    styles: { font: "helvetica", fontSize: 9, cellPadding: 2.4, textColor: TINTA, lineColor: LINHA, lineWidth: 0.2, valign: "middle" },
+    headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8.5 },
+    alternateRowStyles: { fillColor: [244, 247, 251] },
+    columnStyles: {
+      0: { halign: "center", cellWidth: 12 },
+      1: { halign: "center", cellWidth: 22, font: "courier", fontStyle: "bold" },
+      2: { cellWidth: 24, fontStyle: "bold" },
+      5: { halign: "right", cellWidth: 26 },
+    },
+  });
+
+  // Totais
+  let y = doc.lastAutoTable.finalY + 6;
+  if (y + 18 > H - 22) {
+    doc.addPage();
+    y = 20;
+  }
+  doc.setFillColor(232, 238, 247);
+  doc.roundedRect(M, y, W - 2 * M, 14, 2, 2, "F");
+  doc.setTextColor(...TINTA);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.text(`Total de itens: ${itens.length}`, M + 5, y + 9);
+  doc.text(`Quantidade total de peças: ${formatarNumero(totalPecas(itens))} un`, W - M - 5, y + 9, { align: "right" });
+
+  // Rodapé em todas as páginas
+  const paginas = doc.getNumberOfPages();
+  for (let n = 1; n <= paginas; n++) {
+    doc.setPage(n);
+    doc.setDrawColor(...LINHA);
+    doc.line(M, H - 16, W - M, H - 16);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...CINZA);
+    doc.text("Documento para conferência visual. Pedido integrado ao sistema SJSYS.", M, H - 10);
+    doc.text(`Página ${n} de ${paginas}`, W - M, H - 10, { align: "right" });
+  }
+  return doc.output("blob");
+}
+
+// Sem Supabase (demonstração): numeração e de-para guardados neste aparelho
+const memoriaLocal = {};
+function lerLocal(chave, padrao) {
+  if (chave in memoriaLocal) return memoriaLocal[chave];
+  try {
+    const v = window.localStorage.getItem(chave);
+    return v ? JSON.parse(v) : padrao;
+  } catch {
+    return padrao;
+  }
+}
+function gravarLocal(chave, valor) {
+  memoriaLocal[chave] = valor;
+  try {
+    window.localStorage.setItem(chave, JSON.stringify(valor));
+  } catch {
+    /* armazenamento indisponível: fica só na memória */
+  }
+}
+function proximoNumeroLocal() {
+  const n = (Number(lerLocal("metaliza:seq-pedido", 0)) || 0) + 1;
+  gravarLocal("metaliza:seq-pedido", n);
+  return n;
+}
+function codigoItemLocal(cnpj, chave) {
+  const mapa = lerLocal("metaliza:depara", {});
+  const cli = somenteDigitos(cnpj || "") || "sem-cnpj";
+  const doCliente = { ...(mapa[cli] || {}) };
+  if (!doCliente[chave]) {
+    const ultimo = Object.values(doCliente).reduce((m, c) => Math.max(m, Number(c)), 0);
+    doCliente[chave] = pad4(ultimo + 1);
+    gravarLocal("metaliza:depara", { ...mapa, [cli]: doCliente });
+  }
+  return doCliente[chave];
+}
+
+// Linha de pedidos (+ itens) do Supabase para o formato usado no app
+const pedidoDoBanco = (r) => ({
+  id: r.id,
+  numero: r.numero_seq,
+  criadoEm: r.criado_em,
+  tipo: r.tipo,
+  cliente: r.cliente || {},
+  rep: r.rep || { email: r.rep_email },
+  txt: r.texto_txt,
+  itens: [...(r.itens_pedido || [])]
+    .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+    .map((i) => ({
+      ref: i.ref,
+      categoria: i.categoria || "Peça",
+      acabamentoCodigo: i.acabamento_codigo,
+      acabamentoNome: i.acabamento_nome,
+      afra: i.afra,
+      elos: i.elos,
+      comPonteira: i.com_ponteira,
+      tipo: i.tipo,
+      qtd: i.qtd,
+      codigoItem: i.codigo_item,
+      descricao: i.descricao,
+    })),
+});
 
 /* ----------------------------- estilos/tokens ----------------------------- */
 
@@ -789,7 +1123,7 @@ function Cabecalho({ cliente, apresentacao, qtdItens, onAbrirMenu, onTrocarClien
   );
 }
 
-function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, onEscolherColecao, onSimularExpiracao, onDesfazerExpiracao, onTrocarCliente, onTrocarModo, onSair, onFechar }) {
+function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, onEscolherColecao, onSimularExpiracao, onDesfazerExpiracao, onTrocarCliente, onTrocarModo, onMeusPedidos, onSair, onFechar }) {
   const fecharRef = useRef(null);
   useEffect(() => {
     fecharRef.current?.focus();
@@ -812,6 +1146,18 @@ function GavetaMenu({ rep, cliente, apresentacao, colecao, ativas, encerradas, o
         </div>
 
         <div className="px-4 py-5">
+          <button
+            type="button"
+            onClick={onMeusPedidos}
+            className="mz-focus mb-5 flex min-h-[56px] w-full items-center justify-between gap-3 rounded-2xl border-2 border-[color:var(--mz-line)] px-4 py-3 text-left transition hover:border-[color:var(--mz-accent)]"
+          >
+            <span className="min-w-0">
+              <span className="block text-base font-bold">Meus Pedidos</span>
+              <span className={`block text-xs ${C.muted}`}>Histórico dos últimos 30 dias</span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-[color:var(--mz-accent)]" />
+          </button>
+
           <p className="mz-eyebrow px-1">Catálogo</p>
           <ul className="mt-2 flex flex-col">
             {VISOES.map((v) => {
@@ -2203,7 +2549,7 @@ function PainelPedido({ cliente, itens, onFechar, onQtd, onRemover, onRevisar })
 
 /* ----------------------------- revisão e envio ----------------------------- */
 
-function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar }) {
+function TelaRevisao({ rep, cliente, itens, enviando = false, onVoltar, onQtd, onRemover, onEnviar }) {
   const [confirmando, setConfirmando] = useState(false);
   const total = itens.reduce((s, i) => s + i.qtd, 0);
   const totalAmostra = itens.filter((i) => i.tipo === "amostra").reduce((s, i) => s + i.qtd, 0);
@@ -2274,8 +2620,8 @@ function TelaRevisao({ rep, cliente, itens, onVoltar, onQtd, onRemover, onEnviar
               <div className="mz-in mt-4 rounded-lg border border-[color:var(--mz-accent)] bg-[color:var(--mz-accent-soft)] p-3">
                 <p className="text-sm font-semibold">Enviar {itens.length} {itens.length === 1 ? "item" : "itens"} ({formatarNumero(total)} un) para a fábrica?</p>
                 <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={() => setConfirmando(false)} className={`${C.btnGhost} flex-1`}>Cancelar</button>
-                  <button type="button" onClick={onEnviar} className={`${C.btnPrimary} flex-1`}>Confirmar envio</button>
+                  <button type="button" disabled={enviando} onClick={() => setConfirmando(false)} className={`${C.btnGhost} flex-1`}>Cancelar</button>
+                  <button type="button" disabled={enviando} onClick={onEnviar} className={`${C.btnPrimary} flex-1`}>{enviando ? "Registrando…" : "Confirmar envio"}</button>
                 </div>
               </div>
             )}
@@ -2301,8 +2647,14 @@ function useCopiar() {
   return [copiado, copiar];
 }
 
-function TelaEnviado({ pedido, onNovoMesmoCliente, onTrocarCliente }) {
+function TelaEnviado({ pedido, importacao = false, onBaixarTxt, onBaixarPdf, onNovoMesmoCliente, onTrocarCliente }) {
   const [copiado, copiar] = useCopiar();
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+  const baixarPdf = async () => {
+    setGerandoPdf(true);
+    await onBaixarPdf(pedido);
+    setGerandoPdf(false);
+  };
   const { email } = pedido;
   const textoEmail = `Para: ${email.para}\nCc: ${email.cc}\nAssunto: ${email.assunto}\n\n${email.corpo}`;
 
@@ -2325,13 +2677,40 @@ function TelaEnviado({ pedido, onNovoMesmoCliente, onTrocarCliente }) {
         </span>
         <div className="min-w-0">
           <p className="mz-eyebrow">Solicitação registrada</p>
-          <h1 className="mz-display mz-mono text-2xl font-bold">{pedido.numero}</h1>
+          <h1 className="mz-display mz-mono text-2xl font-bold">Pedido {rotuloNumero(pedido.numero)}</h1>
         </div>
       </div>
 
       <p className={`mt-3 text-sm ${C.muted}`}>
         {pedido.itens.length} {pedido.itens.length === 1 ? "item" : "itens"} para <b className="text-[color:var(--mz-ink)]">{pedido.cliente.nome}</b>, registrados em {pedido.data}. Envie o pedido diretamente para o PCP da fábrica via Gmail.
       </p>
+
+      {importacao && (
+        <section className="mz-in mt-6 rounded-xl border-2 border-[color:var(--mz-ok)] bg-[color:var(--mz-ok-soft)] p-5" aria-labelledby="mz-arquivos-titulo">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--mz-ok)] text-white">
+              <Icone.check className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 id="mz-arquivos-titulo" className="mz-display text-lg font-bold">Arquivos do Pedido Gerados com Sucesso</h2>
+              <ul className="mz-mono mt-1 text-xs break-all text-[color:var(--mz-ink-2)]">
+                <li>{nomeArquivoTxt(pedido)}</li>
+                <li>{nomeArquivoPdf(pedido)}</li>
+              </ul>
+            </div>
+          </div>
+          <p className="mt-4 rounded-lg border-l-4 border-[color:var(--mz-accent)] bg-white p-3 text-sm font-semibold">
+            O arquivo TXT de importação e o espelho em PDF foram baixados no seu aparelho. Anexe-os no Gmail ao enviar para a fábrica.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <button type="button" onClick={() => onBaixarTxt(pedido)} className={C.btnGhost}>Baixar TXT (SJSYS)</button>
+            <button type="button" onClick={baixarPdf} disabled={gerandoPdf} className={C.btnGhost}>{gerandoPdf ? "Gerando PDF…" : "Baixar Espelho PDF"}</button>
+          </div>
+          <a href={gmailUrl} target={isIOS ? undefined : "_blank"} rel="noreferrer" className={`${C.btnAccent} mt-3 w-full`}>
+            Abrir no App do Gmail
+          </a>
+        </section>
+      )}
 
       {/* Cartão exclusivo de E-mail via Gmail */}
       <section className="mt-6 flex min-w-0 flex-col rounded-xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-6 shadow-sm">
@@ -2366,14 +2745,16 @@ function TelaEnviado({ pedido, onNovoMesmoCliente, onTrocarCliente }) {
         />
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <a
-            href={gmailUrl}
-            target={isIOS ? undefined : "_blank"}
-            rel="noreferrer"
-            className={`${C.btnAccent} inline-flex items-center gap-2 text-sm font-semibold`}
-          >
-            Abrir no App do Gmail
-          </a>
+          {!importacao && (
+            <a
+              href={gmailUrl}
+              target={isIOS ? undefined : "_blank"}
+              rel="noreferrer"
+              className={`${C.btnAccent} inline-flex items-center gap-2 text-sm font-semibold`}
+            >
+              Abrir no App do Gmail
+            </a>
+          )}
 
           <button
             type="button"
@@ -2412,13 +2793,132 @@ function TelaEnviado({ pedido, onNovoMesmoCliente, onTrocarCliente }) {
   );
 }
 
+/* ----------------------------- meus pedidos (histórico de 30 dias) ----------------------------- */
+
+function TelaHistorico({ rep, historicoLocal, onVoltar, onBaixarTxt, onBaixarPdf }) {
+  const sb = obterSupabase();
+  const remoto = !!(sb && rep.id);
+  const importacao = podeGerarImportacao(rep);
+  const [tentativa, setTentativa] = useState(0);
+  const [estado, setEstado] = useState({ carregando: remoto, erro: "", pedidos: [] });
+  const [baixando, setBaixando] = useState(null);
+
+  useEffect(() => {
+    if (!remoto) return undefined;
+    let ativo = true;
+    setEstado((e) => ({ ...e, carregando: true, erro: "" }));
+    const limite = new Date(Date.now() - DIAS_RETENCAO * DIA_MS).toISOString();
+    sb.from("pedidos")
+      .select("id, numero_seq, tipo, cliente, rep, rep_email, texto_txt, criado_em, itens_pedido(ordem, ref, categoria, acabamento_codigo, acabamento_nome, afra, elos, com_ponteira, tipo, qtd, codigo_item, descricao)")
+      .eq("rep_id", rep.id)
+      .gte("criado_em", limite)
+      .order("criado_em", { ascending: false })
+      .then(({ data, error }) => {
+        if (!ativo) return;
+        if (error) setEstado({ carregando: false, erro: error.message, pedidos: [] });
+        else setEstado({ carregando: false, erro: "", pedidos: (data || []).map(pedidoDoBanco) });
+      })
+      .catch((err) => ativo && setEstado({ carregando: false, erro: err.message || "Falha de conexão", pedidos: [] }));
+    return () => {
+      ativo = false;
+    };
+  }, [remoto, rep.id, tentativa]);
+
+  const pedidos = (remoto ? estado.pedidos : [...historicoLocal].reverse()).filter((p) => !expirado(p.criadoEm));
+
+  const baixarPdf = async (p) => {
+    setBaixando(`pdf-${p.numero}`);
+    await onBaixarPdf(p);
+    setBaixando(null);
+  };
+
+  return (
+    <main className="mz-gutter mx-auto max-w-4xl py-6 pb-16">
+      <button type="button" onClick={onVoltar} className={`mz-focus -ml-1 inline-flex min-h-[44px] items-center gap-1 px-1 text-sm font-semibold ${C.accentText}`}>
+        <ChevronLeft className="h-4 w-4" /> Voltar
+      </button>
+      <p className="mz-eyebrow mt-2">Representante · {rep.nome}</p>
+      <h1 className="mz-display mt-1 text-2xl font-bold sm:text-3xl">Meus Pedidos</h1>
+
+      <div role="note" className="mt-4 rounded-2xl border border-[#F5C26B] bg-[#FFF7E6] p-4 text-sm leading-relaxed text-[#7A4B00]">
+        ⚠️ <b>Atenção:</b> Os pedidos e arquivos deste painel ficam disponíveis por <b>30 dias corridos</b>. Após esse prazo, os registros são excluídos permanentemente por política de retenção.
+      </div>
+      {!remoto && (
+        <p className={`mt-3 text-xs ${C.muted}`}>Modo demonstração (sem Supabase): a lista mostra os pedidos enviados nesta sessão, neste aparelho.</p>
+      )}
+
+      {estado.carregando ? (
+        <p className={`mt-8 text-center text-sm ${C.muted}`} role="status">Carregando pedidos…</p>
+      ) : estado.erro ? (
+        <div className="mt-6 rounded-2xl border border-[color:var(--mz-warn)] bg-[color:var(--mz-warn-soft)] p-4 text-sm" role="alert">
+          <p className="font-semibold text-[color:var(--mz-warn)]">Não foi possível carregar os pedidos: {estado.erro}</p>
+          <button type="button" onClick={() => setTentativa((t) => t + 1)} className={`${C.btnGhost} mt-3`}>Tentar de novo</button>
+        </div>
+      ) : pedidos.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-[color:var(--mz-line)] p-8 text-center">
+          <p className="font-semibold">Nenhum pedido nos últimos 30 dias.</p>
+          <p className={`mt-1 text-sm ${C.muted}`}>Os pedidos enviados aparecem aqui.</p>
+        </div>
+      ) : (
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+          {pedidos.map((p) => {
+            const dias = diasParaExpirar(p.criadoEm);
+            const urgente = dias <= 5;
+            return (
+              <li key={p.id || p.numero} className="flex flex-col gap-3 rounded-2xl border border-[color:var(--mz-line)] bg-[color:var(--mz-surface)] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="mz-mono text-lg font-bold">{rotuloNumero(p.numero)}</p>
+                    <p className="truncate text-sm font-semibold">{p.cliente.razaoSocial || p.cliente.nome}</p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+                      urgente ? "bg-[color:var(--mz-warn-soft)] text-[color:var(--mz-warn)]" : "bg-[color:var(--mz-sunken)] text-[color:var(--mz-ink-2)]"
+                    }`}
+                  >
+                    {dias === 0 ? "Expira hoje" : `Expira em ${dias} ${dias === 1 ? "dia" : "dias"}`}
+                  </span>
+                </div>
+                <dl className="grid grid-cols-3 gap-2 border-y border-[color:var(--mz-line)] py-3 text-xs">
+                  <div>
+                    <dt className={C.muted}>Data</dt>
+                    <dd className="font-semibold">{dataBR(new Date(p.criadoEm))}</dd>
+                  </div>
+                  <div>
+                    <dt className={C.muted}>Tipo</dt>
+                    <dd className="font-semibold">{p.tipo === "producao" ? "Produção" : p.tipo === "misto" ? "Amostra + Produção" : "Amostra"}</dd>
+                  </div>
+                  <div>
+                    <dt className={C.muted}>Peças</dt>
+                    <dd className="mz-mono font-semibold">{formatarNumero(totalPecas(p.itens))} un</dd>
+                  </div>
+                </dl>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button type="button" onClick={() => baixarPdf(p)} disabled={baixando === `pdf-${p.numero}`} className={C.btnGhost}>
+                    {baixando === `pdf-${p.numero}` ? "Gerando…" : "Baixar PDF"}
+                  </button>
+                  {importacao && (
+                    <button type="button" onClick={() => onBaixarTxt(p)} className={C.btnGhost}>
+                      Baixar TXT (SJSYS)
+                    </button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </main>
+  );
+}
+
 /* ----------------------------- app ----------------------------- */
 
 export default function MetalizaApp() {
   const [rep, setRep] = useState(null);
   const [clientes, setClientes] = useState(CLIENTES_INICIAIS);
   const [cliente, setCliente] = useState(null);
-  const [tela, setTela] = useState("clientes"); // clientes | catalogo | revisao | enviado
+  const [tela, setTela] = useState("clientes"); // modo | clientes | catalogo | revisao | enviado | historico
   const [peca, setPeca] = useState(null);
   const [pedidoAberto, setPedidoAberto] = useState(false);
   const [produtosCarregados, setProdutosCarregados] = useState(false);
@@ -2453,6 +2953,8 @@ export default function MetalizaApp() {
   }, []);
   const [itensPorCliente, setItensPorCliente] = useState({});
   const [historico, setHistorico] = useState([]);
+  const [enviando, setEnviando] = useState(false);
+  const [telaAntesHistorico, setTelaAntesHistorico] = useState("modo");
   const [ultimoPedido, setUltimoPedido] = useState(null);
   const [toast, setToast] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
@@ -2593,25 +3095,108 @@ const adicionarPara = (clienteId, novo) => {
   const alterarQtd = (chave, q) => setItens((l) => l.map((i) => (i.chave === chave ? { ...i, qtd: q } : i)));
   const remover = (chave) => setItens((l) => l.filter((i) => i.chave !== chave));
 
-  const enviar = () => {
-    const numero = gerarNumeroPedido(historico.length + 1);
-    // A coleção de cada peça é registrada no momento do envio (lançamento ativo ou linha permanente)
-    const itens = itensAtuais.map((i) => ({ ...i, colecao: rotuloColecao(PRODUTOS.find((x) => x.ref === i.ref), ativas) }));
-    const registro = {
-      numero,
-      data: hojeFormatado(),
-      clienteId: cliente.id,
-      cliente,
-      itens,
-      mensagem: montarMensagem({ numero, rep, cliente, itens }),
-      email: montarEmail({ numero, rep, cliente, itens }),
-    };
-    setHistorico((h) => [...h, registro]);
-    setUltimoPedido(registro);
-    setClientes((l) => l.map((c) => (c.id === cliente.id ? { ...c, ultimoPedido: registro.data, novo: false } : c)));
-    setItensPorCliente((m) => ({ ...m, [cliente.id]: [] }));
-    setTela("enviado");
+  const baixarTxtPedido = (p) => baixarArquivo(p.txt || gerarTxtSjsys(p), nomeArquivoTxt(p), "text/plain;charset=utf-8");
+  const baixarPdfPedido = async (p) => {
+    try {
+      baixarArquivo(await gerarPdfPedido(p), nomeArquivoPdf(p), "application/pdf");
+      return true;
+    } catch (err) {
+      setToast(`Não foi possível gerar o PDF: ${err.message}`);
+      return false;
+    }
+  };
+
+  const abrirHistorico = () => {
+    setMenuAberto(false);
+    setPedidoAberto(false);
+    setPeca(null);
+    if (tela !== "historico") setTelaAntesHistorico(tela);
+    setTela("historico");
     window.scrollTo?.(0, 0);
+  };
+
+  // Registra o pedido (Supabase quando houver login real; senão, local), amarra os códigos SJSYS
+  // de cada item e, para os representantes liberados, gera e baixa o TXT de importação e o PDF.
+  const enviar = async () => {
+    if (enviando) return;
+    setEnviando(true);
+    try {
+      // A coleção de cada peça é registrada no momento do envio (lançamento ativo ou linha permanente)
+      const itensApp = itensAtuais.map((i) => ({ ...i, colecao: rotuloColecao(PRODUTOS.find((x) => x.ref === i.ref), ativas) }));
+      const itensReg = itensApp.map(itemParaRegistro).map((i) => ({ ...i, chaveItem: chaveItemErp(i), descricao: descricaoErp(i) }));
+      const tipo = tipoDoPedido(itensApp);
+      const { id: _idLocal, novo: _novo, ultimoPedido: _ultimo, ...dadosCliente } = cliente;
+      const repResumo = { nome: rep.nome, codigo: rep.codigo, email: rep.email, regiao: rep.regiao };
+      const importacao = podeGerarImportacao(rep);
+      const sb = obterSupabase();
+
+      let id = null;
+      let numero;
+      let criadoEm = new Date().toISOString();
+      let codigos;
+      if (sb && rep.id) {
+        const { data, error } = await sb.rpc("registrar_pedido", {
+          p_pedido: { tipo, cliente: dadosCliente, rep: repResumo },
+          p_itens: itensReg.map((i) => ({
+            ref: i.ref,
+            categoria: i.categoria,
+            acabamento_codigo: i.acabamentoCodigo,
+            acabamento_nome: i.acabamentoNome,
+            afra: i.afra,
+            elos: i.elos,
+            com_ponteira: i.comPonteira,
+            tipo: i.tipo,
+            qtd: i.qtd,
+            chave_item: i.chaveItem,
+            descricao: i.descricao,
+          })),
+        });
+        if (error) throw error;
+        ({ id, numero, codigos } = data);
+        criadoEm = data.criado_em || criadoEm;
+      } else {
+        numero = proximoNumeroLocal();
+        codigos = itensReg.map((i) => codigoItemLocal(dadosCliente.cnpj, i.chaveItem));
+      }
+
+      const pedido = {
+        id,
+        numero,
+        criadoEm,
+        data: hojeFormatado(),
+        tipo,
+        clienteId: cliente.id,
+        cliente: dadosCliente,
+        rep: repResumo,
+        itens: itensReg.map((i, k) => ({ ...i, codigoItem: codigos[k] })),
+      };
+      const anexos = importacao ? [nomeArquivoTxt(pedido), nomeArquivoPdf(pedido)] : null;
+      pedido.mensagem = montarMensagem({ numero: rotuloNumero(numero), rep, cliente, itens: itensApp });
+      pedido.email = montarEmail({ numero: rotuloNumero(numero), rep, cliente, itens: itensApp, anexos });
+      pedido.txt = importacao ? gerarTxtSjsys(pedido) : null;
+
+      if (sb && id) {
+        // O pedido já está registrado; se esta gravação falhar, o TXT é gerado de novo no histórico
+        const { error } = await sb.from("pedidos").update({ texto_txt: pedido.txt, email_corpo: pedido.email.corpo }).eq("id", id);
+        if (error) console.error("Falha ao gravar o TXT do pedido:", error.message);
+      }
+
+      setHistorico((h) => [...h, pedido]);
+      setUltimoPedido(pedido);
+      setClientes((l) => l.map((c) => (c.id === cliente.id ? { ...c, ultimoPedido: pedido.data, novo: false } : c)));
+      setItensPorCliente((m) => ({ ...m, [cliente.id]: [] }));
+      setTela("enviado");
+      window.scrollTo?.(0, 0);
+
+      if (importacao) {
+        baixarTxtPedido(pedido);
+        await baixarPdfPedido(pedido);
+      }
+    } catch (err) {
+      setToast(`Não foi possível registrar o pedido: ${err.message || err}. Nada foi perdido; tente de novo.`);
+    } finally {
+      setEnviando(false);
+    }
   };
 
   const qtdItens = itens.length;
@@ -2645,6 +3230,7 @@ const adicionarPara = (clienteId, novo) => {
               onDesfazerExpiracao={desfazerExpiracao}
               onTrocarCliente={trocarCliente}
               onTrocarModo={trocarModo}
+              onMeusPedidos={abrirHistorico}
               onSair={sair}
               onFechar={() => setMenuAberto(false)}
             />
@@ -2658,10 +3244,26 @@ const adicionarPara = (clienteId, novo) => {
             <TelaCatalogo cliente={cliente} itensPedido={itens} colecao={colecao} ativas={ativas} onColecao={setColecao} onAbrirPeca={setPeca} />
           )}
           {tela === "revisao" && cliente && (
-            <TelaRevisao rep={rep} cliente={cliente} itens={itens} onVoltar={() => setTela("catalogo")} onQtd={alterarQtd} onRemover={remover} onEnviar={enviar} />
+            <TelaRevisao rep={rep} cliente={cliente} itens={itens} enviando={enviando} onVoltar={() => setTela("catalogo")} onQtd={alterarQtd} onRemover={remover} onEnviar={enviar} />
           )}
           {tela === "enviado" && ultimoPedido && (
-            <TelaEnviado pedido={ultimoPedido} onNovoMesmoCliente={() => setTela("catalogo")} onTrocarCliente={trocarCliente} />
+            <TelaEnviado
+              pedido={ultimoPedido}
+              importacao={podeGerarImportacao(rep)}
+              onBaixarTxt={baixarTxtPedido}
+              onBaixarPdf={baixarPdfPedido}
+              onNovoMesmoCliente={() => setTela("catalogo")}
+              onTrocarCliente={trocarCliente}
+            />
+          )}
+          {tela === "historico" && (
+            <TelaHistorico
+              rep={rep}
+              historicoLocal={historico}
+              onVoltar={() => setTela(telaAntesHistorico)}
+              onBaixarTxt={baixarTxtPedido}
+              onBaixarPdf={baixarPdfPedido}
+            />
           )}
 
           {tela === "catalogo" && (cliente || apresentacao) && (
