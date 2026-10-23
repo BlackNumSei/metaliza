@@ -190,6 +190,16 @@ Cliente: Bella Passo Indústria de Calçados Ltda. (CNPJ: 12.847.365/0001-35)
 - **Tipo:** `AMOSTRA` ou `PEDIDO DE PRODUÇÃO`, também no assunto: `[Pedido #0002 · AMOSTRA] Calçados Bella Passo · 1 item · 10 un`.
 - **Cliente novo** (sem pedido anterior): no lugar da linha `Cliente:`, vai o bloco `DADOS CADASTRAIS (CLIENTE NOVO)` com razão social, fantasia, CNPJ, IE, endereço, CEP, cidade/UF, contato, telefone e e-mail.
 
+## Catálogo do Supabase (tabela `produtos`)
+
+Ao abrir o app (e de novo após o login), o catálogo vem da tabela `produtos`: `select("*").eq("ativo", true).order("ref")`, em lotes de 1.000 com `.range()`. A lista fica no estado `produtos` do App; vitrine, filtros de categoria, contadores, busca e menu lateral usam essa lista.
+
+- **Ordem:** pela referência, com números em ordem natural (`FV 2` antes de `FV 10`).
+- **Categoria:** normalizada para o plural dos filtros (`FIVELA`, `fivelas` → `Fivelas`); categorias novas no banco ganham filtro próprio.
+- **Fotos:** caminho no bucket `produtos` (ou URL completa). Sem foto, ou se a foto não carregar, o card mostra a referência centralizada ("Foto em breve") sem quebrar o layout.
+- **Sem Supabase, com erro ou com a tabela vazia:** vale o catálogo de demonstração.
+- **Abertura:** o primeiro lançamento em vigor que tenha peças; sem nenhum, o Catálogo Geral.
+
 ## Painel de Cadastro (Admin)
 
 No menu lateral, **Painel de Cadastro (Admin)** aparece para quem tem `app_metadata.role = "admin"` no Supabase Auth e, nesta fase de testes, para o usuário Demo (`carlos.mendes@metaliza.com.br`).

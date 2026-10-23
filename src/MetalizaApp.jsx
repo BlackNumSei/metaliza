@@ -121,13 +121,13 @@ const colecaoDoBanco = (r) => ({ id: r.id, nome: r.nome, lancadaEm: dataLocal(r.
 const VISAO_GERAL = "Catálogo Geral / Linha Permanente";
 // Navegação: só a linha permanente e as coleções de lançamento (sem visão misturada)
 const listarVisoes = () => [VISAO_GERAL, ...LANCAMENTOS.map((l) => l.nome)];
-// Abertura padrão: o primeiro lançamento em vigor; sem lançamento ativo, a linha permanente
-const visaoInicial = (ativas) => LANCAMENTOS.find((l) => ativas.has(l.nome))?.nome || VISAO_GERAL;
+// Abertura padrão: o primeiro lançamento em vigor que tenha peças; senão, a linha permanente
+const visaoInicial = (ativas) => LANCAMENTOS.find((l) => ativas.has(l.nome) && PRODUTOS.some((p) => p.colecao === l.nome))?.nome || VISAO_GERAL;
 
 // ativas = Set com os nomes das coleções em vigor
 const emLancamento = (p, ativas) => Boolean(p.colecao && ativas.has(p.colecao));
-const pecasDaVisao = (visao, ativas) =>
-  PRODUTOS.filter((p) => {
+const pecasDaVisao = (visao, ativas, lista = PRODUTOS) =>
+  lista.filter((p) => {
     if (visao === VISAO_GERAL) return !emLancamento(p, ativas);
     return p.colecao === visao && emLancamento(p, ativas);
   });
@@ -135,7 +135,10 @@ const rotuloColecao = (p, ativas) => (emLancamento(p, ativas) ? p.colecao : "Lin
 
 const CATEGORIAS = ["Todos", "Enfeites", "Fivelas", "Passadores", "Ponteiras", "Correntes"];
 
-let PRODUTOS = [
+// Catálogo de demonstração (sem Supabase, com erro ou com a tabela vazia). Com Supabase, o catálogo vem
+// da tabela "produtos" e vive no estado "produtos" do App; PRODUTOS é só o espelho desse estado para as
+// funções fora dos componentes (carrinho, TXT, PDF), atualizado sempre junto com ele.
+const PRODUTOS_DEMO = [
   // Lançamento Verão 2026 (exclusivas enquanto a coleção estiver ativa)
   { ref: "CR 101", categoria: "Correntes", foto: "cr101", colecao: "Linha" },
   { ref: "EF 661", categoria: "Enfeites", foto: "ef661", colecao: "Verão 2026" },
@@ -152,6 +155,34 @@ let PRODUTOS = [
   { ref: "PS 1027", categoria: "Passadores", foto: "ps1027" },
   { ref: "PS 057", categoria: "Passadores", foto: "ps057" },
 ];
+let PRODUTOS = PRODUTOS_DEMO;
+
+// Categoria do banco no plural usado pelos filtros ("FIVELA", "fivelas" -> "Fivelas")
+function normalizarCategoria(cat) {
+  const t = String(cat ?? "").trim();
+  const chave = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const achada = CATEGORIAS.find((c) => c !== "Todos" && [c, CATEGORIA_SINGULAR[c]].some((n) => n && n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === chave));
+  return achada || t;
+}
+// Ordem por referência com números em ordem natural (FV 2 antes de FV 10)
+const compararRef = (a, b) => a.ref.localeCompare(b.ref, "pt-BR", { numeric: true, sensitivity: "base" });
+const produtoDoBanco = (r) => ({ ...r, ref: String(r.ref || "").trim().replace(/\s+/g, " "), categoria: normalizarCategoria(r.categoria) });
+
+// Lê a tabela "produtos" inteira (ativos), em lotes de 1.000 (limite por consulta do Supabase)
+async function carregarTodosOsProdutos(sb) {
+  const linhas = [];
+  for (let de = 0; de < 100 * 1000; de += 1000) {
+    const { data, error } = await sb.from("produtos").select("*").eq("ativo", true).order("ref", { ascending: true }).range(de, de + 999);
+    if (error) throw error;
+    linhas.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  const vistas = new Set();
+  return linhas
+    .map(produtoDoBanco)
+    .filter((p) => p.ref && !vistas.has(p.ref) && vistas.add(p.ref))
+    .sort(compararRef);
+}
 
 // Cartela de demonstração/offline. Com Supabase, a lista vem da tabela "cores" (ativo = true).
 // Cada cor tem "codigos": um código na cor solo, dois nos bicolores (ex.: ["002", "293"]).
@@ -973,26 +1004,39 @@ const fundoDaFoto = (produto) => resolverFoto(produto)?.fundo || FUNDO_FOTO;
 
 function ImagemPeca({ produto, alturaMax = 260, miniatura = false, className = "" }) {
   const foto = resolverFoto(produto);
-  const alt = `Foto da peça ${rotuloRef(produto)}`;
-  if (!foto) {
+  // Foto ainda não enviada ao bucket ou que falhou ao carregar: cartão com a referência no centro
+  const [falhou, setFalhou] = useState(false);
+  useEffect(() => setFalhou(false), [foto?.src]);
+  const ref = produto ? rotuloRef(produto) : "Ref. —";
+  const alt = `Foto da peça ${ref}`;
+  if (!foto || falhou) {
     return miniatura ? (
-      <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-md text-center text-[9px] font-semibold leading-tight text-[#6B6F75] ${className}`} style={{ background: FUNDO_FOTO }}>
-        Foto pendente
+      <div
+        className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-md px-1 text-center ${className}`}
+        style={{ background: `linear-gradient(145deg, #EEF1F5, ${FUNDO_FOTO})` }}
+        role="img"
+        aria-label={`${ref}: foto pendente`}
+      >
+        <span className="mz-mono break-words text-[10px] font-bold leading-tight text-[color:var(--mz-ink-2)]">{produto?.ref || "—"}</span>
       </div>
     ) : (
-      <div className={`flex w-full flex-col items-center justify-center gap-1 py-10 text-center text-[#5F646A] ${className}`} style={{ background: FUNDO_FOTO, minHeight: Math.min(alturaMax, 200) }} role="img" aria-label={`Foto da ${rotuloRef(produto)} pendente`}>
-        <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-          <rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="m4 17 5-4 4 3 3-2 4 3" />
-        </svg>
-        <span className="mz-mono text-sm font-bold">{rotuloRef(produto)}</span>
-        <span className="text-xs">Foto da peça pendente</span>
+      <div
+        className={`flex h-full w-full flex-col items-center justify-center gap-1.5 px-3 py-4 text-center ${className}`}
+        // Dentro de um quadro de altura fixa (alturaMax "100%") ocupa só o quadro; solto, garante uma altura mínima
+        style={{ background: `linear-gradient(145deg, #F4F6F9, ${FUNDO_FOTO})`, minHeight: typeof alturaMax === "number" ? Math.min(alturaMax, 200) : undefined }}
+        role="img"
+        aria-label={`${ref}: foto pendente`}
+      >
+        <span className="mz-mono text-lg font-bold tracking-tight text-[color:var(--mz-ink)]">{ref}</span>
+        <span className="h-px w-10 bg-[color:var(--mz-line)]" aria-hidden="true" />
+        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--mz-muted)]">Foto em breve</span>
       </div>
     );
   }
   if (miniatura) {
     return (
       <div className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md p-0.5 ${className}`} style={{ background: foto.fundo || FUNDO_FOTO }}>
-        <img src={foto.src} alt={alt} width={foto.w} height={foto.h} className="block h-full w-full object-contain" draggable={false} />
+        <img src={foto.src} alt={alt} width={foto.w} height={foto.h} loading="lazy" decoding="async" onError={() => setFalhou(true)} className="block h-full w-full object-contain" draggable={false} />
       </div>
     );
   }
@@ -1004,6 +1048,9 @@ function ImagemPeca({ produto, alturaMax = 260, miniatura = false, className = "
         alt={alt}
         width={foto.w}
         height={foto.h}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFalhou(true)}
         className="block h-auto w-full max-w-full object-contain"
         style={{ maxHeight: alturaMax }}
         draggable={false}
@@ -1153,7 +1200,7 @@ function TelaLogin({ onEntrar }) {
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            {PRODUTOS.slice(0, 6).map((p) => (
+            {PRODUTOS_DEMO.slice(0, 6).map((p) => (
               <ImagemPeca key={p.ref} produto={p} alturaMax={110} className="h-full overflow-hidden" />
             ))}
           </div>
@@ -1501,7 +1548,7 @@ function HeroCarrossel({ ativas, onVerColecao }) {
 
                 <div className="grid grid-cols-[1.3fr_1fr] gap-2.5">
                   {sl.fotos.map((ref, k) => {
-                    const prod = PRODUTOS.find((x) => x.ref === ref);
+                    const prod = PRODUTOS.find((x) => x.ref === ref) || PRODUTOS_DEMO.find((x) => x.ref === ref) || { ref };
                     return (
                       <figure key={ref} className={`flex flex-col ${k === 0 ? "row-span-2" : ""}`}>
                         <div className="flex flex-1 items-center justify-center overflow-hidden rounded-xl" style={{ background: fundoDaFoto(prod) }}>
@@ -2009,12 +2056,17 @@ function Chips({ titulo, opcoes, valor, onChange, idBase, contar }) {
   );
 }
 
-function TelaCatalogo({ cliente, itensPedido, colecao, ativas, versaoCatalogo = 0, onColecao, onAbrirPeca }) {
+function TelaCatalogo({ cliente, itensPedido, colecao, ativas, produtos, carregando = false, onColecao, onAbrirPeca }) {
   const [categoria, setCategoria] = useState("Todos");
   const [busca, setBusca] = useState("");
   const vitrineRef = useRef(null);
 
-  const daColecao = useMemo(() => pecasDaVisao(colecao, ativas), [colecao, ativas, versaoCatalogo]);
+  const daColecao = useMemo(() => pecasDaVisao(colecao, ativas, produtos), [colecao, ativas, produtos]);
+  // Filtros: categorias padrão + qualquer outra que exista no banco
+  const opcoesCategoria = useMemo(() => {
+    const extras = [...new Set(produtos.map((p) => p.categoria).filter((c) => c && !CATEGORIAS.includes(c)))].sort();
+    return [...CATEGORIAS, ...extras];
+  }, [produtos]);
   const lanc = LANCAMENTOS.find((l) => l.nome === colecao && ativas.has(l.nome));
   const filtrados = useMemo(() => {
     const termo = busca.trim();
@@ -2066,7 +2118,7 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, versaoCatalogo = 
         </div>
 
         <div className="pb-4">
-          <Chips titulo="Categoria" opcoes={CATEGORIAS} valor={categoria} onChange={setCategoria} idBase="mz-cat" contar={(o) => daColecao.filter((p) => o === "Todos" || p.categoria === o).length} />
+          <Chips titulo="Categoria" opcoes={opcoesCategoria} valor={categoria} onChange={setCategoria} idBase="mz-cat" contar={(o) => daColecao.filter((p) => o === "Todos" || p.categoria === o).length} />
         </div>
 
         <div className={`flex min-h-[44px] items-center justify-between border-t border-[color:var(--mz-line)] pb-3 pt-1 text-sm ${C.muted}`}>
@@ -2074,7 +2126,9 @@ function TelaCatalogo({ cliente, itensPedido, colecao, ativas, versaoCatalogo = 
           {filtrosAtivos && <button type="button" onClick={limpar} className={`mz-focus min-h-[44px] px-1 font-bold underline underline-offset-4 ${C.accentText}`}>Limpar filtros</button>}
         </div>
 
-        {filtrados.length === 0 ? (
+        {carregando ? (
+          <p className={`py-12 text-center text-sm font-semibold ${C.muted}`} role="status">Carregando catálogo…</p>
+        ) : filtrados.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[color:var(--mz-line)] p-8 text-center">
             <p className="mz-display text-xl">Nenhuma peça com esses filtros.</p>
             <p className={`mt-2 text-sm ${C.muted}`}>Tente outra categoria, outra coleção no menu ou confira o código da referência.</p>
@@ -3598,57 +3652,53 @@ export default function MetalizaApp() {
   const [tela, setTela] = useState("clientes"); // modo | clientes | catalogo | revisao | enviado | historico
   const [peca, setPeca] = useState(null);
   const [pedidoAberto, setPedidoAberto] = useState(false);
-  const [produtosCarregados, setProdutosCarregados] = useState(false);
+  // Catálogo vivo: produtos ativos da tabela "produtos" (ordenados pela referência).
+  // Sem Supabase, com erro ou com a tabela vazia, fica o catálogo de demonstração.
+  const [produtos, setProdutosEstado] = useState(() => (obterSupabase() ? [] : PRODUTOS_DEMO));
+  const [carregandoProdutos, setCarregandoProdutos] = useState(() => !!obterSupabase());
+  const setProdutos = (lista) => {
+    PRODUTOS = lista;
+    setProdutosEstado(lista);
+  };
 
   useEffect(() => {
-    async function carregarProdutosDoBanco() {
-      const supabase = obterSupabase();
-      if (!supabase) return; // sem Supabase: mantém o catálogo local
-      try {
-        const { data, error } = await supabase
-          .from("produtos")
-          .select("*")
-          .eq("ativo", true);
-
-        if (error) {
-          console.error("Erro ao buscar produtos do Supabase:", error.message);
-          return;
+    const sb = obterSupabase();
+    if (!sb) return undefined;
+    let ativo = true;
+    carregarTodosOsProdutos(sb)
+      .then((lista) => {
+        if (!ativo) return;
+        if (lista.length) setProdutos(lista);
+        else {
+          console.warn("Tabela produtos sem peças ativas: usando o catálogo de demonstração.");
+          setProdutos(PRODUTOS_DEMO);
         }
-
-        if (data && data.length > 0) {
-          // Atualiza a lista com os dados reais do banco
-          PRODUTOS = data;
-          setProdutosCarregados(true);
-          console.log(`Carregadas ${data.length} peças reais do Supabase.`);
-        }
-      } catch (err) {
-        console.error("Falha ao comunicar com Supabase:", err);
-      }
-    }
-
-    carregarProdutosDoBanco();
-  }, []);
+      })
+      .catch((err) => {
+        console.error("Erro ao buscar produtos do Supabase:", err?.message || err);
+        if (ativo) setProdutos(PRODUTOS.length ? PRODUTOS : PRODUTOS_DEMO);
+      })
+      .finally(() => ativo && setCarregandoProdutos(false));
+    return () => {
+      ativo = false;
+    };
+  }, [rep?.id]);
   const [itensPorCliente, setItensPorCliente] = useState({});
   const [acabamentos, setAcabamentos] = useState(ACABAMENTOS_DEMO);
-  const [versaoCatalogo, setVersaoCatalogo] = useState(0);
   const [versaoColecoes, setVersaoColecoes] = useState(0);
   const [painelAdmin, setPainelAdmin] = useState(false);
   const corCriada = (cor) => {
     registrarAcabamentos([cor]);
     setAcabamentos((l) => [...l, cor].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
   };
-  const pecaCriada = (peca) => {
-    PRODUTOS = [...PRODUTOS, peca];
-    setVersaoCatalogo((v) => v + 1);
-  };
+  const pecaCriada = (peca) => setProdutos([...PRODUTOS, produtoDoBanco(peca)].sort(compararRef));
   // Nova coleção: entra na gaveta na hora (com o contador de dias) e as peças marcadas passam para ela
   const colecaoLancada = (colecao, refs, noBanco) => {
     LANCAMENTOS = [colecao, ...LANCAMENTOS.filter((l) => l.nome !== colecao.nome)];
     const marcadas = new Set(refs);
-    PRODUTOS = PRODUTOS.map((p) => (marcadas.has(p.ref) ? { ...p, colecao: colecao.nome } : p));
+    setProdutos(PRODUTOS.map((p) => (marcadas.has(p.ref) ? { ...p, colecao: colecao.nome } : p)));
     setEncerradas((l) => l.filter((n) => n !== colecao.nome));
     setVersaoColecoes((v) => v + 1);
-    setVersaoCatalogo((v) => v + 1);
     setPainelAdmin(false);
     setToast(`Coleção ${colecao.nome} lançada com sucesso!${noBanco ? "" : " (só nesta sessão de demonstração)"}`);
   };
@@ -4053,7 +4103,7 @@ export default function MetalizaApp() {
             <TelaClientes clientes={clientes} historico={historico} onSelecionar={selecionarCliente} onCadastrar={cadastrarCliente} />
           )}
           {tela === "catalogo" && (cliente || apresentacao) && (
-            <TelaCatalogo cliente={cliente} itensPedido={itens} colecao={colecao} ativas={ativas} versaoCatalogo={versaoCatalogo} onColecao={setColecao} onAbrirPeca={setPeca} />
+            <TelaCatalogo cliente={cliente} itensPedido={itens} colecao={colecao} ativas={ativas} produtos={produtos} carregando={carregandoProdutos} onColecao={setColecao} onAbrirPeca={setPeca} />
           )}
           {tela === "revisao" && cliente && (
             <TelaRevisao rep={rep} cliente={cliente} itens={itens} enviando={enviando} onVoltar={() => setTela("catalogo")} onQtd={alterarQtd} onRemover={remover} onEnviar={enviar} />
